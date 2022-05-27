@@ -8,7 +8,7 @@ const fs = require('fs');
 var ip = require("ip");
 
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
-const tokenFile = path.join(__dirname, 'tokenset.json');
+const tokenFile = path.join(__dirname, '../tokenset.json');
 
 let tempCache = {}
 let daikinCloud;
