@@ -3,5 +3,5 @@
 /certs/
 /keys/
 /.idea/
-/config/config.yml
+/config/settings.yml
 tokenset.json

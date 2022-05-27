@@ -11,6 +11,7 @@ daikin:
 mqtt:
   host: "127.0.0.1"
   port: 1883
+  auth: false
   username: null
   password: null
   connectTimeout: 4000

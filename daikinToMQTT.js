@@ -5,10 +5,11 @@ const cron = require('node-cron');
 const mqtt = require('mqtt')
 const path = require('path');
 const fs = require('fs');
-var ip = require("ip");
+const ip = require("ip");
 
+const datadir = process.env.PORT || path.join(__dirname, '/config')
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
-const tokenFile = path.join(__dirname, '../tokenset.json');
+const tokenFile = path.join(datadir, '/tokenset.json');
 
 let tempCache = {}
 let daikinCloud;
@@ -25,7 +26,7 @@ let clientOptions = {
     mqttStart: false
 };
 
-async function main() {
+async function daikinToMQTT() {
     await loadConfig();
     await startSystem();
 
@@ -40,7 +41,8 @@ async function main() {
 
 async function loadConfig() {
     try {
-        config = yaml.load(fs.readFileSync('config/config.yml', 'utf8'));
+        const settingsPatch = path.join(datadir, '/settings.yml');
+        config = yaml.load(fs.readFileSync(settingsPatch, 'utf8'));
     } catch (e) {
         console.log(e);
     }
@@ -69,6 +71,8 @@ async function startSystem() {
         password: config.mqtt.password,
         reconnectPeriod: config.mqtt.reconnectPeriod,
     };
+
+    //TODO : MQTT No Auth
 
     const mqttHost = `mqtt://${config.mqtt.host}:${config.mqtt.port}`
 
@@ -176,6 +180,6 @@ function delay(time) {
 }
 
 (async () => {
-    await main();
+    await daikinToMQTT();
 })();
 
