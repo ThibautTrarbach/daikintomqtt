@@ -49,9 +49,11 @@ async function loadConfig() {
 }
 
 async function startSystem() {
+    console.log('coucou 1')
     /** Setup Variable **/
     clientOptions.topic = config.mqtt.topic+'/';
     clientOptions.loglevel = config.system.loglevel;
+    console.log('coucou 2')
     const daikinOptions = {
         logger: console.log,
         logLevel: config.system.loglevel,
@@ -63,6 +65,7 @@ async function startSystem() {
         communicationTimeout: config.daikin.communicationTimeout,
         communicationRetries: config.daikin.communicationRetries
     };
+    console.log('coucou 3')
     const mqttOptions = {
         clientId,
         clean: true,
@@ -73,56 +76,46 @@ async function startSystem() {
     };
 
     //TODO : MQTT No Auth
-
+    console.log('coucou 4')
     const mqttHost = `mqtt://${config.mqtt.host}:${config.mqtt.port}`
 
     /** Start MQTT Client **/
     mqttClient = mqtt.connect(mqttHost, mqttOptions)
-
+    console.log('coucou 5')
     /** MQTT Event **/
     mqttClient.on('connect', () => {
         console.log('service connected')
         clientOptions.mqttStart = true; })
-    mqttClient.on('message', async function (topic, message) {
-        console.log(`Topic : ${topic} \n- Message : ${message.toString()}`)
-
-        const devices = await daikinCloud.getCloudDevices();
-        for (let dev of devices) {
-            if (!topic.toString().includes(dev.getId())) continue;
-            if (dev.getData('gateway', 'modelInfo').value === "BRP069C4x") await updateData(dev, message);
-        }
-
-        await refreshData()
-    })
-
+    console.log('coucou 6')
     /** Setup Daikin API */
     if (fs.existsSync(tokenFile)) tokenSet = JSON.parse(fs.readFileSync(tokenFile).toString());
-
+    console.log('coucou 7')
     /** Start Daikin Client **/
     daikinCloud = new DaikinCloud(tokenSet, daikinOptions);
-
+    console.log('coucou 8')
     /** Daikin Event **/
     daikinCloud.on('token_update', tokenSet => {
         fs.writeFileSync(tokenFile, JSON.stringify(tokenSet));
     });
-
+    console.log('coucou 9')
     /** Login if token not exist **/
     if (!tokenSet) {
         if (config.daikin.modeproxy) {
             await daikinCloud.initProxyServer();
             clientOptions.message = `Please visit http://${daikinOptions.proxyOwnIp}:${daikinOptions.proxyWebPort} and Login to Daikin Cloud please.`
             await updateSystemInfo()
-            const resultTokenSet = await daikinCloud.waitForTokenFromProxy();
+            await daikinCloud.waitForTokenFromProxy();
             console.log('Retrieved tokens. Saved to ' + tokenFile);
             await delay(1000);
             await daikinCloud.stopProxyServer();
             clientOptions.message = "Connection Success"
             await updateSystemInfo();
         } else {
-            const resultTokenSet = await daikinCloud.login(config.daikin.username, config.daikin.password);
-            tokenSet = JSON.parse(fs.readFileSync(tokenFile).toString());
+            await daikinCloud.login(config.daikin.username, config.daikin.password);
         }
+        tokenSet = JSON.parse(fs.readFileSync(tokenFile).toString());
     }
+    console.log('coucou 10')
     clientOptions.daikinStart = true;
     await updateSystemInfo()
 
@@ -141,6 +134,18 @@ async function startSystem() {
             if (!err) console.log("Subscribe to "+subscribeTopic)
         })
     }
+
+    mqttClient.on('message', async function (topic, message) {
+        console.log(`Topic : ${topic} \n- Message : ${message.toString()}`)
+
+        const devices = await daikinCloud.getCloudDevices();
+        for (let dev of devices) {
+            if (!topic.toString().includes(dev.getId())) continue;
+            if (dev.getData('gateway', 'modelInfo').value === "BRP069C4x") await updateData(dev, message);
+        }
+
+        await refreshData()
+    })
 
     console.log('Start Service OK')
 }
