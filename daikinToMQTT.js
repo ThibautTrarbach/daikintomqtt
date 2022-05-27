@@ -49,11 +49,9 @@ async function loadConfig() {
 }
 
 async function startSystem() {
-    console.log('coucou 1')
     /** Setup Variable **/
     clientOptions.topic = config.mqtt.topic+'/';
     clientOptions.loglevel = config.system.loglevel;
-    console.log('coucou 2')
     const daikinOptions = {
         logger: console.log,
         logLevel: config.system.loglevel,
@@ -65,7 +63,6 @@ async function startSystem() {
         communicationTimeout: config.daikin.communicationTimeout,
         communicationRetries: config.daikin.communicationRetries
     };
-    console.log('coucou 3')
     const mqttOptions = {
         clientId,
         clean: true,
@@ -76,31 +73,28 @@ async function startSystem() {
     };
 
     //TODO : MQTT No Auth
-    console.log('coucou 4')
     const mqttHost = `mqtt://${config.mqtt.host}:${config.mqtt.port}`
 
     /** Start MQTT Client **/
     mqttClient = mqtt.connect(mqttHost, mqttOptions)
-    console.log('coucou 5')
     /** MQTT Event **/
     mqttClient.on('connect', () => {
         console.log('service connected')
         clientOptions.mqttStart = true; })
-    console.log('coucou 6')
     /** Setup Daikin API */
     if (fs.existsSync(tokenFile)) tokenSet = JSON.parse(fs.readFileSync(tokenFile).toString());
-    console.log('coucou 7')
     /** Start Daikin Client **/
     daikinCloud = new DaikinCloud(tokenSet, daikinOptions);
-    console.log('coucou 8')
     /** Daikin Event **/
     daikinCloud.on('token_update', tokenSet => {
         fs.writeFileSync(tokenFile, JSON.stringify(tokenSet));
     });
-    console.log('coucou 9')
+    console.log('coucou 1')
     /** Login if token not exist **/
     if (!tokenSet) {
+        console.log('coucou 2')
         if (config.daikin.modeproxy) {
+            console.log('coucou 3')
             await daikinCloud.initProxyServer();
             clientOptions.message = `Please visit http://${daikinOptions.proxyOwnIp}:${daikinOptions.proxyWebPort} and Login to Daikin Cloud please.`
             await updateSystemInfo()
@@ -111,7 +105,9 @@ async function startSystem() {
             clientOptions.message = "Connection Success"
             await updateSystemInfo();
         } else {
+            console.log('coucou 4')
             await daikinCloud.login(config.daikin.username, config.daikin.password);
+            console.log('coucou 5')
         }
         tokenSet = JSON.parse(fs.readFileSync(tokenFile).toString());
     }
