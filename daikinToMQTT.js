@@ -7,7 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const ip = require("ip");
 
-const datadir = process.env.PORT || path.join(__dirname, '/config')
+const datadir = process.env.STORE_DIR || path.join(__dirname, '/config')
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
 const tokenFile = path.join(datadir, '/tokenset.json');
 
