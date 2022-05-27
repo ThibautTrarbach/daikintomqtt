@@ -1,0 +1,18 @@
+system:
+  loglevel: 'info'
+daikin:
+  modeproxy: true
+  username: null
+  password: null
+  proxyPort: 8888
+  proxyWebPort: 8889
+  communicationTimeout: 10000
+  communicationRetries: 3
+mqtt:
+  host: "127.0.0.1"
+  port: 1883
+  username: null
+  password: null
+  connectTimeout: 4000
+  reconnectPeriod: 1000
+  topic: "daikinToMQTT"
