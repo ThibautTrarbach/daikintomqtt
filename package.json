@@ -1,0 +1,20 @@
+{
+  "name": "daikin-deamon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "daikin-controller-cloud": "github:Apollon77/daikin-controller-cloud",
+    "ip": "^1.1.8",
+    "js-yaml": "^4.1.0",
+    "local-ip": "^2.0.0",
+    "mqtt": "^4.3.7",
+    "node-cron": "^3.0.0"
+  }
+}
