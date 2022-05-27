@@ -1,6 +1,6 @@
 const {validateData, validateDataPath} = require("../utils");
 
-async function getData(devices) {
+async function getBRP069C4x(devices) {
     return {
         device: {
             name: devices.getData('climateControl', 'name').value,
@@ -40,7 +40,7 @@ async function getData(devices) {
     };
 }
 
-async function updateData(devices, message) {
+async function setBRP069C4x(devices, message) {
     const data = JSON.parse(message);
 
     if (data.onOffMode !== undefined)
@@ -64,7 +64,6 @@ async function updateData(devices, message) {
     await devices.updateData();
     console.log("Update Value")
 }
-
 
 async function getTemperatureControl(devices) {
     switch (devices.getData('climateControl', 'operationMode').value) {
@@ -170,6 +169,6 @@ async function updateFanControl(data, devices) {
 }
 
 module.exports = {
-    getData,
-    updateData
+    getBRP069C4x,
+    setBRP069C4x
 }

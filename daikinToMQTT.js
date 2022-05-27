@@ -1,4 +1,3 @@
-const {getData, updateData} = require("./modules/BRP069C4x");
 const DaikinCloud = require('daikin-controller-cloud');
 const yaml = require('js-yaml');
 const cron = require('node-cron');
@@ -6,6 +5,7 @@ const mqtt = require('mqtt')
 const path = require('path');
 const fs = require('fs');
 const ip = require("ip");
+const {getDataFromModules, setDataFromModules} = require("./modules/main");
 
 const datadir = process.env.STORE_DIR || path.join(__dirname, '/config')
 const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
@@ -133,7 +133,8 @@ async function startSystem() {
         const devices = await daikinCloud.getCloudDevices();
         for (let dev of devices) {
             if (!topic.toString().includes(dev.getId())) continue;
-            if (dev.getData('gateway', 'modelInfo').value === "BRP069C4x") await updateData(dev, message);
+
+            await setDataFromModules(dev, message)
         }
 
         await refreshData()
@@ -150,7 +151,9 @@ async function refreshData() {
     if (devices && devices.length) {
         for (let dev of devices) {
             let data;
-            if (dev.getData('gateway', 'modelInfo').value === "BRP069C4x") data = await getData(dev);
+
+            data = await getDataFromModules(dev, datadir)
+            if (data === "defaults") continue;
 
             if (JSON.stringify(tempCache[dev.getId()]) ===  JSON.stringify(data)) continue;
             tempCache[dev.getId()] = data;
