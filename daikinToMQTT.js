@@ -106,6 +106,8 @@ async function startSystem() {
             await updateSystemInfo();
         } else {
             console.log('coucou 4')
+            console.log(config.daikin.username)
+            console.log(config.daikin.password)
             await daikinCloud.login(config.daikin.username, config.daikin.password);
             console.log('coucou 5')
         }
