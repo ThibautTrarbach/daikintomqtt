@@ -89,12 +89,9 @@ async function startSystem() {
     daikinCloud.on('token_update', tokenSet => {
         fs.writeFileSync(tokenFile, JSON.stringify(tokenSet));
     });
-    console.log('coucou 1')
     /** Login if token not exist **/
     if (!tokenSet) {
-        console.log('coucou 2')
         if (config.daikin.modeproxy) {
-            console.log('coucou 3')
             await daikinCloud.initProxyServer();
             clientOptions.message = `Please visit http://${daikinOptions.proxyOwnIp}:${daikinOptions.proxyWebPort} and Login to Daikin Cloud please.`
             await updateSystemInfo()
@@ -105,15 +102,12 @@ async function startSystem() {
             clientOptions.message = "Connection Success"
             await updateSystemInfo();
         } else {
-            console.log('coucou 4')
             console.log(config.daikin.username)
             console.log(config.daikin.password)
             await daikinCloud.login(config.daikin.username, config.daikin.password);
-            console.log('coucou 5')
         }
         tokenSet = JSON.parse(fs.readFileSync(tokenFile).toString());
     }
-    console.log('coucou 10')
     clientOptions.daikinStart = true;
     await updateSystemInfo()
 
