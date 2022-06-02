@@ -34,7 +34,7 @@ async function daikinToMQTT() {
         await refreshData()
     });
 
-    cron.schedule('*/5 * * * * *', async function () {
+    cron.schedule('30 * * * * *', async function () {
         await updateSystemInfo()
     });
 }

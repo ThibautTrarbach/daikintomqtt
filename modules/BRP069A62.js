@@ -24,7 +24,21 @@ async function getBRP069A62(devices) {
         '1-outdoorTemperature': devices.getData('1', 'sensoryData', "/outdoorTemperature").value,
         '1-leavingWaterTemperature': devices.getData('1', 'sensoryData', "/leavingWaterTemperature").value,
         '1-temperatureControl': await getTemperatureControlModules1(devices),
-        '1-targetTemperature': devices.getData('1', 'targetTemperature').value
+        '1-targetTemperature': devices.getData('1', 'targetTemperature').value,
+
+        '2-isHolidayModeActive': devices.getData('2', 'isHolidayModeActive').value,
+        '2-isInErrorState': devices.getData('2', 'isInErrorState').value,
+        '2-isInWarningState': devices.getData('2', 'isInWarningState').value,
+        '2-isInInstallerState': devices.getData('2', 'isInInstallerState').value,
+        '2-isInEmergencyState': devices.getData('2', 'isInEmergencyState').value,
+
+        '2-onOffMode': devices.getData('2', 'onOffMode').value,
+        '2-operationMode': devices.getData('2', 'operationMode').value,
+        '2-powerfulMode': devices.getData('2', 'powerfulMode').value,
+        '2-heatupMode': devices.getData('2', 'heatupMode').value,
+        '2-tankTemperature': devices.getData('2', 'sensoryData', "/tankTemperature").value,
+        '2-temperatureControl': devices.getData('2', 'temperatureControl', "/operationModes/heating/setpoints/domesticHotWaterTemperature").value,
+        '2-setpointMode': devices.getData('2', 'setpointMode').value,
     };
 }
 
