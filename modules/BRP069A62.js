@@ -15,7 +15,6 @@ async function getBRP069A62(devices) {
         '1-isInWarningState': devices.getData('1', 'isInWarningState').value,
         '1-isInInstallerState': devices.getData('1', 'isInInstallerState').value,
         '1-isInEmergencyState': devices.getData('1', 'isInEmergencyState').value,
-
         '1-operationMode': devices.getData('1', 'operationMode').value,
         '1-onOffMode': devices.getData('1', 'onOffMode').value,
         '1-setpointMode': devices.getData('1', 'setpointMode').value,
@@ -31,7 +30,6 @@ async function getBRP069A62(devices) {
         '2-isInWarningState': devices.getData('2', 'isInWarningState').value,
         '2-isInInstallerState': devices.getData('2', 'isInInstallerState').value,
         '2-isInEmergencyState': devices.getData('2', 'isInEmergencyState').value,
-
         '2-onOffMode': devices.getData('2', 'onOffMode').value,
         '2-operationMode': devices.getData('2', 'operationMode').value,
         '2-powerfulMode': devices.getData('2', 'powerfulMode').value,
