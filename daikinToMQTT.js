@@ -133,7 +133,6 @@ async function startSystem() {
         const devices = await daikinCloud.getCloudDevices();
         for (let dev of devices) {
             if (!topic.toString().includes(dev.getId())) continue;
-
             await setDataFromModules(dev, message)
         }
 
@@ -148,6 +147,10 @@ async function refreshData() {
     console.log('Refresh Data')
 
     const devices = await daikinCloud.getCloudDevices();
+
+    console.log(devices)
+
+
     if (devices && devices.length) {
         for (let dev of devices) {
             let data;
