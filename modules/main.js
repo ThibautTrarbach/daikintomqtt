@@ -2,10 +2,10 @@ const {generateInfoModule} = require("./default");
 const {getBRP069C4x, setBRP069C4x} = require("./BRP069C4x");
 
 async function getDataFromModules(devices, dataDirectory) {
-    console.log(devices.getData())
+    //console.log(devices.getData())
     let value = devices.getData('gateway', 'modelInfo').value ?? devices.getData(0, 'modelInfo').value;
 
-    console.log(value)
+    console.log("value : "+value)
 
     switch (value) {
         case 'BRP069C4x':
