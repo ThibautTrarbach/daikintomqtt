@@ -14,7 +14,6 @@ async function getBRP069C4x(devices) {
             ledEnabled: devices.getData('gateway', 'ledEnabled').value,
             isInErrorState: devices.getData('gateway', 'isInErrorState').value,
             errorCode: devices.getData('climateControl', 'errorCode').value,
-            //lastUpdate: devices.getLastUpdated(),
         },
         isHolidayModeActive: devices.getData('climateControl', 'isHolidayModeActive').value,
         isInErrorState: devices.getData('climateControl', 'isInErrorState').value,
