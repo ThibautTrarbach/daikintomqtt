@@ -2,7 +2,7 @@ const {generateInfoModule} = require("./default");
 const {getBRP069C4x, setBRP069C4x} = require("./BRP069C4x");
 
 async function getDataFromModules(devices, dataDirectory) {
-    console.log("Coucou 4")
+    console.log(devices.getData())
     switch (devices.getData('gateway', 'modelInfo').value) {
         case 'BRP069C4xaa':
             console.log("Coucou 4.1")

@@ -148,12 +148,8 @@ async function refreshData() {
 
     const devices = await daikinCloud.getCloudDevices();
 
-    //console.log(devices)
-    console.log("Coucou 1")
     if (devices && devices.length) {
-        console.log("Coucou 2")
         for (let dev of devices) {
-            console.log("Coucou 3")
             let data;
 
             data = await getDataFromModules(dev, datadir)
