@@ -7,8 +7,8 @@ async function getBRP069A62(devices) {
             modelInfo: devices.getData('0', 'modelInfo').value,
             serialNumber: devices.getData('0', 'serialNumber').value,
             firmwareVersion: devices.getData('0', 'firmwareVersion').value,
-            errorCode: devices.getData('climateControl', 'errorCode').value,
-            isInErrorState: devices.getData('gateway', 'isInErrorState').value,
+            errorCode: devices.getData('1', 'errorCode').value,
+            isInErrorState: devices.getData('0', 'isInErrorState').value,
         },
         heatingfloor: {
             isHolidayModeActive: devices.getData('1', 'isHolidayModeActive').value,
