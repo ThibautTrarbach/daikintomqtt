@@ -7,8 +7,14 @@ async function getDataFromModules(devices, dataDirectory) {
     let value = "Oups"
 
     if (devices.getData('gateway', 'modelInfo') !== null) value = devices.getData('gateway', 'modelInfo').value
-    else if (devices.getData(0, 'modelInfo')) value = devices.getData(0, 'modelInfo').value
-    else if (devices.getData(0, 'modelInfo')) value = devices.getData('0', 'modelInfo').value
+    else if (devices.getData(0, 'modelInfo') !== null){
+        console.log('test1')
+        value = devices.getData(0, 'modelInfo').value
+    }
+    else if (devices.getData(0, 'modelInfo') !== null){
+        console.log('test2')
+        value = devices.getData('0', 'modelInfo').value
+    }
 
     console.log("value : "+value)
 
