@@ -57,9 +57,9 @@ async function setBRP069A62(devices, message) {
 async function getTemperatureControlModules1(devices) {
     switch (devices.getData('1', 'controlMode').value) {
         case 'roomTemperature':
-            return devices.getData('climateControl', 'temperatureControl', "/operationModes/heating/setpoints/roomTemperature").value
+            return devices.getData('1', 'temperatureControl', "/operationModes/heating/setpoints/roomTemperature").value
         case 'leavingWaterTemperature':
-            return devices.getData('climateControl', 'temperatureControl', "/operationModes/heating/setpoints/leavingWaterOffset").value
+            return devices.getData('1', 'temperatureControl', "/operationModes/heating/setpoints/leavingWaterOffset").value
         default:
             return -1;
     }
