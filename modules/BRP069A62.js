@@ -10,22 +10,21 @@ async function getBRP069A62(devices) {
             errorCode: devices.getData('1', 'errorCode').value,
             isInErrorState: devices.getData('0', 'isInErrorState').value,
         },
-        heatingfloor: {
-            isHolidayModeActive: devices.getData('1', 'isHolidayModeActive').value,
-            isInErrorState: devices.getData('1', 'isInErrorState').value,
-            isInWarningState: devices.getData('1', 'isInWarningState').value,
-            isInInstallerState: devices.getData('1', 'isInInstallerState').value,
-            isInEmergencyState: devices.getData('1', 'isInEmergencyState').value,
+        '1-isHolidayModeActive': devices.getData('1', 'isHolidayModeActive').value,
+        '1-isInErrorState': devices.getData('1', 'isInErrorState').value,
+        '1-isInWarningState': devices.getData('1', 'isInWarningState').value,
+        '1-isInInstallerState': devices.getData('1', 'isInInstallerState').value,
+        '1-isInEmergencyState': devices.getData('1', 'isInEmergencyState').value,
 
-            operationMode: devices.getData('1', 'operationMode').value,
-            setpointMode: devices.getData('1', 'setpointMode').value,
-            controlMode: devices.getData('1', 'controlMode').value,
-            roomTemperature: devices.getData('1', 'sensoryData', "/roomTemperature").value,
-            outdoorTemperature: devices.getData('1', 'sensoryData', "/outdoorTemperature").value,
-            leavingWaterTemperature: devices.getData('1', 'sensoryData', "/leavingWaterTemperature").value,
-            temperatureControl: await getTemperatureControlModules1(devices),
-            targetTemperature: devices.getData('1', 'targetTemperature').value
-        }
+        '1-operationMode': devices.getData('1', 'operationMode').value,
+        '1-onOffMode': devices.getData('1', 'onOffMode').value,
+        '1-setpointMode': devices.getData('1', 'setpointMode').value,
+        '1-controlMode': devices.getData('1', 'controlMode').value,
+        '1-roomTemperature': devices.getData('1', 'sensoryData', "/roomTemperature").value,
+        '1-outdoorTemperature': devices.getData('1', 'sensoryData', "/outdoorTemperature").value,
+        '1-leavingWaterTemperature': devices.getData('1', 'sensoryData', "/leavingWaterTemperature").value,
+        '1-temperatureControl': await getTemperatureControlModules1(devices),
+        '1-targetTemperature': devices.getData('1', 'targetTemperature').value
     };
 }
 

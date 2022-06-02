@@ -153,13 +153,10 @@ async function refreshData() {
             let data;
 
             data = await getDataFromModules(dev, datadir)
-            console.log("Coucou 5")
             if (data === "defaults") continue;
-            console.log("Coucou 6")
 
             if (JSON.stringify(tempCache[dev.getId()]) ===  JSON.stringify(data)) continue;
             tempCache[dev.getId()] = data;
-            console.log("Coucou 6")
 
             mqttClient.publish(clientOptions.topic + dev.getId(), JSON.stringify(data), {qos: 0, retain: true}, (error) => {
                 console.log("sendEvent : " + dev.getId())
