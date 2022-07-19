@@ -56,8 +56,6 @@ async function setBRP069A62(devices, message) {
         await validateData('2', 'onOffMode', data.onOffMode2, devices)
     if (data.operationMode2 !== undefined)
         await validateData('2', 'powerfulMode', data.operationMode2, devices)
-    if (data.temperatureControl2 !== undefined)
-        await validateDataPath('2', 'temperatureControl', '/operationModes/heating/setpoints/domesticHotWaterTemperature', data.temperatureControl2, devices)
 
     await devices.updateData();
     console.log("Update Value")
