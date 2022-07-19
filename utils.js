@@ -10,7 +10,7 @@ async function validateData(managementPoint, dataPoint, value, devices) {
 
 async function validateDataPath(managementPoint, dataPoint,dataPointPath, value, devices) {
     let params = devices.getData(managementPoint, dataPoint, dataPointPath);
-
+    value = transformData(params, value)
     let data = await checkData(params, value)
     console.log(params)
     console.log(data);
