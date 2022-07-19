@@ -45,8 +45,19 @@ async function setBRP069A62(devices, message) {
 
     if (data.onOffMode1 !== undefined)
         await validateData('1', 'onOffMode', data.onOffMode1, devices)
+    if (data.temperatureControl1 !== undefined)
+        await validateDataPath('1', 'temperatureControl', await setTemperatureControl(devices), data.temperatureControl1, devices)
+    if (data.operationMode1 !== undefined)
+        await validateData('1', 'operationMode', data.operationMode1, devices)
+    if (data.targetTemperature1 !== undefined)
+        await validateData('1', 'targetTemperature', data.targetTemperature1, devices)
+
     if (data.onOffMode2 !== undefined)
-        await validateData('1', 'onOffMode', data.onOffMode2, devices)
+        await validateData('2', 'onOffMode', data.onOffMode2, devices)
+    if (data.operationMode2 !== undefined)
+        await validateData('2', 'powerfulMode', data.operationMode2, devices)
+    if (data.temperatureControl2 !== undefined)
+        await validateDataPath('2', 'temperatureControl', '/operationModes/heating/setpoints/domesticHotWaterTemperature', data.temperatureControl2, devices)
 
     await devices.updateData();
     console.log("Update Value")
@@ -60,6 +71,17 @@ async function getTemperatureControlModules1(devices) {
             return devices.getData('1', 'temperatureControl', "/operationModes/heating/setpoints/leavingWaterOffset").value
         default:
             return -1;
+    }
+}
+
+async function setTemperatureControl(devices) {
+    switch (devices.getData('1', 'controlMode').value) {
+        case 'roomTemperature':
+            return "/operationModes/heating/setpoints/roomTemperature";
+        case 'leavingWaterTemperature':
+            return "/operationModes/heating/setpoints/leavingWaterOffset";
+        default:
+            return false;
     }
 }
 
