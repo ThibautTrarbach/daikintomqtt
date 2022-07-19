@@ -1,7 +1,7 @@
 async function validateData(managementPoint, dataPoint, value, devices) {
     let params = devices.getData(managementPoint, dataPoint);
     value = transformData(params, value)
-    let data = await checkData(params, value)
+    let data = checkData(params, value)
     if (!data.isOK) return;
 
     await devices.setData(managementPoint, dataPoint, data.value)
@@ -11,7 +11,7 @@ async function validateData(managementPoint, dataPoint, value, devices) {
 async function validateDataPath(managementPoint, dataPoint,dataPointPath, value, devices) {
     let params = devices.getData(managementPoint, dataPoint, dataPointPath);
     value = transformData(params, value)
-    let data = await checkData(params, value)
+    let data = checkData(params, value)
     console.log(params)
     console.log(data);
     if (!data.isOK) return;
@@ -19,7 +19,7 @@ async function validateDataPath(managementPoint, dataPoint,dataPointPath, value,
     await devices.setData(managementPoint, dataPoint, dataPointPath, data.value)
 }
 
-async function checkData(params, value) {
+function checkData(params, value) {
     let result = {
         isOK: false,
         value: value
@@ -35,7 +35,7 @@ async function checkData(params, value) {
     return result;
 }
 
-async function transformData(params, value) {
+function transformData(params, value) {
     console.log(typeof params.value)
     if (typeof params.value == "number") {
         console.log("Parse to int")
