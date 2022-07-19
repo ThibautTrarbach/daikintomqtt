@@ -45,21 +45,8 @@ async function setBRP069A62(devices, message) {
 
     if (data.onOffMode1 !== undefined)
         await validateData('1', 'onOffMode', data.onOffMode1, devices)
-    if (data.operationMode !== undefined)
-        await validateData('climateControl', 'operationMode', data.operationMode, devices)
-    if (data.temperatureControl !== undefined)
-        await validateDataPath('climateControl', 'temperatureControl',await setTemperatureControl(devices), data.temperatureControl, devices)
-    if (data.fanControl !== undefined)
-        await updateFanControl(data.fanControl, devices)
-    if (data.econoMode !== undefined)
-        await validateData('climateControl', 'econoMode', data.econoMode, devices)
-    if (data.powerfulMode !== undefined)
-        await validateData('climateControl', 'powerfulMode', data.powerfulMode, devices)
-    if (data.streamerMode !== undefined)
-        await validateData('climateControl', 'streamerMode', data.streamerMode, devices)
-    if (data.outdoorSilentMode !== undefined)
-        await validateData('climateControl', 'outdoorSilentMode', data.outdoorSilentMode, devices)
-
+    if (data.onOffMode2 !== undefined)
+        await validateData('1', 'onOffMode', data.onOffMode2, devices)
 
     await devices.updateData();
     console.log("Update Value")

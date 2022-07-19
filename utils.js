@@ -1,12 +1,15 @@
 async function validateData(managementPoint, dataPoint, value, devices) {
+    console.log('1')
     let params = devices.getData(managementPoint, dataPoint);
-
+    console.log('1')
     let data = await checkData(params, value)
+    console.log('3')
     console.log(params)
     console.log(data);
     if (!data.isOK) return;
 
     await devices.setData(managementPoint, dataPoint, data.value)
+    console.log('4')
 }
 
 
