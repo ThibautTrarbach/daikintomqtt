@@ -10,41 +10,41 @@ async function getBRP069A62(devices) {
             errorCode: devices.getData('1', 'errorCode').value,
             isInErrorState: devices.getData('0', 'isInErrorState').value,
         },
-        '1-isHolidayModeActive': devices.getData('1', 'isHolidayModeActive').value,
-        '1-isInErrorState': devices.getData('1', 'isInErrorState').value,
-        '1-isInWarningState': devices.getData('1', 'isInWarningState').value,
-        '1-isInInstallerState': devices.getData('1', 'isInInstallerState').value,
-        '1-isInEmergencyState': devices.getData('1', 'isInEmergencyState').value,
-        '1-operationMode': devices.getData('1', 'operationMode').value,
-        '1-onOffMode': devices.getData('1', 'onOffMode').value,
-        '1-setpointMode': devices.getData('1', 'setpointMode').value,
-        '1-controlMode': devices.getData('1', 'controlMode').value,
-        '1-roomTemperature': devices.getData('1', 'sensoryData', "/roomTemperature").value,
-        '1-outdoorTemperature': devices.getData('1', 'sensoryData', "/outdoorTemperature").value,
-        '1-leavingWaterTemperature': devices.getData('1', 'sensoryData', "/leavingWaterTemperature").value,
-        '1-temperatureControl': await getTemperatureControlModules1(devices),
-        '1-targetTemperature': devices.getData('1', 'targetTemperature').value,
+        'isHolidayModeActive1': devices.getData('1', 'isHolidayModeActive').value,
+        'isInErrorState1': devices.getData('1', 'isInErrorState').value,
+        'isInWarningState1': devices.getData('1', 'isInWarningState').value,
+        'isInInstallerState1': devices.getData('1', 'isInInstallerState').value,
+        'isInEmergencyState1': devices.getData('1', 'isInEmergencyState').value,
+        'operationMode1': devices.getData('1', 'operationMode').value,
+        'onOffMode1': devices.getData('1', 'onOffMode').value,
+        'setpointMode1': devices.getData('1', 'setpointMode').value,
+        'controlMode1': devices.getData('1', 'controlMode').value,
+        'roomTemperature1': devices.getData('1', 'sensoryData', "/roomTemperature").value,
+        'outdoorTemperature1': devices.getData('1', 'sensoryData', "/outdoorTemperature").value,
+        'leavingWaterTemperature1': devices.getData('1', 'sensoryData', "/leavingWaterTemperature").value,
+        'temperatureControl1': await getTemperatureControlModules1(devices),
+        'targetTemperature1': devices.getData('1', 'targetTemperature').value,
 
-        '2-isHolidayModeActive': devices.getData('2', 'isHolidayModeActive').value,
-        '2-isInErrorState': devices.getData('2', 'isInErrorState').value,
-        '2-isInWarningState': devices.getData('2', 'isInWarningState').value,
-        '2-isInInstallerState': devices.getData('2', 'isInInstallerState').value,
-        '2-isInEmergencyState': devices.getData('2', 'isInEmergencyState').value,
-        '2-onOffMode': devices.getData('2', 'onOffMode').value,
-        '2-operationMode': devices.getData('2', 'operationMode').value,
-        '2-powerfulMode': devices.getData('2', 'powerfulMode').value,
-        '2-heatupMode': devices.getData('2', 'heatupMode').value,
-        '2-tankTemperature': devices.getData('2', 'sensoryData', "/tankTemperature").value,
-        '2-temperatureControl': devices.getData('2', 'temperatureControl', "/operationModes/heating/setpoints/domesticHotWaterTemperature").value,
-        '2-setpointMode': devices.getData('2', 'setpointMode').value,
+        'isHolidayModeActive2': devices.getData('2', 'isHolidayModeActive').value,
+        'isInErrorState2': devices.getData('2', 'isInErrorState').value,
+        'isInWarningState2': devices.getData('2', 'isInWarningState').value,
+        'isInInstallerState2': devices.getData('2', 'isInInstallerState').value,
+        'isInEmergencyState2': devices.getData('2', 'isInEmergencyState').value,
+        'onOffMode2': devices.getData('2', 'onOffMode').value,
+        'operationMode2': devices.getData('2', 'operationMode').value,
+        'powerfulMode2': devices.getData('2', 'powerfulMode').value,
+        'heatupMode2': devices.getData('2', 'heatupMode').value,
+        'tankTemperature2': devices.getData('2', 'sensoryData', "/tankTemperature").value,
+        'temperatureControl2': devices.getData('2', 'temperatureControl', "/operationModes/heating/setpoints/domesticHotWaterTemperature").value,
+        'setpointMode2': devices.getData('2', 'setpointMode').value,
     };
 }
 
 async function setBRP069A62(devices, message) {
     const data = JSON.parse(message);
 
-    if (data.onOffMode !== undefined)
-        await validateData('climateControl', 'onOffMode', data.onOffMode, devices)
+    if (data.onOffMode1 !== undefined)
+        await validateData('1', 'onOffMode', data.onOffMode, devices)
     if (data.operationMode !== undefined)
         await validateData('climateControl', 'operationMode', data.operationMode, devices)
     if (data.temperatureControl !== undefined)

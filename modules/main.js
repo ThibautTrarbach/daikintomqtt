@@ -1,6 +1,6 @@
 const {generateInfoModule} = require("./default");
 const {getBRP069C4x, setBRP069C4x} = require("./BRP069C4x");
-const {getBRP069A62} = require("./BRP069A62");
+const {getBRP069A62, setBRP069A62} = require("./BRP069A62");
 
 async function getDataFromModules(devices, dataDirectory) {
     let value;
@@ -21,6 +21,8 @@ async function setDataFromModules(devices, message) {
     switch (devices.getData('gateway', 'modelInfo').value) {
         case 'BRP069C4x':
             return await setBRP069C4x(devices, message);
+        case 'BRP069A62':
+            return await setBRP069A62(devices, message);
         default:
             return "null";
     }
