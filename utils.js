@@ -1,5 +1,6 @@
 async function validateData(managementPoint, dataPoint, value, devices) {
     let params = devices.getData(managementPoint, dataPoint);
+    value = transformData(params, value)
     let data = await checkData(params, value)
     if (!data.isOK) return;
 
@@ -32,6 +33,15 @@ async function checkData(params, value) {
 
     result.isOK = true;
     return result;
+}
+
+async function transformData(params, value) {
+    console.log(typeof params.value)
+    if (typeof params.value == "number") {
+        console.log("Parse to int")
+        return parseInt(value);
+    }
+    else return value;
 }
 
 module.exports = {
