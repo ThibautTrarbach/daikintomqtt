@@ -44,7 +44,7 @@ async function setBRP069A62(devices, message) {
     const data = JSON.parse(message);
 
     if (data.onOffMode1 !== undefined)
-        await validateData('1', 'onOffMode', data.onOffMode, devices)
+        await validateData('1', 'onOffMode', data.onOffMode1, devices)
     if (data.operationMode !== undefined)
         await validateData('climateControl', 'operationMode', data.operationMode, devices)
     if (data.temperatureControl !== undefined)
