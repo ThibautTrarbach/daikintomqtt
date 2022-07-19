@@ -54,8 +54,8 @@ async function setBRP069A62(devices, message) {
 
     if (data.onOffMode2 !== undefined)
         await validateData('2', 'onOffMode', data.onOffMode2, devices)
-    if (data.operationMode2 !== undefined)
-        await validateData('2', 'powerfulMode', data.operationMode2, devices)
+    if (data.powerfulMode2 !== undefined)
+        await validateData('2', 'powerfulMode', data.powerfulMode2, devices)
 
     await devices.updateData();
     console.log("Update Value")
