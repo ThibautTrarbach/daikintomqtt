@@ -12,7 +12,7 @@ async function getDataFromModules(devices, dataDirectory) {
         case 'BRP069A62':
             return await getBRP069A62(devices);
         default:
-            await generateInfoModule(dataDirectory, devices)
+            await generateInfoModule(dataDirectory, devices, value)
             return "defaults";
     }
 }
