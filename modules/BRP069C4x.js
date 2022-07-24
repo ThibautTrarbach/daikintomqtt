@@ -18,7 +18,7 @@ async function getBRP069C4x(devices) {
         isHolidayModeActive: devices.getData('climateControl', 'isHolidayModeActive').value,
         isInErrorState: devices.getData('climateControl', 'isInErrorState').value,
         isInWarningState: devices.getData('climateControl', 'isInWarningState').value,
-        isInModeConflict: devices.getData('climateControl', 'isInModeConflict').value,
+        isInModeConflict: devices.getData('climateControl', 'isInModeConflict') ? devices.getData('climateControl', 'isInModeConflict').value : null,
         isInCautionState: devices.getData('climateControl', 'isInCautionState').value,
         isCoolHeatMaster: devices.getData('climateControl', 'isCoolHeatMaster').value,
 

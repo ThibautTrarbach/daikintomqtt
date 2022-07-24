@@ -120,6 +120,7 @@ async function startSystem() {
     }
 
     const devices = await daikinCloud.getCloudDevices();
+
     for (let dev of devices) {
         let subscribeTopic = clientOptions.topic+ dev.getId() + "/set"
         mqttClient.subscribe(subscribeTopic, function (err) {
