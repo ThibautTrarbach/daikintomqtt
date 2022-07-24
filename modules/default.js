@@ -2,9 +2,12 @@ const fs = require("fs");
 const path = require("path");
 
 function generateInfoModule(datadir, dev, value) {
+
+    let fileName = value ?? dev.getId();
+
     let data = recurse(dev)
     const configFolder = path.join(datadir, '/newConfig')
-    const configFile = path.join(configFolder,value+'.json')
+    const configFile = path.join(configFolder, fileName+'.json')
 
     if (!fs.existsSync(configFolder)) fs.mkdirSync(configFolder)
 
