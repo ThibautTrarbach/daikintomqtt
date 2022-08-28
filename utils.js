@@ -7,7 +7,6 @@ async function validateData(managementPoint, dataPoint, value, devices) {
     await devices.setData(managementPoint, dataPoint, data.value)
 }
 
-
 async function validateDataPath(managementPoint, dataPoint,dataPointPath, value, devices) {
     let params = devices.getData(managementPoint, dataPoint, dataPointPath);
     value = transformData(params, value)
@@ -44,7 +43,24 @@ function transformData(params, value) {
     else return value;
 }
 
+function getData(devices,managementPoint, dataPoint, dataPointPath = undefined, type = undefined) {
+    if (devices.getData(managementPoint, dataPoint)) {
+        if (type !== undefined) return evaluateType(devices.getData(managementPoint, dataPoint).value, type);
+        else return devices.getData(managementPoint, dataPoint).value;
+    } else {
+        return null;
+    }
+}
+
+function evaluateType(data, type) {
+    switch (type) {
+        case 'number':
+            return parseInt(data);
+    }
+}
+
 module.exports = {
     validateData,
-    validateDataPath
+    validateDataPath,
+    getData
 }

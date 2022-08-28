@@ -36,7 +36,6 @@ function recurse(resp) {
     return resp;
 }
 
-
 module.exports = {
     generateInfoModule
 }

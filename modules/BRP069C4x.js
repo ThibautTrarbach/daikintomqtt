@@ -1,38 +1,48 @@
-const {validateData, validateDataPath} = require("../utils");
+/**
+ *
+ *      File : BRP069C4x.js
+ *      Modules :
+ *      Creates : 28/08/2022
+ *      Updated : 28/08/2022
+ *      Creator : Thibaut Trarbach
+ *      Version : 1.0
+ */
+
+const {validateData, validateDataPath, getData} = require("../utils");
 
 async function getBRP069C4x(devices) {
     return {
         device: {
-            name: devices.getData('climateControl', 'name').value,
-            modelInfo: devices.getData('gateway', 'modelInfo').value,
-            serialNumber: devices.getData('gateway', 'serialNumber').value,
-            firmwareVersion: devices.getData('gateway', 'firmwareVersion').value,
-            wifiConnectionSSID: devices.getData('gateway', 'wifiConnectionSSID').value,
-            wifiConnectionStrength: devices.getData('gateway', 'wifiConnectionStrength').value,
-            regionCode: devices.getData('gateway', 'regionCode').value,
-            timeZone: devices.getData('gateway', 'timeZone').value,
-            ledEnabled: devices.getData('gateway', 'ledEnabled').value,
-            isInErrorState: devices.getData('gateway', 'isInErrorState').value,
-            errorCode: devices.getData('climateControl', 'errorCode').value,
+            name: getData(devices,'climateControl', 'name'),
+            modelInfo: getData(devices,'gateway', 'modelInfo'),
+            serialNumber: getData(devices,'gateway', 'serialNumber'),
+            firmwareVersion: getData(devices,'gateway', 'firmwareVersion'),
+            wifiConnectionSSID: getData(devices,'gateway', 'wifiConnectionSSID'),
+            wifiConnectionStrength: getData(devices,'gateway', 'wifiConnectionStrength'),
+            regionCode: getData(devices,'gateway', 'regionCode'),
+            timeZone: getData(devices,'gateway', 'timeZone'),
+            ledEnabled: getData(devices,'gateway', 'ledEnabled'),
+            isInErrorState: getData(devices,'gateway', 'isInErrorState'),
+            errorCode: getData(devices,'climateControl', 'errorCode'),
         },
-        isHolidayModeActive: devices.getData('climateControl', 'isHolidayModeActive').value,
-        isInErrorState: devices.getData('climateControl', 'isInErrorState').value,
-        isInWarningState: devices.getData('climateControl', 'isInWarningState').value,
-        isInModeConflict: devices.getData('climateControl', 'isInModeConflict') ? devices.getData('climateControl', 'isInModeConflict').value : null,
-        isInCautionState: devices.getData('climateControl', 'isInCautionState').value,
-        isCoolHeatMaster: devices.getData('climateControl', 'isCoolHeatMaster').value,
+        isHolidayModeActive: getData(devices,'climateControl', 'isHolidayModeActive'),
+        isInErrorState: getData(devices,'climateControl', 'isInErrorState'),
+        isInWarningState: getData(devices,'climateControl', 'isInWarningState'),
+        isInModeConflict: getData(devices,'climateControl', 'isInModeConflict'),
+        isInCautionState: getData(devices,'climateControl', 'isInCautionState'),
+        isCoolHeatMaster: getData(devices,'climateControl', 'isCoolHeatMaster'),
 
-        operationMode: devices.getData('climateControl', 'operationMode').value,
-        onOffMode: devices.getData('climateControl', 'onOffMode').value,
-        econoMode: devices.getData('climateControl', 'econoMode').value,
-        powerfulMode: devices.getData('climateControl', 'powerfulMode').value,
-        streamerMode: devices.getData('climateControl', 'streamerMode').value,
+        operationMode: getData(devices,'climateControl', 'operationMode'),
+        onOffMode: getData(devices,'climateControl', 'onOffMode'),
+        econoMode: getData(devices,'climateControl', 'econoMode'),
+        powerfulMode: getData(devices,'climateControl', 'powerfulMode'),
+        streamerMode: getData(devices,'climateControl', 'streamerMode'),
 
-        roomTemperature: devices.getData('climateControl', 'sensoryData', "/roomTemperature").value,
-        outdoorTemperature: devices.getData('climateControl', 'sensoryData', "/outdoorTemperature").value,
+        roomTemperature: getData(devices,'climateControl', 'sensoryData', "/roomTemperature"),
+        outdoorTemperature: getData(devices,'climateControl', 'sensoryData', "/outdoorTemperature"),
 
-        scheduleEnable: devices.getData('climateControl', 'schedule', "/currentMode").value,
-        outdoorSilentMode: devices.getData('climateControl', 'outdoorSilentMode').value,
+        scheduleEnable: getData(devices,'climateControl', 'schedule', "/currentMode"),
+        outdoorSilentMode: getData(devices,'climateControl', 'outdoorSilentMode'),
 
         temperatureControl: await getTemperatureControl(devices),
         fanControl: await getFanControl(devices),
