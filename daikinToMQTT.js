@@ -116,29 +116,35 @@ async function startSystem() {
 
     while (!clientOptions.daikinStart || !clientOptions.mqttStart) {
         console.log(clientOptions.mqttStart)
-        await delay(1000)
+        await delay(5000)
     }
+    await sendCleanMQTTError();
 
-    const devices = await daikinCloud.getCloudDevices();
-
-    for (let dev of devices) {
-        let subscribeTopic = clientOptions.topic+ dev.getId() + "/set"
-        mqttClient.subscribe(subscribeTopic, function (err) {
-            if (!err) console.log("Subscribe to "+subscribeTopic)
-        })
-    }
-
-    mqttClient.on('message', async function (topic, message) {
-        console.log(`Topic : ${topic} \n- Message : ${message.toString()}`)
-
+    try {
         const devices = await daikinCloud.getCloudDevices();
+
         for (let dev of devices) {
-            if (!topic.toString().includes(dev.getId())) continue;
-            await setDataFromModules(dev, message)
+            let subscribeTopic = clientOptions.topic+ dev.getId() + "/set"
+            mqttClient.subscribe(subscribeTopic, function (err) {
+                if (!err) console.log("Subscribe to "+subscribeTopic)
+            })
         }
 
-        await refreshData()
-    })
+        mqttClient.on('message', async function (topic, message) {
+            console.log(`Topic : ${topic} \n- Message : ${message.toString()}`)
+
+            const devices = await daikinCloud.getCloudDevices();
+            for (let dev of devices) {
+                if (!topic.toString().includes(dev.getId())) continue;
+                await setDataFromModules(dev, message)
+            }
+
+            await refreshData()
+        })
+    } catch (e) {
+        console.log(e)
+        await sendMQTTError(e.code, e)
+    }
 
     console.log('Start Service OK')
 }
@@ -175,6 +181,25 @@ async function updateSystemInfo() {
         if (error) console.error(error)
     })
 }
+
+async function sendMQTTError(code, error) {
+    if (!clientOptions.mqttStart) return;
+    let data = {
+        code,
+        error: error.toString()
+    };
+    mqttClient.publish(clientOptions.topic + "error",JSON.stringify(data), {qos: 0, retain: true})
+}
+
+async function sendCleanMQTTError() {
+    if (!clientOptions.mqttStart) return;
+    let data = {
+        code: false,
+        error: null
+    };
+    mqttClient.publish(clientOptions.topic + "error",JSON.stringify(data), {qos: 0, retain: true})
+}
+
 
 function delay(time) {
     return new Promise(resolve => setTimeout(resolve, time));
