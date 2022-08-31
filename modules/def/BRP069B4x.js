@@ -9,7 +9,7 @@
  *
  */
 
-const {validateData, validateDataPath} = require("../utils");
+const {validateData, validateDataPath} = require("../../utils");
 
 async function getBRP069B4x(devices) {
     return {

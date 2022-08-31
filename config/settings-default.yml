@@ -1,7 +1,7 @@
 system:
-  loglevel: 'info'
+  logLevel: 'info'
 daikin:
-  modeproxy: true
+  modeProxy: true
   username: null
   password: null
   proxyPort: 8888

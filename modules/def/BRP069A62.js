@@ -1,4 +1,4 @@
-const {validateData, validateDataPath} = require("../utils");
+const {validateData, validateDataPath} = require("../../utils");
 
 async function getBRP069A62(devices) {
     return {

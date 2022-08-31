@@ -8,7 +8,7 @@
  *      Version : 1.0
  */
 
-const {validateData, validateDataPath, getData} = require("../utils");
+const {validateData, validateDataPath, getData} = require("../../utils");
 
 async function getBRP069C4x(devices) {
     return {

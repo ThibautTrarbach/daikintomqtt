@@ -1,6 +1,6 @@
 const {generateInfoModule} = require("./default");
-const {getBRP069C4x, setBRP069C4x} = require("./BRP069C4x");
-const {getBRP069A62, setBRP069A62} = require("./BRP069A62");
+const {getBRP069C4x, setBRP069C4x} = require("./def/BRP069C4x");
+const {getBRP069A62, setBRP069A62} = require("./def/BRP069A62");
 
 async function getDataFromModules(devices, dataDirectory) {
     try {

@@ -8,7 +8,7 @@
  *
  */
 
-const {validateData, validateDataPath} = require("../utils");
+const {validateData, validateDataPath} = require("../../utils");
 
 async function getExample(devices) {
     return {
