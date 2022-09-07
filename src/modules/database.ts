@@ -1,19 +1,26 @@
-import {sqlite3} from "sqlite3";
-let verbose = sqlite3.d
-const db = new verbose.Dataz(':memory:');
+import {MikroORM, RequestContext} from "@mikro-orm/core";
+import config from "../mikro-orm.config";
+import {Config} from "./entities/Config";
 
-db.serialize(() => {
-    db.run("CREATE TABLE lorem (info TEXT)");
+async function loadDataBase() {
+    global.orm = await MikroORM.init(config);
+    global.em = orm.em.getContext();
+}
 
-    const stmt = db.prepare("INSERT INTO lorem VALUES (?)");
-    for (let i = 0; i < 10; i++) {
-        stmt.run("Ipsum " + i);
-    }
-    stmt.finalize();
 
-    db.each("SELECT rowid AS id, info FROM lorem", (err, row) => {
-        console.log(row.id + ": " + row.info);
-    });
-});
+async function testConnection() {
+   console.log(orm.em);
+}
 
-db.close();
+async function testCreateTask() {
+    let config = new Config();
+    config.name = "test";
+    config.value = "IsOK"
+
+    await em.persistAndFlush(config);
+}
+
+export {
+    testConnection,
+    loadDataBase
+}

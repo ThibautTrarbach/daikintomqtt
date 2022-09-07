@@ -1,19 +1,19 @@
 import path from "path";
 import fs from "fs";
-import {Config} from "../types/config";
+import {Config} from "../types";
+import yaml from "js-yaml";
 
-async function loadConfig() {
-    let config: Config;
+
+async function loadGlobalConfig() {
     try {
-        const settingsPatch = path.join(datadir, '/settings.yml');
-        config = yaml.load(fs.readFileSync(settingsPatch, 'utf8'));
-        return config;
+        const settingsPatch = path.join(datadir, '/config/settings.yml');
+        global.config = <Config>yaml.load(fs.readFileSync(settingsPatch, 'utf8'));
     } catch (e) {
         console.log(e);
+        throw new Error("Not load config files")
     }
-    throw new Error("Not load config files")
 }
 
 export {
-    loadConfig
+    loadGlobalConfig
 }

@@ -1,9 +1,8 @@
-import {loadConfig} from "./config";
 import {connect} from "mqtt";
 import {IClientOptions, MqttClient} from "mqtt/types/lib/client";
 
 async function getOptions() {
-    let config = await loadConfig();
+    const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
 
     let option:IClientOptions = {
         clientId,
@@ -17,14 +16,13 @@ async function getOptions() {
     return option;
 }
 
-async function getMqttClient() {
-    let config = await loadConfig();
+async function loadMQTTClient() {
     let options:IClientOptions = await getOptions();
 
     const mqttHost = `mqtt://${config.mqtt.host}:${config.mqtt.port}`
-    return connect(mqttHost, options);
+    global.mqttClient = connect(mqttHost, options);
 }
 
 export {
-    getMqttClient
+    loadMQTTClient
 }
