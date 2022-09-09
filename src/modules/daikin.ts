@@ -26,7 +26,9 @@ async function loadDaikinAPI() {
     else global.daikinToken = undefined;
 
 
+
     /** Start Daikin Client **/
+    // @ts-ignore
     let daikinClient = new DaikinCloudController(daikinToken, daikinOptions);
 
     daikinClient.on('token_update', (tokenSet: any) => {
