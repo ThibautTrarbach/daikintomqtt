@@ -21,8 +21,22 @@ async function loadMQTTClient() {
 
     const mqttHost = `mqtt://${config.mqtt.host}:${config.mqtt.port}`
     global.mqttClient = connect(mqttHost, options);
+    global.cache = {}
+}
+
+async function publishToMQTT(topic: string, data: string) {
+    // @ts-ignore
+    if (cache[topic] == data) return;
+    // @ts-ignore
+    global.cache[topic] = data;
+
+    mqttClient.publish(config.mqtt.topic + "/"+topic, data, {qos: 0, retain: true}, (error) => {
+        logger.debug("Send Data to MQTT : " + topic)
+        if (error) logger.error(error)
+    })
 }
 
 export {
-    loadMQTTClient
+    loadMQTTClient,
+    publishToMQTT
 }

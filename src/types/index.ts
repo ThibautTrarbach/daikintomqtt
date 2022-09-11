@@ -1,1 +1,1 @@
-export * from "./config"
+export * from "./Daikin2MQTT"

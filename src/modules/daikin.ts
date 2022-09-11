@@ -2,6 +2,9 @@ import DaikinCloudController from "daikin-controller-cloud";
 import ip from "ip";
 import path from "path";
 import fs from "fs";
+import {BRP069C4x} from "./gateway/BRP069C4x";
+import {makeDefineFile} from "./converter";
+import {publishToMQTT} from "./mqtt";
 
 async function getOptions() {
     return {
@@ -24,8 +27,6 @@ async function loadDaikinAPI() {
     /** Setup Daikin API */
     if (fs.existsSync(tokenFile)) global.daikinToken = JSON.parse(fs.readFileSync(tokenFile).toString())
     else global.daikinToken = undefined;
-
-
 
     /** Start Daikin Client **/
     // @ts-ignore
@@ -53,11 +54,69 @@ async function loadDaikinAPI() {
 
         logger.debug('Use Token with the following claims: ' + JSON.stringify(daikinClient.getTokenSet().claims()));
     }
+    global.daikinClient = daikinClient;
+}
 
-    const devices = await daikinClient.getCloudDeviceDetails();
-    logger.info(JSON.stringify(devices))
+async function subscribeDevices() {
+    const devices = await daikinClient.getCloudDevices();
+    for (let dev of devices) {
+        let subscribeTopic = config.mqtt.topic + "/" + dev.getId() + "/set"
+        mqttClient.subscribe(subscribeTopic, function (err) {
+            if (!err) console.log("Subscribe to "+subscribeTopic)
+        })
+    }
+
+    mqttClient.on('message', async function (topic, message) {
+        console.log(`Topic : ${topic} \n- Message : ${message.toString()}`)
+
+        const devices = await daikinClient.getCloudDevices();
+        for (let dev of devices) {
+            if (!topic.toString().includes(dev.getId())) continue;
+            //await setDataFromModules(dev, message)
+        }
+    })
+}
+
+async function sendDevice() {
+    const devices = await daikinClient.getCloudDevices();
+    if (devices && devices.length) {
+        for (let dev of devices) {
+            let module = getModels(dev);
+            await publishToMQTT(dev.getId(), JSON.stringify(module))
+        }
+    }
+
+    return devices;
+}
+
+function getModels(devices: any) {
+    let value;
+    if (devices.getData('gateway', 'modelInfo') !== null) value = devices.getData('gateway', 'modelInfo').value
+    else if (devices.getData('0', 'modelInfo') !== null) value = devices.getData('0', 'modelInfo').value
+
+    switch (value) {
+        case 'BRP069C4x':
+            return new BRP069C4x(devices);
+        //case 'BRP069A62':
+        //    return await setBRP069A62(devices, message);
+        default:
+            //return "null";
+    }
+}
+
+async function generateConfig() {
+    const devices = await daikinClient.getCloudDevices();
+    if (devices && devices.length) {
+        for (let dev of devices) {
+            let module = getModels(dev);
+            if (module) await makeDefineFile(module);
+        }
+    }
 }
 
 export {
-    loadDaikinAPI
+    loadDaikinAPI,
+    subscribeDevices,
+    generateConfig,
+    sendDevice
 }

@@ -1,5 +1,6 @@
 system:
   logLevel: 'info'
+  jeedom: false
 daikin:
   modeProxy: true
   username: null
