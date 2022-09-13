@@ -5,6 +5,7 @@ import fs from "fs";
 import {BRP069C4x} from "./gateway/BRP069C4x";
 import {makeDefineFile} from "./converter";
 import {publishToMQTT} from "./mqtt";
+import {eventValue} from "./gateway/BaseModules";
 
 async function getOptions() {
     return {
@@ -62,17 +63,20 @@ async function subscribeDevices() {
     for (let dev of devices) {
         let subscribeTopic = config.mqtt.topic + "/" + dev.getId() + "/set"
         mqttClient.subscribe(subscribeTopic, function (err) {
-            if (!err) console.log("Subscribe to "+subscribeTopic)
+            if (!err) logger.info("Subscribe to "+subscribeTopic)
         })
     }
 
     mqttClient.on('message', async function (topic, message) {
-        console.log(`Topic : ${topic} \n- Message : ${message.toString()}`)
+        logger.debug(`Topic : ${topic} \n- Message : ${message.toString()}`)
 
         const devices = await daikinClient.getCloudDevices();
         for (let dev of devices) {
             if (!topic.toString().includes(dev.getId())) continue;
-            //await setDataFromModules(dev, message)
+            let gateway = getModels(dev);
+            if (gateway !== undefined) {
+                eventValue(dev, gateway, JSON.parse(message.toString()))
+            }
         }
     })
 }
@@ -81,8 +85,8 @@ async function sendDevice() {
     const devices = await daikinClient.getCloudDevices();
     if (devices && devices.length) {
         for (let dev of devices) {
-            let module = getModels(dev);
-            await publishToMQTT(dev.getId(), JSON.stringify(module))
+            let gateway = getModels(dev);
+            await publishToMQTT(dev.getId(), JSON.stringify(gateway))
         }
     }
 

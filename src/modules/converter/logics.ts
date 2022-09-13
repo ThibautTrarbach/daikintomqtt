@@ -14,8 +14,6 @@ async function makeDefineFile(moduleClass: object) {
 }
 
 
-
-
 export {
 	makeDefineFile
 }
