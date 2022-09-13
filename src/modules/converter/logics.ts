@@ -7,7 +7,7 @@ async function makeDefineFile(moduleClass: object) {
 	let id = moduleClass._device.id;
 	if (config.system.jeedom) {
 		let data = Reflect.getMetadata(PROPERTY_METADATA_CMD, moduleClass);
-		let cmd = generateCMD(data)
+		let cmd = generateCMD(data, moduleClass)
 
 		await publishToMQTT( 'system/jeedom/'+id, JSON.stringify(cmd))
 	}

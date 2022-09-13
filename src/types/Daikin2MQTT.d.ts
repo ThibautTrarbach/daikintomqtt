@@ -38,6 +38,7 @@ export interface ModulesDescriptionMetadata {
     maxValue?: number
     unite?: string
     type: number
+    values?: object
 }
 
 export interface ModulePropertyMetadata {

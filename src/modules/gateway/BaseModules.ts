@@ -18,28 +18,32 @@ function convertDaikinDevice(device: any, moduleClass: object) {
 		const [key, value] = entry;
 		let daikinValue;
 
-		if (value.multiple == undefined && value.multiple !== true) {
-			if (value.dataPointPath !== undefined) daikinValue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath).value
-			 else daikinValue = device.getData(value.managementPoint, value.dataPoint).value
-		} else if (value.multiple == true) {
-			let multipleValue;
+		try {
+			if (value.multiple == undefined && value.multiple !== true) {
+				if (value.dataPointPath !== undefined) daikinValue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath).value
+				else daikinValue = device.getData(value.managementPoint, value.dataPoint).value
+			} else if (value.multiple == true) {
+				let multipleValue;
 
-			if (value.multipleValue.dataPointPath !== undefined) multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, value.multipleValue.dataPointPath).value
-			else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint).value
+				if (value.multipleValue.dataPointPath !== undefined) multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, value.multipleValue.dataPointPath).value
+				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint).value
 
-			let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-			daikinValue = device.getData(value.managementPoint, value.dataPoint, dataPointPath).value || "auto"
-		}
-
-		if (value.converter != undefined) {
-			switch (value.converter) {
-				case converterEnum.binary:
-					daikinValue = convertBinary(daikinValue);
-					break;
+				let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
+				daikinValue = device.getData(value.managementPoint, value.dataPoint, dataPointPath).value || "auto"
 			}
+
+			if (value.converter != undefined) {
+				switch (value.converter) {
+					case converterEnum.binary:
+						daikinValue = convertBinary(daikinValue);
+						break;
+				}
+			}
+		} catch (e) {
+			daikinValue = undefined;
 		}
 
-			// @ts-ignore
+		// @ts-ignore
 		moduleClass[key] = daikinValue;
 	})
 }

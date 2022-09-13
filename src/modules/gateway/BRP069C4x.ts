@@ -238,6 +238,11 @@ export class BRP069C4x implements ClassModule{
         name: 'Fan Current Mode',
         settable: true,
         type: typeEnum.string,
+        values: [
+            "auto",
+            "quiet",
+            "fixed",
+        ]
     })
     private _fanCurrentMode?: string;
     @modulesDaikinAcces({
@@ -253,7 +258,9 @@ export class BRP069C4x implements ClassModule{
     @modulesDataDescription({
         name: 'Fan Fixed',
         settable: true,
-        type: typeEnum.string,
+        type: typeEnum.numeric,
+        minValue: 1,
+        maxValue: 5
     })
     private _fanFixed?: string;
     @modulesDaikinAcces({
@@ -270,6 +277,10 @@ export class BRP069C4x implements ClassModule{
         name: 'Fan Horizontal',
         settable: true,
         type: typeEnum.string,
+        values: [
+            "stop",
+            "swing"
+        ]
     })
     private _fanHorizontal?: string;
     @modulesDaikinAcces({
@@ -286,6 +297,11 @@ export class BRP069C4x implements ClassModule{
         name: 'Fan Vertical',
         settable: true,
         type: typeEnum.string,
+        values: [
+            "stop",
+            "swing",
+            "windNice"
+        ]
     })
     private _fanVertical?: string;
 

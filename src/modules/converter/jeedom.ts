@@ -1,19 +1,21 @@
 import {ModulesDescriptionMetadata} from "../../types";
+import {typeEnum} from "../gateway/BaseModules";
 
-function generateCMD(data: object) {
-	let cmd: { name: string; logicalID: string; generic_type: string | null; type: string; subType: string; unite: string | null; minValue: number | null; maxValue: number | null; }[] = [];
-
+function generateCMD(data: object, modules: object) {
+	let cmd: any[] = [];
 	Object.entries(data).forEach(entry => {
 		const [key, value] = entry;
-		let info = generateCMDInfo(key, value);
-		cmd.push(info)
 
-		if (value.settable) {
-			let actions = generateCMDAction(key, value);
-			if (actions != undefined) cmd = cmd.concat(actions)
+		// @ts-ignore
+		if (modules[key] !== undefined && modules[key] !== null) {
+			let info = generateCMDInfo(key, value);
+			cmd.push(info)
+
+			if (value.settable) {
+				let actions = generateCMDAction(key, value);
+				if (actions != undefined) cmd = cmd.concat(actions)
+			}
 		}
-
-
 	});
 
 	return cmd;
@@ -49,6 +51,7 @@ function generateCMDInfo(
 		type: "info",
 		subType: type,
 		unite,
+		isVisible: false,
 		minValue,
 		maxValue
 	};
@@ -59,12 +62,12 @@ function generateCMDAction(
 	value:ModulesDescriptionMetadata
 ) {
 	switch (value.type) {
-		case 0:
-			break;
-		case 1:
-			break
-		case 2:
-			 return generateActionBinary(id, value)
+		case typeEnum.numeric:
+			return generateActionNumeric(id, value)
+		case typeEnum.string:
+			return generateActionSelect(id, value)
+		case typeEnum.binary:
+			return generateActionBinary(id, value)
 	}
 }
 
@@ -84,10 +87,10 @@ function generateActionBinary(
 		unite: null,
 		isVisible: true,
 		value: id,
+		listValue: null,
 		minValue: null,
 		maxValue: null,
-		template: "core::prise",
-		action: "on"
+		template: "core::prise"
 	}
 	let cmd_off = {
 		name: name + " OFF",
@@ -99,15 +102,73 @@ function generateActionBinary(
 		unite: null,
 		isVisible: true,
 		value: id,
+		listValue: null,
 		minValue: null,
 		maxValue: null,
-		template: "core::prise",
-		action: "off"
+		template: "core::prise"
 	}
 
 	return [cmd_on, cmd_off]
 }
 
+function generateActionNumeric(
+	id: string,
+	value:ModulesDescriptionMetadata
+) {
+	let name = value.name
+	let minValue = ((value.minValue != undefined) ? value.minValue : null)
+	let maxValue = ((value.maxValue != undefined) ? value.maxValue : null)
+
+	let cmd_slider = {
+		name: name+" Slider",
+		type: "action",
+		subType: "slider",
+		unite: null,
+		isVisible: true,
+		value: id,
+		listValue: null,
+		minValue: minValue,
+		maxValue: maxValue,
+		template: null
+	}
+
+	return [cmd_slider]
+}
+
+function generateActionSelect(
+	id: string,
+	value:ModulesDescriptionMetadata
+) {
+	let name = value.name
+	let values = ((value.values != undefined) ? value.values : null)
+
+	let listValue: any = "" as string;
+
+	if (values !== null) {
+		Object.entries(values).forEach(entry => {
+			const [key, value] = entry;
+			if (listValue != "") listValue = listValue+";"
+			listValue = listValue+value+"|"+value
+		})
+	} else {
+		listValue = null;
+	}
+
+	let cmd_slider = {
+		name: name+" Select",
+		type: "action",
+		subType: "select",
+		unite: null,
+		isVisible: true,
+		value: id,
+		listValue: listValue,
+		minValue: null,
+		maxValue: null,
+		template: null
+	}
+
+	return [cmd_slider]
+}
 
 export {
 	generateCMD
