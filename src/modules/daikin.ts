@@ -2,10 +2,9 @@ import DaikinCloudController from "daikin-controller-cloud";
 import ip from "ip";
 import path from "path";
 import fs from "fs";
-import {BRP069C4x} from "./gateway/BRP069C4x";
+import {anonymise, BRP069C4x, eventValue} from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishToMQTT} from "./mqtt";
-import {eventValue} from "./gateway/BaseModules";
 
 async function getOptions() {
     return {
@@ -75,7 +74,7 @@ async function subscribeDevices() {
             if (!topic.toString().includes(dev.getId())) continue;
             let gateway = getModels(dev);
             if (gateway !== undefined) {
-                eventValue(dev, gateway, JSON.parse(message.toString()))
+                await eventValue(dev, gateway, JSON.parse(message.toString()))
             }
         }
     })
@@ -104,7 +103,8 @@ function getModels(devices: any) {
         //case 'BRP069A62':
         //    return await setBRP069A62(devices, message);
         default:
-            //return "null";
+            anonymise(devices, value)
+            return undefined;
     }
 }
 

@@ -2,7 +2,7 @@ import winston from "winston";
 
 function loadLogger() {
     const logger = winston.createLogger({
-        level: 'info',
+        level: "info",
         format: winston.format.json(),
         transports: [
             new winston.transports.File({ filename: 'log/error.log', level: 'error' }),
@@ -10,7 +10,7 @@ function loadLogger() {
         ],
     });
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== 'production' || config.system.jeedom) {
         logger.add(new winston.transports.Console({
             format: winston.format.simple(),
         }));

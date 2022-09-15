@@ -13,4 +13,6 @@ declare global {
 	var daikinToken: string|undefined
 	var daikinClient: any
 	var cache: object
+	var test: number
 }
+

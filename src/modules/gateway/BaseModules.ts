@@ -1,5 +1,5 @@
 import {PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../decorator";
-import {ModulePropertyMetadata} from "../../types";
+import {Gateways, ModulePropertyMetadata} from "../../types";
 const typeEnum = Object.freeze({
 	numeric: 0,
 	string: 1,
@@ -12,7 +12,7 @@ const converterEnum = Object.freeze({
 	binary: 2,
 });
 
-function convertDaikinDevice(device: any, gatewayClass: object) {
+function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 	let data:object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	createDeviceInfo(device, gatewayClass)
 	Object.entries(data).forEach(entry => {
@@ -45,7 +45,7 @@ function convertDaikinDevice(device: any, gatewayClass: object) {
 	})
 }
 
-function createDeviceInfo(device: any, gatewayClass: object) {
+function createDeviceInfo(device: any, gatewayClass: Gateways) {
 	let data:object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass);
 	Object.entries(data).forEach(entry1 => {
 		const [key1, value1] = entry1;
@@ -65,7 +65,7 @@ function createDeviceInfo(device: any, gatewayClass: object) {
 	})
 }
 
-async function eventValue(device: any, gatewayClass: object, events: object) {
+async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 	Object.entries(events).forEach(entry => {
 		const [key, value] = entry;
 		// @ts-ignore
@@ -75,7 +75,7 @@ async function eventValue(device: any, gatewayClass: object, events: object) {
 	await updateDaikinDevice(device, gatewayClass)
 }
 
-async function updateDaikinDevice(device: any, gatewayClass: object) {
+async function updateDaikinDevice(device: any, gatewayClass: Gateways) {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	Object.entries(data).forEach(entry => {
 		const [key, value] = entry;
