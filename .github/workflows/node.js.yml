@@ -1,0 +1,21 @@
+name: Build
+on: 
+    push: 
+        branches:
+            - master
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps: 
+            - name: Checkout project
+              uses: actions/checkout@v2
+            - name: Setup Node.js
+              uses: actions/setup-node@v2.1.4
+              with:
+                node-version: 16
+            - name: Build and push
+              uses: alexthemaster/action-build-typescript@v1
+              with:
+                pushToBranch: true
+                branch: 'dist'
+                githubToken: ${{ secrets.TOKEN_GITHUB }} # required if you use the pushToBranch option
