@@ -308,6 +308,7 @@ __decorate([
         dataPoint: "temperatureControl",
         dataPointPath: "/operationModes/#value#/setpoints/roomTemperature",
         multiple: true,
+        converter: BaseModules_1.converterEnum.numeric,
         multipleValue: {
             managementPoint: "climateControl",
             dataPoint: "operationMode"
@@ -352,6 +353,7 @@ __decorate([
         dataPoint: "fanControl",
         dataPointPath: "/operationModes/#value#/fanSpeed/modes/fixed",
         multiple: true,
+        converter: BaseModules_1.converterEnum.numeric,
         multipleValue: {
             managementPoint: "climateControl",
             dataPoint: "operationMode"

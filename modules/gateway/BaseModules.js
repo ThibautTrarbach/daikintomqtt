@@ -164,6 +164,8 @@ function convert(converter, value, to) {
             if (to == 1)
                 return convertBinary1(value);
             break;
+        case converterEnum.numeric:
+            return parseInt(value);
     }
 }
 function convertBinary0(value) {
