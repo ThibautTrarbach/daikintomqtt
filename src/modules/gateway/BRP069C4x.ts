@@ -210,6 +210,7 @@ export class BRP069C4x implements ClassModule{
         dataPoint: "temperatureControl",
         dataPointPath: "/operationModes/#value#/setpoints/roomTemperature",
         multiple: true,
+        converter: converterEnum.numeric,
         multipleValue: {
             managementPoint: "climateControl",
             dataPoint: "operationMode"
@@ -250,6 +251,7 @@ export class BRP069C4x implements ClassModule{
         dataPoint: "fanControl",
         dataPointPath: "/operationModes/#value#/fanSpeed/modes/fixed",
         multiple: true,
+        converter: converterEnum.numeric,
         multipleValue: {
             managementPoint: "climateControl",
             dataPoint: "operationMode"

@@ -121,10 +121,12 @@ function generateActionNumeric(
 
 	let cmd_slider = {
 		name: name+" Slider",
+		logicalID: id+"_Slider",
 		type: "action",
 		subType: "slider",
 		unite: null,
 		isVisible: true,
+		isHistorized: null,
 		value: id,
 		listValue: null,
 		minValue: minValue,
@@ -156,10 +158,12 @@ function generateActionSelect(
 
 	let cmd_slider = {
 		name: name+" Select",
+		logicalID: id+"_Select",
 		type: "action",
 		subType: "select",
 		unite: null,
 		isVisible: true,
+		isHistorized: null,
 		value: id,
 		listValue: listValue,
 		minValue: null,

@@ -147,6 +147,8 @@ function convert(converter:number, value:any, to:number) {
 			if (to == 0) return convertBinary0(value);
 			if (to == 1) return convertBinary1(value);
 			break;
+		case converterEnum.numeric:
+			return parseInt(value);
 	}
 }
 
