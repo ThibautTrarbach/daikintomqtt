@@ -13,7 +13,7 @@ const modules_1 = require("./modules");
 const cron_1 = require("./modules/cron");
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        global.datadir = process.env.STORE_DIR || process.cwd();
+        global.datadir = process.env.STORE_DIR || process.cwd() + "/config";
         global.logger = (0, modules_1.loadLogger)();
         console.info("Starting DaikinToMQTT");
         logger.info("=> Load configuration");

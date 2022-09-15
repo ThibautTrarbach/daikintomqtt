@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "start": "node --preserve-symlinks main.js",
+    "start": "node --preserve-symlinks build/main.js",
     "buildStart": "tsc --build && node --preserve-symlinks build/main.js"
   },
   "keywords": [],

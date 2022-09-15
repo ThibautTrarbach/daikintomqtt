@@ -37,7 +37,7 @@ function getOptions() {
 }
 function loadDaikinAPI() {
     return __awaiter(this, void 0, void 0, function* () {
-        const tokenFile = path_1.default.join(datadir, '/config/tokenset.json');
+        const tokenFile = path_1.default.join(datadir, '/tokenset.json');
         let daikinOptions = yield getOptions();
         if (fs_1.default.existsSync(tokenFile))
             global.daikinToken = JSON.parse(fs_1.default.readFileSync(tokenFile).toString());

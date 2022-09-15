@@ -98,12 +98,10 @@ function generateActionNumeric(id, value) {
     let maxValue = ((value.maxValue != undefined) ? value.maxValue : null);
     let cmd_slider = {
         name: name + " Slider",
-        logicalID: id + "_Slider",
         type: "action",
         subType: "slider",
         unite: null,
         isVisible: true,
-        isHistorized: null,
         value: id,
         listValue: null,
         minValue: minValue,
@@ -129,12 +127,10 @@ function generateActionSelect(id, value) {
     }
     let cmd_slider = {
         name: name + " Select",
-        logicalID: id + "_Select",
         type: "action",
         subType: "select",
         unite: null,
         isVisible: true,
-        isHistorized: null,
         value: id,
         listValue: listValue,
         minValue: null,

@@ -19,7 +19,7 @@ const js_yaml_1 = __importDefault(require("js-yaml"));
 function loadGlobalConfig() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const settingsPatch = path_1.default.join(datadir, '/config/settings.yml');
+            const settingsPatch = path_1.default.join(datadir, '/settings.yml');
             global.config = js_yaml_1.default.load(fs_1.default.readFileSync(settingsPatch, 'utf8'));
             global.logger.level = config.system.logLevel;
         }
