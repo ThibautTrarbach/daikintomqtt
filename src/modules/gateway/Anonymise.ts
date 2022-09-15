@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 
 function anonymise(dev: any, value: string) {
-	global.test = 0;
 	let fileName = value ?? dev.getId();
 
 	let data = recurse(dev)
