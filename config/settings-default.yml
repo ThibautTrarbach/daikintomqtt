@@ -1,7 +1,8 @@
 system:
-  loglevel: 'info'
+  logLevel: 'info'
+  jeedom: false
 daikin:
-  modeproxy: true
+  modeProxy: true
   username: null
   password: null
   proxyPort: 8888
