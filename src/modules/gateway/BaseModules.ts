@@ -109,7 +109,7 @@ async function updateDaikinDevice(device: any, gatewayClass: Gateways) {
 async function validateData(device: any, def: ModulePropertyMetadata, value:any) {
 	let params = device.getData(def.managementPoint, def.dataPoint);
 	if (def.converter !== undefined ) value = convert(def.converter, value, 1)
-	let data = checkData(params, value, def)
+	let data = checkData(params, value)
 	if (!data.isOK) return;
 
 	await device.setData(def.managementPoint, def.dataPoint, data.value);
@@ -119,17 +119,19 @@ async function validateDataPath(device: any, def: ModulePropertyMetadata, dataPo
 
 	let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
 	if (def.converter !== undefined ) value = convert(def.converter, value, 1)
-	let data = checkData(params, value, def)
+	let data = checkData(params, value)
 	if (!data.isOK) return;
 
 	await device.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value)
 }
 
-function checkData(params: any, value:any, temp: any) {
+function checkData(params: any, value:any) {
 	let result = {
 		isOK: false,
 		value: value
 	}
+
+	if (params == null) return result;
 
 	if (!params.settable) return result;
 	if (params.values && !params.values.includes(value)) return result;

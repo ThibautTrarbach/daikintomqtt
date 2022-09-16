@@ -1,4 +1,4 @@
-import {BRP069A62, BRP069C4x} from "../modules/gateway";
+import {BRP069A62, BRP069A78, BRP069C4x} from "../modules/gateway";
 
 export interface Daikin2MQTT {
     system: ConfigSystem
@@ -58,7 +58,7 @@ export interface ModuleDeviceMetadata {
     serialNumber: ModulePropertyMetadata,
     firmwareVersion: ModulePropertyMetadata,
     isInErrorState: ModulePropertyMetadata,
-    errorCode:ModulePropertyMetadata
+    errorCode?:ModulePropertyMetadata
 }
 
 export interface DevicesInformation {
@@ -75,4 +75,4 @@ export interface ClassModule {
     device: DevicesInformation;
 }
 
-type Gateways = BRP069C4x | BRP069A62
+type Gateways = BRP069C4x | BRP069A62 | BRP069A78
