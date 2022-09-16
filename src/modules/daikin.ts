@@ -98,8 +98,8 @@ function getModels(devices: any) {
     else if (devices.getData('0', 'modelInfo') !== null) value = devices.getData('0', 'modelInfo').value
 
     switch (value) {
-        //case 'BRP069C4x':
-            //return new BRP069C4x(devices);
+        case 'BRP069C4x':
+            return new BRP069C4x(devices);
         case 'BRP069A62':
             return new BRP069A62(devices);
         default:
