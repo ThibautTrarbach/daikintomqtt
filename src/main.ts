@@ -8,7 +8,7 @@ import {
 import {loadCron} from "./modules/cron";
 
 async function main() {
-    global.datadir = process.env.STORE_DIR || process.cwd()
+    global.datadir = process.env.STORE_DIR || process.cwd()+"/config"
     global.logger = loadLogger()
 
     console.info("Starting DaikinToMQTT")

@@ -2,7 +2,7 @@ import DaikinCloudController from "daikin-controller-cloud";
 import ip from "ip";
 import path from "path";
 import fs from "fs";
-import {anonymise, BRP069C4x, eventValue} from "./gateway";
+import {anonymise, BRP069A62, BRP069C4x, eventValue} from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishToMQTT} from "./mqtt";
 
@@ -21,7 +21,7 @@ async function getOptions() {
 }
 
 async function loadDaikinAPI() {
-    const tokenFile = path.join(datadir, '/config/tokenset.json');
+    const tokenFile = path.join(datadir, '/tokenset.json');
 
     let daikinOptions = await getOptions();
     /** Setup Daikin API */
@@ -98,10 +98,10 @@ function getModels(devices: any) {
     else if (devices.getData('0', 'modelInfo') !== null) value = devices.getData('0', 'modelInfo').value
 
     switch (value) {
-        case 'BRP069C4x':
-            return new BRP069C4x(devices);
-        //case 'BRP069A62':
-        //    return await setBRP069A62(devices, message);
+        //case 'BRP069C4x':
+            //return new BRP069C4x(devices);
+        case 'BRP069A62':
+            return new BRP069A62(devices);
         default:
             anonymise(devices, value)
             return undefined;

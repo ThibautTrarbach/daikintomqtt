@@ -110,11 +110,15 @@ export class BRP069C4x implements ClassModule{
     })
     @modulesDataDescription({
         name: 'Operation Mode',
-        settable: false,
-        generic_type: "ENERGY_STATE",
-        minValue: 10,
-        maxValue: 20,
-        type: typeEnum.binary
+        settable: true,
+        type: typeEnum.string,
+        values: [
+            "fanOnly",
+            "heating",
+            "cooling",
+            "auto",
+            "dry"
+        ]
     })
     private _operationMode?: string;
     @modulesDaikinAcces({

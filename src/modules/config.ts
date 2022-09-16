@@ -6,7 +6,7 @@ import yaml from "js-yaml";
 
 async function loadGlobalConfig() {
     try {
-        const settingsPatch = path.join(datadir, '/config/settings.yml');
+        const settingsPatch = path.join(datadir, '/settings.yml');
         global.config = <Daikin2MQTT>yaml.load(fs.readFileSync(settingsPatch, 'utf8'));
 
         global.logger.level = config.system.logLevel
