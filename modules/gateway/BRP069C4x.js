@@ -192,11 +192,15 @@ __decorate([
     }),
     (0, decorator_1.modulesDataDescription)({
         name: 'Operation Mode',
-        settable: false,
-        generic_type: "ENERGY_STATE",
-        minValue: 10,
-        maxValue: 20,
-        type: BaseModules_1.typeEnum.binary
+        settable: true,
+        type: BaseModules_1.typeEnum.string,
+        values: [
+            "fanOnly",
+            "heating",
+            "cooling",
+            "auto",
+            "dry"
+        ]
     }),
     __metadata("design:type", String)
 ], BRP069C4x.prototype, "_operationMode", void 0);

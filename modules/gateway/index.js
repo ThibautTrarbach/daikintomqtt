@@ -17,3 +17,4 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./Anonymise"), exports);
 __exportStar(require("./BaseModules"), exports);
 __exportStar(require("./BRP069C4x"), exports);
+__exportStar(require("./BRP069A62"), exports);
