@@ -9,7 +9,7 @@ async function makeDefineFile(moduleClass: any) {
 		let data = Reflect.getMetadata(PROPERTY_METADATA_CMD, moduleClass);
 		let cmd = generateCMD(data, moduleClass)
 
-		await publishToMQTT( 'system/jeedom/'+id, JSON.stringify(cmd))
+		await publishToMQTT('system/jeedom/' + id, JSON.stringify(cmd))
 	}
 }
 

@@ -5,17 +5,17 @@ import yaml from "js-yaml";
 
 
 async function loadGlobalConfig() {
-    try {
-        const settingsPatch = path.join(datadir, '/settings.yml');
-        global.config = <Daikin2MQTT>yaml.load(fs.readFileSync(settingsPatch, 'utf8'));
+	try {
+		const settingsPatch = path.join(datadir, '/settings.yml');
+		global.config = <Daikin2MQTT>yaml.load(fs.readFileSync(settingsPatch, 'utf8'));
 
-        global.logger.level = config.system.logLevel
-    } catch (e) {
-        console.log(e);
-        throw new Error("Not load config files")
-    }
+		global.logger.level = config.system.logLevel
+	} catch (e) {
+		console.log(e);
+		throw new Error("Not load config files")
+	}
 }
 
 export {
-    loadGlobalConfig
+	loadGlobalConfig
 }

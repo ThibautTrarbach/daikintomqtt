@@ -23,11 +23,11 @@ function generateCMD(data: object, modules: object) {
 
 function generateCMDInfo(
 	id: string,
-	value:ModulesDescriptionMetadata
+	value: ModulesDescriptionMetadata
 ) {
 
 	let name = value.name
-	let generic_type = ((value. generic_type != undefined) ? value. generic_type : null)
+	let generic_type = ((value.generic_type != undefined) ? value.generic_type : null)
 	let minValue = ((value.minValue != undefined) ? value.minValue : null)
 	let maxValue = ((value.maxValue != undefined) ? value.maxValue : null)
 	let unite = ((value.unite != undefined) ? value.unite : null)
@@ -59,7 +59,7 @@ function generateCMDInfo(
 
 function generateCMDAction(
 	id: string,
-	value:ModulesDescriptionMetadata
+	value: ModulesDescriptionMetadata
 ) {
 	switch (value.type) {
 		case typeEnum.numeric:
@@ -73,13 +73,13 @@ function generateCMDAction(
 
 function generateActionBinary(
 	id: string,
-	value:ModulesDescriptionMetadata
+	value: ModulesDescriptionMetadata
 ) {
 	let name = value.name
 
 	let cmd_on = {
 		name: name + " ON",
-		logicalID: id+"_ON",
+		logicalID: id + "_ON",
 		generic_type: "ENERGY_ON",
 		isHistorized: null,
 		type: "action",
@@ -94,7 +94,7 @@ function generateActionBinary(
 	}
 	let cmd_off = {
 		name: name + " OFF",
-		logicalID: id+"_OFF",
+		logicalID: id + "_OFF",
 		generic_type: "ENERGY_OFF",
 		isHistorized: null,
 		type: "action",
@@ -113,15 +113,15 @@ function generateActionBinary(
 
 function generateActionNumeric(
 	id: string,
-	value:ModulesDescriptionMetadata
+	value: ModulesDescriptionMetadata
 ) {
 	let name = value.name
 	let minValue = ((value.minValue != undefined) ? value.minValue : null)
 	let maxValue = ((value.maxValue != undefined) ? value.maxValue : null)
 
 	let cmd_slider = {
-		name: name+" Slider",
-		logicalID: id+"_Slider",
+		name: name + " Slider",
+		logicalID: id + "_Slider",
 		type: "action",
 		subType: "slider",
 		unite: null,
@@ -139,7 +139,7 @@ function generateActionNumeric(
 
 function generateActionSelect(
 	id: string,
-	value:ModulesDescriptionMetadata
+	value: ModulesDescriptionMetadata
 ) {
 	let name = value.name
 	let values = ((value.values != undefined) ? value.values : null)
@@ -149,16 +149,16 @@ function generateActionSelect(
 	if (values !== null) {
 		Object.entries(values).forEach(entry => {
 			const [key, value] = entry;
-			if (listValue != "") listValue = listValue+";"
-			listValue = listValue+value+"|"+value
+			if (listValue != "") listValue = listValue + ";"
+			listValue = listValue + value + "|" + value
 		})
 	} else {
 		listValue = null;
 	}
 
 	let cmd_slider = {
-		name: name+" Select",
-		logicalID: id+"_Select",
+		name: name + " Select",
+		logicalID: id + "_Select",
 		type: "action",
 		subType: "select",
 		unite: null,

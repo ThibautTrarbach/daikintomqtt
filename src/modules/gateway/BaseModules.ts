@@ -1,5 +1,6 @@
 import {PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../decorator";
 import {Gateways, ModulePropertyMetadata} from "../../types";
+
 const typeEnum = Object.freeze({
 	numeric: 0,
 	string: 1,
@@ -13,7 +14,7 @@ const converterEnum = Object.freeze({
 });
 
 function convertDaikinDevice(device: any, gatewayClass: Gateways) {
-	let data:object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
+	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	createDeviceInfo(device, gatewayClass)
 	Object.entries(data).forEach(entry => {
 		const [key, value] = entry;
@@ -46,7 +47,7 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 }
 
 function createDeviceInfo(device: any, gatewayClass: Gateways) {
-	let data:object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass);
+	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass);
 	Object.entries(data).forEach(entry1 => {
 		const [key1, value1] = entry1;
 		Object.entries(value1 as object).forEach(entry2 => {
@@ -106,26 +107,26 @@ async function updateDaikinDevice(device: any, gatewayClass: Gateways) {
 	await device.updateData();
 }
 
-async function validateData(device: any, def: ModulePropertyMetadata, value:any) {
+async function validateData(device: any, def: ModulePropertyMetadata, value: any) {
 	let params = device.getData(def.managementPoint, def.dataPoint);
-	if (def.converter !== undefined ) value = convert(def.converter, value, 1)
+	if (def.converter !== undefined) value = convert(def.converter, value, 1)
 	let data = checkData(params, value)
 	if (!data.isOK) return;
 
 	await device.setData(def.managementPoint, def.dataPoint, data.value);
 }
 
-async function validateDataPath(device: any, def: ModulePropertyMetadata, dataPointPath: string, value:any) {
+async function validateDataPath(device: any, def: ModulePropertyMetadata, dataPointPath: string, value: any) {
 
 	let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
-	if (def.converter !== undefined ) value = convert(def.converter, value, 1)
+	if (def.converter !== undefined) value = convert(def.converter, value, 1)
 	let data = checkData(params, value)
 	if (!data.isOK) return;
 
 	await device.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value)
 }
 
-function checkData(params: any, value:any) {
+function checkData(params: any, value: any) {
 	let result = {
 		isOK: false,
 		value: value
@@ -143,7 +144,7 @@ function checkData(params: any, value:any) {
 	return result;
 }
 
-function convert(converter:number, value:any, to:number) {
+function convert(converter: number, value: any, to: number) {
 	switch (converter) {
 		case converterEnum.binary:
 			if (to == 0) return convertBinary0(value);
