@@ -112,6 +112,8 @@ function getModels(devices) {
             return new gateway_1.BRP069C4x(devices);
         case 'BRP069A62':
             return new gateway_1.BRP069A62(devices);
+        case 'BRP069A78':
+            return new gateway_1.BRP069A78(devices);
         default:
             (0, gateway_1.anonymise)(devices, value);
             return undefined;
