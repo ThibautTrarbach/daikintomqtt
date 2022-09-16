@@ -121,7 +121,7 @@ function validateData(device, def, value) {
         let params = device.getData(def.managementPoint, def.dataPoint);
         if (def.converter !== undefined)
             value = convert(def.converter, value, 1);
-        let data = checkData(params, value, def);
+        let data = checkData(params, value);
         if (!data.isOK)
             return;
         yield device.setData(def.managementPoint, def.dataPoint, data.value);
@@ -132,17 +132,19 @@ function validateDataPath(device, def, dataPointPath, value) {
         let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
         if (def.converter !== undefined)
             value = convert(def.converter, value, 1);
-        let data = checkData(params, value, def);
+        let data = checkData(params, value);
         if (!data.isOK)
             return;
         yield device.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
     });
 }
-function checkData(params, value, temp) {
+function checkData(params, value) {
     let result = {
         isOK: false,
         value: value
     };
+    if (params == null)
+        return result;
     if (!params.settable)
         return result;
     if (params.values && !params.values.includes(value))
