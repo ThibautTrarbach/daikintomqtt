@@ -5,6 +5,7 @@ import fs from "fs";
 import {anonymise, BRP069A4x, BRP069A62, BRP069A78, BRP069B4x, BRP069C4x, eventValue} from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishToMQTT} from "./mqtt";
+import {BRP069A61} from "./gateway/BRP069A61";
 
 async function getOptions() {
 	return {
@@ -108,6 +109,8 @@ function getModels(devices: any) {
 			return new BRP069B4x(devices);
 		case 'BRP069A4x':
 			return new BRP069A4x(devices);
+		case 'BRP069A61':
+			return new BRP069A61(devices);
 		default:
 			anonymise(devices, value)
 			return undefined;
