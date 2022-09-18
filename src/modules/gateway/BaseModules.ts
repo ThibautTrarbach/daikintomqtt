@@ -53,10 +53,15 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 		Object.entries(value1 as object).forEach(entry2 => {
 			const [key2, value2] = entry2;
 			let deviceValue;
-			if (value2.dataPointPath !== undefined) {
-				deviceValue = device.getData(value2.managementPoint, value2.dataPoint, value2.dataPointPath).value
-			} else {
-				deviceValue = device.getData(value2.managementPoint, value2.dataPoint).value
+
+			try {
+				if (value2.dataPointPath !== undefined) {
+					deviceValue = device.getData(value2.managementPoint, value2.dataPoint, value2.dataPointPath).value
+				} else {
+					deviceValue = device.getData(value2.managementPoint, value2.dataPoint).value
+				}
+			} catch (e) {
+				deviceValue = undefined;
 			}
 			// @ts-ignore
 			gatewayClass[key1][key2] = deviceValue;
