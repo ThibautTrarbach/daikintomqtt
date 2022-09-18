@@ -19,3 +19,6 @@ __exportStar(require("./BaseModules"), exports);
 __exportStar(require("./BRP069C4x"), exports);
 __exportStar(require("./BRP069A62"), exports);
 __exportStar(require("./BRP069A78"), exports);
+__exportStar(require("./BRP069B4x"), exports);
+__exportStar(require("./BRP069A4x"), exports);
+__exportStar(require("./BRP069A62"), exports);
