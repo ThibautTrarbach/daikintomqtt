@@ -55,9 +55,9 @@ export interface ModulePropertyMetadata {
 export interface ModuleDeviceMetadata {
 	name: ModulePropertyMetadata
 	modelInfo: ModulePropertyMetadata,
-	serialNumber: ModulePropertyMetadata,
-	firmwareVersion: ModulePropertyMetadata,
-	isInErrorState: ModulePropertyMetadata,
+	serialNumber?: ModulePropertyMetadata,
+	firmwareVersion?: ModulePropertyMetadata,
+	isInErrorState?: ModulePropertyMetadata,
 	errorCode?: ModulePropertyMetadata
 }
 
@@ -75,4 +75,8 @@ export interface ClassModule {
 	device: DevicesInformation;
 }
 
-type Gateways = BRP069C4x | BRP069A62 | BRP069A78
+type Gateways =
+	BRP069C4x |
+	BRP069A62 |
+	BRP069A78 |
+	BRP069B4x
