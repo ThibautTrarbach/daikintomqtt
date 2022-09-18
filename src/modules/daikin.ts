@@ -2,7 +2,7 @@ import DaikinCloudController from "daikin-controller-cloud";
 import ip from "ip";
 import path from "path";
 import fs from "fs";
-import {anonymise, BRP069A62, BRP069A78, BRP069B4x, BRP069C4x, eventValue} from "./gateway";
+import {anonymise, BRP069A4x, BRP069A62, BRP069A78, BRP069B4x, BRP069C4x, eventValue} from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishToMQTT} from "./mqtt";
 
@@ -106,6 +106,8 @@ function getModels(devices: any) {
 			return new BRP069A78(devices);
 		case 'BRP069B4x':
 			return new BRP069B4x(devices);
+		case 'BRP069A4x':
+			return new BRP069A4x(devices);
 		default:
 			anonymise(devices, value)
 			return undefined;
