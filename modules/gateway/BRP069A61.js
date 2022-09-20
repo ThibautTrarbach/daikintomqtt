@@ -231,8 +231,8 @@ __decorate([
         name: '1 - Outdoor Temperature',
         settable: false,
         type: BaseModules_1.typeEnum.numeric,
-        minValue: -10,
-        maxValue: 40,
+        minValue: -20,
+        maxValue: 50,
         unite: '°C'
     }),
     __metadata("design:type", Number)
@@ -359,8 +359,8 @@ __decorate([
         name: '2 - Tank Temperature',
         settable: false,
         type: BaseModules_1.typeEnum.numeric,
-        minValue: 10,
-        maxValue: 30,
+        minValue: 20,
+        maxValue: 80,
         unite: '°C'
     }),
     __metadata("design:type", Number)
