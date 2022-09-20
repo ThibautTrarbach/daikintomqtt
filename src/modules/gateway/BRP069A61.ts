@@ -132,8 +132,8 @@ export class BRP069A61 implements ClassModule{
 		name: '1 - Outdoor Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: -10,
-		maxValue: 40,
+		minValue: -20,
+		maxValue: 50,
 		unite: '°C'
 	})
 	private _outdoorTemperature1?: number;
@@ -241,8 +241,8 @@ export class BRP069A61 implements ClassModule{
 		name: '2 - Tank Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: 10,
-		maxValue: 30,
+		minValue: 20,
+		maxValue: 80,
 		unite: '°C'
 	})
 	private _tankTemperature2?: number;
