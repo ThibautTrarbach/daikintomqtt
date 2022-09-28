@@ -1,20 +1,20 @@
 system:
-  logLevel: 'info'
-  jeedom: false
+  logLevel: 'info' # Indicates the level of log that the system must use
+  jeedom: false # Activate the integration for the Jeedom home automation system
 daikin:
-  modeProxy: true
-  username: null
-  password: null
-  proxyPort: 8888
-  proxyWebPort: 8889
-  communicationTimeout: 10000
-  communicationRetries: 3
+  modeProxy: false # Proxy mode is not yet implemented
+  username: null # Identifier allowing connection to the Daikin Onecta Cloud
+  password: null # Passwords allowing connection to the Daikin Onecta cloud
+  proxyPort: 8888 # Part of proxy mode, this is not yet implemented
+  proxyWebPort: 8889 # Part of proxy mode, this is not yet implemented
+  communicationTimeout: 10000 # Time in ms before the communication is considered in timeout
+  communicationRetries: 3 # Number of retries before communication is dropped
 mqtt:
-  host: "127.0.0.1"
-  port: 1883
-  auth: false
-  username: null
-  password: null
-  connectTimeout: 4000
-  reconnectPeriod: 1000
-  topic: "daikinToMQTT"
+  host: "127.0.0.1" # MQTT broker IP address
+  port: 1883 # MQTT broker port
+  auth: false # Defines whether the MQTT broker requires MQTT authentication
+  username: null # Identifier allowing authentication with the mqtt broker
+  password: null # Password allowing authentication with the mqtt broker
+  connectTimeout: 4000 # Time in ms before the communication is considered in timeout
+  reconnectPeriod: 1000 # Time before connecting to MQTT broker in case of communication loss
+  topic: "daikinToMQTT" # Topic MQTT where the software information will be published
