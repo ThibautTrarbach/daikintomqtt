@@ -22,6 +22,7 @@ async function getOptions() {
 }
 
 async function loadDaikinAPI() {
+	let startError = false;
 	const tokenFile = path.join(datadir, '/tokenset.json');
 
 	let daikinOptions = await getOptions();
@@ -37,7 +38,13 @@ async function loadDaikinAPI() {
 		fs.writeFileSync(tokenFile, JSON.stringify(tokenSet));
 	});
 
-	if (daikinToken == undefined) {
+	try {
+		await daikinClient.getCloudDeviceDetails();
+	} catch (e) {
+		startError = true;
+	}
+
+	if (daikinToken == undefined || startError) {
 		if (config.daikin.modeProxy) {
 			await daikinClient.initProxyServer();
 			/*  clientOptions.message = `Please visit http://${daikinOptions.proxyOwnIp}:${daikinOptions.proxyWebPort} and Login to Daikin Cloud please.`
@@ -51,6 +58,7 @@ async function loadDaikinAPI() {
 		} else {
 			await daikinClient.login(config.daikin.username, config.daikin.password);
 		}
+
 		global.daikinToken = JSON.parse(fs.readFileSync(tokenFile).toString());
 
 		logger.debug('Use Token with the following claims: ' + JSON.stringify(daikinClient.getTokenSet().claims()));
