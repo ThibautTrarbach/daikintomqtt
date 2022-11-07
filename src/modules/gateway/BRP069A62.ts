@@ -316,8 +316,8 @@ export class BRP069A62 implements ClassModule{
 		name: '2 - Tank Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: 10,
-		maxValue: 30,
+		minValue: 0,
+		maxValue: 70,
 		unite: '°C'
 	})
 	private _tankTemperature2?: number;
