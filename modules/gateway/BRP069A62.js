@@ -459,8 +459,8 @@ __decorate([
         name: '2 - Tank Temperature',
         settable: false,
         type: BaseModules_1.typeEnum.numeric,
-        minValue: 10,
-        maxValue: 30,
+        minValue: 0,
+        maxValue: 70,
         unite: '°C'
     }),
     __metadata("design:type", Number)

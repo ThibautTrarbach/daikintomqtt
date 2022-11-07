@@ -172,7 +172,7 @@ function convert(converter, value, to) {
                 return convertBinary1(value);
             break;
         case converterEnum.numeric:
-            return parseInt(value);
+            return parseFloat(value);
     }
 }
 function convertBinary0(value) {

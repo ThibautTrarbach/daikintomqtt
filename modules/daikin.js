@@ -38,6 +38,7 @@ function getOptions() {
 }
 function loadDaikinAPI() {
     return __awaiter(this, void 0, void 0, function* () {
+        let startError = false;
         const tokenFile = path_1.default.join(datadir, '/tokenset.json');
         let daikinOptions = yield getOptions();
         if (fs_1.default.existsSync(tokenFile))
@@ -48,7 +49,13 @@ function loadDaikinAPI() {
         daikinClient.on('token_update', (tokenSet) => {
             fs_1.default.writeFileSync(tokenFile, JSON.stringify(tokenSet));
         });
-        if (daikinToken == undefined) {
+        try {
+            yield daikinClient.getCloudDeviceDetails();
+        }
+        catch (e) {
+            startError = true;
+        }
+        if (daikinToken == undefined || startError) {
             if (config.daikin.modeProxy) {
                 yield daikinClient.initProxyServer();
             }
