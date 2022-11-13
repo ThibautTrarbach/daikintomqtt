@@ -20,7 +20,6 @@ const fs_1 = __importDefault(require("fs"));
 const gateway_1 = require("./gateway");
 const converter_1 = require("./converter");
 const mqtt_1 = require("./mqtt");
-const BRP069A61_1 = require("./gateway/BRP069A61");
 function getOptions() {
     return __awaiter(this, void 0, void 0, function* () {
         return {
@@ -127,7 +126,9 @@ function getModels(devices) {
         case 'BRP069A4x':
             return new gateway_1.BRP069A4x(devices);
         case 'BRP069A61':
-            return new BRP069A61_1.BRP069A61(devices);
+            return new gateway_1.BRP069A61(devices);
+        case 'BRP069C41':
+            return new gateway_1.BRP069C41(devices);
         default:
             (0, gateway_1.anonymise)(devices, value);
             return undefined;
