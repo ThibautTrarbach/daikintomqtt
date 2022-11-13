@@ -1,4 +1,4 @@
-import {BRP069A4x, BRP069A62, BRP069A78, BRP069C4x} from "../modules/gateway";
+import {BRP069A4x, BRP069A61, BRP069A62, BRP069A78, BRP069B4x, BRP069C41, BRP069C4x} from "../modules/gateway";
 
 export interface Daikin2MQTT {
 	system: ConfigSystem
@@ -81,4 +81,7 @@ type Gateways =
 	BRP069A78 |
 	BRP069B4x |
 	BRP069A4x |
-	BRP069A62
+	BRP069C41 |
+	BRP069A61
+
+
