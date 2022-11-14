@@ -82,6 +82,7 @@ type Gateways =
 	BRP069B4x |
 	BRP069A4x |
 	BRP069C41 |
-	BRP069A61
+	BRP069A61 |
+	BRP069C8x
 
 

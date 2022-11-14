@@ -10,7 +10,7 @@ import {
 	BRP069A78,
 	BRP069B4x,
 	BRP069C41,
-	BRP069C4x,
+	BRP069C4x, BRP069C8x,
 	eventValue
 } from "./gateway";
 import {makeDefineFile} from "./converter";
@@ -130,6 +130,8 @@ function getModels(devices: any) {
 			return new BRP069A61(devices);
 		case 'BRP069C41':
 			return new BRP069C41(devices);
+		case 'BRP069C8x':
+			return new BRP069C8x(devices);
 		default:
 			anonymise(devices, value)
 			return undefined;
