@@ -23,3 +23,4 @@ __exportStar(require("./BRP069B4x"), exports);
 __exportStar(require("./BRP069A4x"), exports);
 __exportStar(require("./BRP069A61"), exports);
 __exportStar(require("./BRP069C41"), exports);
+__exportStar(require("./BRP069C8x"), exports);
