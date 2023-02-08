@@ -6,8 +6,8 @@
   "scripts": {
     "run": "ts-node ./src/main.ts",
     "clean": "tsc --build --clean",
-    "start": "node --preserve-symlinks build/main.js",
-    "buildStart": "tsc --build && node --preserve-symlinks build/main.js"
+    "start": "node --preserve-symlinks main.js",
+    "buildStart": "tsc --build && node --preserve-symlinks main.js"
   },
   "keywords": [],
   "author": "",
