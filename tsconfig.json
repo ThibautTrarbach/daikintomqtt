@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "es6",
+        "target": "ES2022",
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
 
@@ -24,6 +24,8 @@
 
         /* Type Checking */
         "strict": true,
-        "skipLibCheck": true
+        "skipLibCheck": true,
+
+        "noImplicitAny": false
     }
 }

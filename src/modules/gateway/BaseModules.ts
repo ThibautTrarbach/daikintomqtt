@@ -11,6 +11,16 @@ const converterEnum = Object.freeze({
 	numeric: 0,
 	string: 1,
 	binary: 2,
+	consumption: 3
+});
+
+const consumptionEnum = Object.freeze({
+	heatingDay: 0,
+	heatingWeek: 1,
+	heatingMonth: 2,
+	coolingDay: 3,
+	coolingWeek: 4,
+	coolingMonth: 5
 });
 
 function convertDaikinDevice(device: any, gatewayClass: Gateways) {
@@ -22,8 +32,16 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 
 		try {
 			if (value.multiple == undefined && value.multiple !== true) {
-				if (value.dataPointPath !== undefined) daikinValue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath).value
+				if (value.dataPointPath !== undefined) {
+					if (value.dataPoint == "consumptionData") {
+						let datavalue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath)
+						daikinValue = getConsumptionData(datavalue, value.consumptionT)
+					} else {
+						daikinValue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath).value
+					}
+				}
 				else daikinValue = device.getData(value.managementPoint, value.dataPoint).value
+
 			} else if (value.multiple == true) {
 				let multipleValue;
 
@@ -157,6 +175,8 @@ function convert(converter: number, value: any, to: number) {
 			break;
 		case converterEnum.numeric:
 			return parseFloat(value);
+		case converterEnum.consumption:
+			return convertConsumption(value);
 	}
 }
 
@@ -178,9 +198,32 @@ function convertBinary1(value: boolean) {
 	}
 }
 
+function convertConsumption(values: Array<number>) {
+	let consumption =parseFloat(String(values.reduce((acc, currentValue) => acc + currentValue, 0)));
+	return Math.round((consumption + Number.EPSILON) * 100) / 100
+}
+
+function getConsumptionData(values : any, consumptionT: number) {
+	switch (consumptionT) {
+		case consumptionEnum.heatingDay:
+			return values.heating.d
+		case consumptionEnum.heatingWeek:
+			return values.heating.w
+		case consumptionEnum.heatingMonth:
+			return values.heating.m
+		case consumptionEnum.coolingDay:
+			return values.cooling.d
+		case consumptionEnum.coolingWeek:
+			return values.cooling.w
+		case consumptionEnum.coolingMonth:
+			return values.cooling.m
+	}
+}
+
 export {
 	typeEnum,
 	converterEnum,
+	consumptionEnum,
 	convertDaikinDevice,
 	eventValue
 }

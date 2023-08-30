@@ -48,6 +48,7 @@ export interface ModulePropertyMetadata {
 	dataPoint: string,
 	dataPointPath?: string
 	converter?: number
+	consumptionT?: number
 	multiple?: boolean
 	multipleValue?: ModulePropertyMetadata
 }

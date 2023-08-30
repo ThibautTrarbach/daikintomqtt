@@ -18,7 +18,7 @@ import {publishToMQTT} from "./mqtt";
 
 async function getOptions() {
 	return {
-		logger: logger,
+		logger: null,
 		logLevel: config.system.logLevel,
 		proxyOwnIp: ip.address(),
 		proxyPort: config.daikin.proxyPort,
