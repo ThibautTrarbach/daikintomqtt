@@ -71,8 +71,8 @@ async function loadDaikinAPI() {
 				await daikinClient.login(config.daikin.username, config.daikin.password);
 			}
 			global.daikinToken = JSON.parse(fs.readFileSync(tokenFile).toString());
-
 			logger.debug('Use Token with the following claims: ' + JSON.stringify(daikinClient.getTokenSet().claims()));
+			await publishStatus(true, true)
 		} catch (e) {
 			// @ts-ignore
 			let error = e.toString()
