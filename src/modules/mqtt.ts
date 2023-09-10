@@ -22,6 +22,8 @@ async function loadMQTTClient() {
 	const mqttHost = `mqtt://${config.mqtt.host}:${config.mqtt.port}`
 	global.mqttClient = connect(mqttHost, options);
 	global.cache = {}
+
+	await publishStatus(false, true)
 }
 
 async function publishToMQTT(topic: string, data: string) {
@@ -36,7 +38,19 @@ async function publishToMQTT(topic: string, data: string) {
 	})
 }
 
+async function publishStatus(daikinStatus: boolean, mqttStatus: boolean, error?: string) {
+
+	console.log("daikinStatus: " + daikinStatus)
+	console.log("mqttStatus: " + mqttStatus)
+	console.log("error: " + error)
+
+	await publishToMQTT('system/bridge/status', daikinStatus && mqttStatus? 'online' : 'offline')
+	await publishToMQTT('system/bridge/daikin', daikinStatus? 'online' : 'offline')
+	await publishToMQTT('system/bridge/mqtt', mqttStatus? 'online' : 'offline')
+	await publishToMQTT('system/bridge/error', error || "No Error")
+}
 export {
 	loadMQTTClient,
-	publishToMQTT
+	publishToMQTT,
+	publishStatus
 }

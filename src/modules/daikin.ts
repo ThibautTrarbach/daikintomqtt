@@ -14,7 +14,9 @@ import {
 	eventValue
 } from "./gateway";
 import {makeDefineFile} from "./converter";
-import {publishToMQTT} from "./mqtt";
+import {publishStatus, publishToMQTT} from "./mqtt";
+import {exec} from "child_process";
+import * as Process from "process";
 
 async function getOptions() {
 	return {
@@ -54,23 +56,32 @@ async function loadDaikinAPI() {
 	}
 
 	if (daikinToken == undefined || startError) {
-		if (config.daikin.modeProxy) {
-			await daikinClient.initProxyServer();
-			/*  clientOptions.message = `Please visit http://${daikinOptions.proxyOwnIp}:${daikinOptions.proxyWebPort} and Login to Daikin Cloud please.`
-			  await updateSystemInfo()
-			  await daikinClient.waitForTokenFromProxy();
-			  console.log('Retrieved tokens. Saved to ' + tokenFile);
-			  await delay(1000);
-			  await daikinCloud.stopProxyServer();
-			  clientOptions.message = "Connection Success"
-			  await updateSystemInfo(); */
-		} else {
-			await daikinClient.login(config.daikin.username, config.daikin.password);
+		try {
+			if (config.daikin.modeProxy) {
+				await daikinClient.initProxyServer();
+				/*  clientOptions.message = `Please visit http://${daikinOptions.proxyOwnIp}:${daikinOptions.proxyWebPort} and Login to Daikin Cloud please.`
+				  await updateSystemInfo()
+				  await daikinClient.waitForTokenFromProxy();
+				  console.log('Retrieved tokens. Saved to ' + tokenFile);
+				  await delay(1000);
+				  await daikinCloud.stopProxyServer();
+				  clientOptions.message = "Connection Success"
+				  await updateSystemInfo(); */
+			} else {
+				await daikinClient.login(config.daikin.username, config.daikin.password);
+			}
+			global.daikinToken = JSON.parse(fs.readFileSync(tokenFile).toString());
+
+			logger.debug('Use Token with the following claims: ' + JSON.stringify(daikinClient.getTokenSet().claims()));
+		} catch (e) {
+			// @ts-ignore
+			let error = e.toString()
+			logger.error("Error to connect to Daikin Cloud")
+			logger.error(error)
+			await publishStatus(false, true, error)
+			await timeout(10000);
+			Process.exit(2);
 		}
-
-		global.daikinToken = JSON.parse(fs.readFileSync(tokenFile).toString());
-
-		logger.debug('Use Token with the following claims: ' + JSON.stringify(daikinClient.getTokenSet().claims()));
 	}
 	global.daikinClient = daikinClient;
 }
@@ -146,6 +157,10 @@ async function generateConfig() {
 			if (module) await makeDefineFile(module);
 		}
 	}
+}
+
+function timeout(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export {
