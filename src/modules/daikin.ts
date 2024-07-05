@@ -94,6 +94,8 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 			let gateway = getModels(dev);
 			if (gateway !== undefined) {
 				await eventValue(dev, gateway, JSON.parse(message.toString()))
+				await timeout(60000)
+				await sendDevice()
 			}
 		}
 	})
