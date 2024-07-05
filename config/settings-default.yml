@@ -2,13 +2,10 @@ system:
   logLevel: 'info' # Indicates the level of log that the system must use
   jeedom: false # Activate the integration for the Jeedom home automation system
 daikin:
-  modeProxy: false # Proxy mode is not yet implemented
-  username: null # Identifier allowing connection to the Daikin Onecta Cloud
-  password: null # Passwords allowing connection to the Daikin Onecta cloud
-  proxyPort: 8888 # Part of proxy mode, this is not yet implemented
-  proxyWebPort: 8889 # Part of proxy mode, this is not yet implemented
-  communicationTimeout: 10000 # Time in ms before the communication is considered in timeout
-  communicationRetries: 3 # Number of retries before communication is dropped
+  clientID: null # Client ID allowing connection to the Daikin Onecta Cloud
+  clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud
+  clientURL: ""
+  clientPort: 8765
 mqtt:
   host: "127.0.0.1" # MQTT broker IP address
   port: 1883 # MQTT broker port

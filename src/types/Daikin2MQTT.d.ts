@@ -13,12 +13,10 @@ export interface ConfigSystem {
 
 export interface ConfigDaikin {
 	modeProxy: boolean
-	username: string | null | undefined
-	password: string | null | undefined
-	proxyPort: number
-	proxyWebPort: number
-	communicationTimeout: number
-	communicationRetries: number
+	clientSecret: string
+	clientID: string
+	clientURL: string
+	clientPort: number
 }
 
 export interface ConfigMQTT {

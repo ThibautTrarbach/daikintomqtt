@@ -1,7 +1,4 @@
-import DaikinCloudController from "daikin-controller-cloud";
-import ip from "ip";
-import path from "path";
-import fs from "fs";
+import { resolve } from 'node:path';
 import {
 	anonymise,
 	BRP069A4x,
@@ -15,74 +12,45 @@ import {
 } from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishStatus, publishToMQTT} from "./mqtt";
-import {exec} from "child_process";
-import * as Process from "process";
-
-async function getOptions() {
-	return {
-		logger: null,
-		logLevel: config.system.logLevel,
-		proxyOwnIp: ip.address(),
-		proxyPort: config.daikin.proxyPort,
-		proxyWebPort: config.daikin.proxyWebPort,
-		proxyListenBind: '0.0.0.0',
-		proxyDataDir: datadir,
-		communicationTimeout: config.daikin.communicationTimeout,
-		communicationRetries: config.daikin.communicationRetries
-	};
-}
+import {DaikinCloudController} from "daikin-controller-cloud";
 
 async function loadDaikinAPI() {
-	let startError = false;
-	const tokenFile = path.join(datadir, '/tokenset.json');
-
-	let daikinOptions = await getOptions();
-	/** Setup Daikin API */
-	if (fs.existsSync(tokenFile)) global.daikinToken = JSON.parse(fs.readFileSync(tokenFile).toString())
-	else global.daikinToken = undefined;
-
 	/** Start Daikin Client **/
-		// @ts-ignore
-	let daikinClient = new DaikinCloudController(daikinToken, daikinOptions);
-
-	daikinClient.on('token_update', (tokenSet: any) => {
-		fs.writeFileSync(tokenFile, JSON.stringify(tokenSet));
+	// @ts-ignore
+		console.log(resolve(datadir, 'daikin-controller-cloud-tokenset'))
+	const daikinClient = new DaikinCloudController({
+		/* OIDC client id */
+		oidcClientId: config.daikin.clientID,
+		/* OIDC client secret */
+		oidcClientSecret: config.daikin.clientSecret,
+		/* Network interface that the HTTP server should bind to. Bind to all interfaces for convenience, please limit as needed to single interfaces! */
+		oidcCallbackServerBindAddr: '0.0.0.0',
+		/* port that the HTTP server should bind to */
+		oidcCallbackServerPort: config.daikin.clientPort,
+		/* OIDC Redirect URI */
+		oidcCallbackServerExternalAddress: config.daikin.clientURL,
+		//oidcCallbackServerBaseUrl: 'https://daikin.local:8765', // or use local IP address where server is reachable
+		/* path of file used to cache the OIDC tokenset */
+		oidcTokenSetFilePath: resolve(datadir, 'daikin-controller-cloud-tokenset'),
+		/* time to wait for the user to go through the authorization grant flow before giving up (in seconds) */
+		oidcAuthorizationTimeoutS: 120
 	});
 
-	try {
-		await daikinClient.getCloudDeviceDetails();
-	} catch (e) {
-		startError = true;
-	}
+	// @ts-ignore
+	daikinClient.on('authorization_request', (url) => {
+		console.log(`
+			Please make sure that ${url} is set as "Redirect URL" in your Daikin Developer Portal account for the used Client!
+			 
+			Then please open the URL ${url} in your browser and accept the security warning for the self signed certificate (if you open this for the first time).
+			 
+			Afterwards you are redirected to Daikin to approve the access and then redirected back.`);
+	});
 
-	if (daikinToken == undefined || startError) {
-		try {
-			if (config.daikin.modeProxy) {
-				await daikinClient.initProxyServer();
-				/*  clientOptions.message = `Please visit http://${daikinOptions.proxyOwnIp}:${daikinOptions.proxyWebPort} and Login to Daikin Cloud please.`
-				  await updateSystemInfo()
-				  await daikinClient.waitForTokenFromProxy();
-				  console.log('Retrieved tokens. Saved to ' + tokenFile);
-				  await delay(1000);
-				  await daikinCloud.stopProxyServer();
-				  clientOptions.message = "Connection Success"
-				  await updateSystemInfo(); */
-			} else {
-				await daikinClient.login(config.daikin.username, config.daikin.password);
-			}
-			global.daikinToken = JSON.parse(fs.readFileSync(tokenFile).toString());
-			logger.debug('Use Token with the following claims: ' + JSON.stringify(daikinClient.getTokenSet().claims()));
-			await publishStatus(true, true)
-		} catch (e) {
-			// @ts-ignore
-			let error = e.toString()
-			logger.error("Error to connect to Daikin Cloud")
-			logger.error(error)
-			await publishStatus(false, true, error)
-			await timeout(10000);
-			Process.exit(2);
-		}
-	}
+	// @ts-ignore
+	daikinClient.on('rate_limit_status', (rateLimitStatus) => {
+		console.log(rateLimitStatus);
+	});
+
 	global.daikinClient = daikinClient;
 }
 

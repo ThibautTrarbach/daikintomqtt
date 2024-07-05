@@ -13,8 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "daikin-controller-cloud": "1.2.4",
-    "ip": "1.1.8",
+    "daikin-controller-cloud": "2.0.0",
     "js-yaml": "4.1.0",
     "mqtt": "5.0.5",
     "node-cron": "3.0.2",

@@ -2,7 +2,7 @@ import cron from "node-cron";
 import {sendDevice} from "./daikin";
 
 async function loadCron() {
-	cron.schedule('*/5 * * * * *', async function () {
+	cron.schedule('0 */15 * * * *', async function () {
 		logger.debug("Run Polling Daikin")
 		await sendDevice()
 	});
