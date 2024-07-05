@@ -1,11 +1,9 @@
 import {
-	generateConfig,
 	loadDaikinAPI,
 	loadGlobalConfig,
 	loadLogger,
 	loadMQTTClient,
-	sendDevice, startDaikinAPI,
-	subscribeDevices
+	startDaikinAPI,
 } from "./modules";
 import {loadCron} from "./modules/cron";
 

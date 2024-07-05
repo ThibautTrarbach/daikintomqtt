@@ -140,9 +140,9 @@ function getModels(devices: any) {
 
 async function generateConfig(devices: DaikinCloudDevice[]) {
 	if (devices && devices.length) {
-		for (let dev of devices) {
-			let module = getModels(dev);
-			if (module) await makeDefineFile(module);
+		for (let device of devices) {
+			let module = getModels(device);
+			if (module) await makeDefineFile(module, device);
 		}
 	}
 }

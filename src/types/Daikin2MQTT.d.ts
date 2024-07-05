@@ -34,11 +34,21 @@ export interface ModulesDescriptionMetadata {
 	name: string,
 	settable: boolean
 	generic_type?: string,
+	minMaxValue?: ModulesDescriptionMetadataMinMax,
 	minValue?: number
 	maxValue?: number
 	unite?: string
 	type: number
 	values?: object
+}
+
+export interface ModulesDescriptionMetadataMinMax {
+	managementPoint: string,
+	dataPoint: string,
+	dataPointPath?: string
+	consumptionT?: number
+	multiple?: boolean
+	multipleValue?: ModulePropertyMetadata
 }
 
 export interface ModulePropertyMetadata {

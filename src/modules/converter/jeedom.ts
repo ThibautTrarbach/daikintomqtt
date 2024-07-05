@@ -1,24 +1,60 @@
 import {ModulesDescriptionMetadata} from "../../types";
-import {typeEnum} from "../gateway/BaseModules";
+import {typeEnum} from "../gateway";
+import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
-function generateCMD(data: object, modules: object) {
+function generateCMD(data: object, modules: object, device: DaikinCloudDevice) {
 	let cmd: any[] = [];
 	Object.entries(data).forEach(entry => {
-		const [key, value] = entry;
+		try {
+			let [key, value] = entry;
 
-		// @ts-ignore
-		if (modules[key] !== undefined && modules[key] !== null) {
-			let info = generateCMDInfo(key, value);
-			cmd.push(info)
+			if (modules[key] !== undefined && modules[key] !== null) {
+				if (value.type == typeEnum.numeric && value.minMaxValue !== undefined) {
+					let minmax = getMinMaxValue(value, device)
+					value.minValue = minmax.min
+					value.maxValue = minmax.max
+				}
 
-			if (value.settable) {
-				let actions = generateCMDAction(key, value);
-				if (actions != undefined) cmd = cmd.concat(actions)
+				let info = generateCMDInfo(key, value);
+				cmd.push(info)
+
+				if (value.settable) {
+					let actions = generateCMDAction(key, value);
+					if (actions != undefined) cmd = cmd.concat(actions)
+				}
 			}
+		} catch (e) {
+			console.log(e)
 		}
 	});
 
 	return cmd;
+}
+
+function getMinMaxValue(value: any, device: DaikinCloudDevice) {
+	let min: null | number = null
+	let max: null | number = null
+
+	if (value.minMaxValue.multiple == true) {
+		let multipleValues: any
+
+		if (value.minMaxValue.multipleValue.dataPointPath !== undefined) multipleValues = device.getData(value.minMaxValue.multipleValue.managementPoint, value.minMaxValue.multipleValue.dataPoint, value.minMaxValue.multipleValue.dataPointPath).values
+		else multipleValues = device.getData(value.minMaxValue.multipleValue.managementPoint, value.minMaxValue.multipleValue.dataPoint, null).values
+
+		for (let i = 0; i < multipleValues.length; i++) {
+			let dataPointPath = value.minMaxValue.dataPointPath.replace("#value#", multipleValues[i]);
+			let data = device.getData(value.minMaxValue.managementPoint, value.minMaxValue.dataPoint, dataPointPath)
+			if (min !== null && data.minValue < min ) min = data.minValue
+			if (max !== null && data.maxValue > max ) max = data.maxValue
+		}
+	} else {
+		let data = device.getData(value.minMaxValue.managementPoint, value.minMaxValue.dataPoint, value.minMaxValue.dataPointPath)
+		if (data !== null && data !== undefined) {
+			min = data.minValue
+			max = data.maxValue
+		}
+	}
+	return {min, max}
 }
 
 function generateCMDInfo(
