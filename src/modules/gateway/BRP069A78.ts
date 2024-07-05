@@ -140,8 +140,11 @@ export class BRP069A78 implements ClassModule{
 		name: 'Main Zone - Room Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: -127,
-		maxValue: 127,
+		minMaxValue: {
+			managementPoint: "climateControlMainZone",
+			dataPoint: "sensoryData",
+			dataPointPath: "/roomTemperature"
+		},
 		unite: '°C'
 	})
 	private _roomTemperatureMain?: number;
@@ -154,8 +157,11 @@ export class BRP069A78 implements ClassModule{
 		name: 'Main Zone - Outdoor Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: -127,
-		maxValue: 127,
+		minMaxValue: {
+			managementPoint: "climateControlMainZone",
+			dataPoint: "sensoryData",
+			dataPointPath: "/outdoorTemperature"
+		},
 		unite: '°C'
 	})
 	private _outdoorTemperatureMain?: number;
@@ -168,8 +174,11 @@ export class BRP069A78 implements ClassModule{
 		name: 'Main Zone - Leaving Water Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: -127,
-		maxValue: 127,
+		minMaxValue: {
+			managementPoint: "climateControlMainZone",
+			dataPoint: "sensoryData",
+			dataPointPath: "/leavingWaterTemperature"
+		},
 		unite: '°C'
 	})
 	private _leavingWaterTemperatureMain?: number;
@@ -200,8 +209,16 @@ export class BRP069A78 implements ClassModule{
 		settable: true,
 		type: typeEnum.numeric,
 		unite: '°C',
-		minValue: 12,
-		maxValue: 30
+		minMaxValue: {
+			managementPoint: "climateControlMainZone",
+			dataPoint: "temperatureControl",
+			dataPointPath: "/operationModes/#value#/setpoints/roomTemperature",
+			multiple: true,
+			multipleValue: {
+				managementPoint: "climateControlMainZone",
+				dataPoint: "operationMode"
+			}
+		}
 	})
 	private _temperatureControlMain?: number;
 	@modulesDaikinAcces({
@@ -220,8 +237,16 @@ export class BRP069A78 implements ClassModule{
 		settable: true,
 		type: typeEnum.numeric,
 		unite: '°C',
-		minValue: -10,
-		maxValue: 10
+		minMaxValue: {
+			managementPoint: "climateControlMainZone",
+			dataPoint: "temperatureControl",
+			dataPointPath: "/operationModes/#value#/setpoints/roomTemperature",
+			multiple: true,
+			multipleValue: {
+				managementPoint: "climateControlMainZone",
+				dataPoint: "operationMode"
+			}
+		}
 	})
 	private _temperatureControlWaterMain?: number;
 
@@ -341,8 +366,11 @@ export class BRP069A78 implements ClassModule{
 		name: 'Water Tank - Tank Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: -127,
-		maxValue: 127,
+		minMaxValue: {
+			managementPoint: "domesticHotWaterTank",
+			dataPoint: "sensoryData",
+			dataPointPath: "/tankTemperature"
+		},
 		unite: '°C'
 	})
 	private _tankTemperatureTank?: number;
@@ -368,8 +396,11 @@ export class BRP069A78 implements ClassModule{
 		settable: false,
 		type: typeEnum.numeric,
 		unite: '°C',
-		minValue: 30,
-		maxValue: 60
+		minMaxValue: {
+			managementPoint: "domesticHotWaterTank",
+			dataPoint: "temperatureControl",
+			dataPointPath: "/operationModes/heating/setpoints/domesticHotWaterTemperature",
+		},
 	})
 	private _domesticHotWaterTemperatureTank?: number;
 

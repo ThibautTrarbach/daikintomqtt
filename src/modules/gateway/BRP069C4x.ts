@@ -178,8 +178,11 @@ export class BRP069C4x implements ClassModule {
         name: 'Room Temperature',
         settable: false,
         type: typeEnum.numeric,
-        minValue: 10,
-        maxValue: 30,
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "sensoryData",
+            dataPointPath: "/roomTemperature"
+        },
         unite: '°C'
     })
     private _roomTemperature?: number;
@@ -192,8 +195,11 @@ export class BRP069C4x implements ClassModule {
         name: 'Outdoor Temperature',
         settable: false,
         type: typeEnum.numeric,
-        minValue: -10,
-        maxValue: 40,
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "sensoryData",
+            dataPointPath: "/outdoorTemperature"
+        },
         unite: '°C'
     })
     private _outdoorTemperature?: number;
@@ -225,8 +231,16 @@ export class BRP069C4x implements ClassModule {
         settable: true,
         type: typeEnum.numeric,
         unite: '°C',
-        minValue: 18,
-        maxValue: 33
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "temperatureControl",
+            dataPointPath: "/operationModes/#value#/setpoints/roomTemperature",
+            multiple: true,
+            multipleValue: {
+                managementPoint: "climateControl",
+                dataPoint: "operationMode"
+            }
+        },
     })
     private _temperatureControl?: number;
     @modulesDaikinAcces({
@@ -265,8 +279,16 @@ export class BRP069C4x implements ClassModule {
         name: 'Fan Fixed',
         settable: true,
         type: typeEnum.numeric,
-        minValue: 1,
-        maxValue: 5
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "fanControl",
+            dataPointPath: "/operationModes/#value#/fanSpeed/modes/fixed",
+            multiple: true,
+            multipleValue: {
+                managementPoint: "climateControl",
+                dataPoint: "operationMode"
+            }
+        },
     })
     private _fanFixed?: string;
     @modulesDaikinAcces({

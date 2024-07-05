@@ -145,8 +145,11 @@ export class BRP069A62 implements ClassModule{
 		name: '1 - Room Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: 10,
-		maxValue: 30,
+		minMaxValue: {
+			managementPoint: "1",
+			dataPoint: "sensoryData",
+			dataPointPath: "/roomTemperature"
+		},
 		unite: '°C'
 	})
 	private _roomTemperature1?: number;
@@ -159,8 +162,11 @@ export class BRP069A62 implements ClassModule{
 		name: '1 - Outdoor Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: -10,
-		maxValue: 40,
+		minMaxValue: {
+			managementPoint: "1",
+			dataPoint: "sensoryData",
+			dataPointPath: "/outdoorTemperature"
+		},
 		unite: '°C'
 	})
 	private _outdoorTemperature1?: number;
@@ -173,8 +179,11 @@ export class BRP069A62 implements ClassModule{
 		name: '1 - Leaving Water Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: 0,
-		maxValue: 50,
+		minMaxValue: {
+			managementPoint: "1",
+			dataPoint: "sensoryData",
+			dataPointPath: "/leavingWaterTemperature"
+		},
 		unite: '°C'
 	})
 	private _leavingWaterTemperature1?: number;
@@ -194,8 +203,16 @@ export class BRP069A62 implements ClassModule{
 		settable: true,
 		type: typeEnum.numeric,
 		unite: '°C',
-		minValue: -10,
-		maxValue: 30
+		minMaxValue: {
+			managementPoint: "1",
+			dataPoint: "temperatureControl",
+			dataPointPath: "/operationModes/#value#/setpoints/roomTemperature",
+			multiple: true,
+			multipleValue: {
+				managementPoint: "1",
+				dataPoint: "operationMode"
+			}
+		}
 	})
 	private _temperatureControl1?: number;
 	@modulesDaikinAcces({
@@ -208,8 +225,10 @@ export class BRP069A62 implements ClassModule{
 		settable: true,
 		type: typeEnum.numeric,
 		unite: '°C',
-		minValue: 12,
-		maxValue: 30
+		minMaxValue: {
+			managementPoint: "1",
+			dataPoint: "targetTemperature",
+		}
 	})
 	private _targetTemperature1?: number;
 
@@ -316,8 +335,11 @@ export class BRP069A62 implements ClassModule{
 		name: '2 - Tank Temperature',
 		settable: false,
 		type: typeEnum.numeric,
-		minValue: 0,
-		maxValue: 70,
+		minMaxValue: {
+			managementPoint: "2",
+			dataPoint: "sensoryData",
+			dataPointPath: "/tankTemperature"
+		},
 		unite: '°C'
 	})
 	private _tankTemperature2?: number;
@@ -337,8 +359,16 @@ export class BRP069A62 implements ClassModule{
 		settable: false,
 		type: typeEnum.numeric,
 		unite: '°C',
-		minValue: 30,
-		maxValue: 55
+		minMaxValue: {
+			managementPoint: "2",
+			dataPoint: "temperatureControl",
+			dataPointPath: "/operationModes/#value#/setpoints/domesticHotWaterTemperature",
+			multiple: true,
+			multipleValue: {
+				managementPoint: "2",
+				dataPoint: "operationMode"
+			}
+		},
 	})
 	private _temperatureControl?: number;
 	@modulesDaikinAcces({
