@@ -11,13 +11,18 @@ import {
 	eventValue
 } from "./gateway";
 import {makeDefineFile} from "./converter";
-import {publishStatus, publishToMQTT} from "./mqtt";
+import {publishConfig, publishToMQTT} from "./mqtt";
 import {DaikinCloudController} from "daikin-controller-cloud";
+import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
 async function loadDaikinAPI() {
+	if (!config.daikin.clientID || !config.daikin.clientSecret) {
+		console.log('Please set the clientID and clientSecret in the settings files');
+		process.exit(0);
+	}
+
 	/** Start Daikin Client **/
 	// @ts-ignore
-		console.log(resolve(datadir, 'daikin-controller-cloud-tokenset'))
 	const daikinClient = new DaikinCloudController({
 		/* OIDC client id */
 		oidcClientId: config.daikin.clientID,
@@ -44,18 +49,35 @@ async function loadDaikinAPI() {
 			Then please open the URL ${url} in your browser and accept the security warning for the self signed certificate (if you open this for the first time).
 			 
 			Afterwards you are redirected to Daikin to approve the access and then redirected back.`);
+
+		publishConfig('url', url).then()
+		publishConfig('authorization_request', true).then()
 	});
 
 	// @ts-ignore
 	daikinClient.on('rate_limit_status', (rateLimitStatus) => {
 		console.log(rateLimitStatus);
+		publishConfig('authorization_request', false).then()
+		publishConfig('rate/limitMinute', rateLimitStatus.limitMinute).then()
+		publishConfig('rate/remainingMinute', rateLimitStatus.remainingMinute).then()
+		publishConfig('rate/limitDay', rateLimitStatus.limitDay).then()
+		publishConfig('rate/remainingDay', rateLimitStatus.remainingDay).then()
 	});
 
 	global.daikinClient = daikinClient;
 }
 
-async function subscribeDevices() {
+async function startDaikinAPI() {
 	const devices = await daikinClient.getCloudDevices();
+	logger.info("=> Subscribe to MQTT Action")
+	await subscribeDevices(devices)
+	logger.info("Generate Config Info")
+	await generateConfig(devices)
+	logger.info("Send First Event Data Value")
+	await sendDevice(devices)
+}
+
+async function subscribeDevices(devices: DaikinCloudDevice[]) {
 	for (let dev of devices) {
 		let subscribeTopic = config.mqtt.topic + "/" + dev.getId() + "/set"
 		mqttClient.subscribe(subscribeTopic, function (err) {
@@ -77,16 +99,15 @@ async function subscribeDevices() {
 	})
 }
 
-async function sendDevice() {
-	const devices = await daikinClient.getCloudDevices();
+async function sendDevice(devices: DaikinCloudDevice[] | null = null) {
+	if (devices == null) devices = await daikinClient.getCloudDevices();
+
 	if (devices && devices.length) {
 		for (let dev of devices) {
 			let gateway = getModels(dev);
 			await publishToMQTT(dev.getId(), JSON.stringify(gateway))
 		}
 	}
-
-	return devices;
 }
 
 function getModels(devices: any) {
@@ -117,8 +138,7 @@ function getModels(devices: any) {
 	}
 }
 
-async function generateConfig() {
-	const devices = await daikinClient.getCloudDevices();
+async function generateConfig(devices: DaikinCloudDevice[]) {
 	if (devices && devices.length) {
 		for (let dev of devices) {
 			let module = getModels(dev);
@@ -135,5 +155,6 @@ export {
 	loadDaikinAPI,
 	subscribeDevices,
 	generateConfig,
-	sendDevice
+	sendDevice,
+	startDaikinAPI
 }

@@ -4,12 +4,13 @@ import {
 	loadGlobalConfig,
 	loadLogger,
 	loadMQTTClient,
-	sendDevice,
+	sendDevice, startDaikinAPI,
 	subscribeDevices
 } from "./modules";
 import {loadCron} from "./modules/cron";
 
-async function main() {
+
+(async () => {
 	global.datadir = process.env.STORE_DIR || process.cwd() + "/config"
 	global.logger = loadLogger()
 
@@ -20,16 +21,10 @@ async function main() {
 	await loadMQTTClient()
 	logger.info("=> Connect to Daikin")
 	await loadDaikinAPI()
-	logger.info("=> Subscribe to MQTT Action")
-	await subscribeDevices()
 	logger.info("DaikinToMQTT Started !!")
-	logger.info("Generate Config Info")
-	await generateConfig()
+	await startDaikinAPI()
 	logger.info("Load Polling Daikin")
 	await loadCron()
-	logger.info("Send First Event Data Value")
-	await sendDevice()
-}
+})().catch(console.error)
 
-main().then();
 
