@@ -17,12 +17,11 @@ import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
 async function loadDaikinAPI() {
 	if (!config.daikin.clientID || !config.daikin.clientSecret) {
-		console.log('Please set the clientID and clientSecret in the settings files');
+		logger.error('Please set the clientID and clientSecret in the settings files');
 		process.exit(0);
 	}
 
 	/** Start Daikin Client **/
-	// @ts-ignore
 	const daikinClient = new DaikinCloudController({
 		/* OIDC client id */
 		oidcClientId: config.daikin.clientID,
@@ -41,9 +40,8 @@ async function loadDaikinAPI() {
 		oidcAuthorizationTimeoutS: 120
 	});
 
-	// @ts-ignore
 	daikinClient.on('authorization_request', (url) => {
-		console.log(`
+		logger.info(`
 			Please make sure that ${url} is set as "Redirect URL" in your Daikin Developer Portal account for the used Client!
 			 
 			Then please open the URL ${url} in your browser and accept the security warning for the self signed certificate (if you open this for the first time).
@@ -54,9 +52,8 @@ async function loadDaikinAPI() {
 		publishConfig('authorization_request', true).then()
 	});
 
-	// @ts-ignore
 	daikinClient.on('rate_limit_status', (rateLimitStatus) => {
-		console.log(rateLimitStatus);
+		logger.debug(rateLimitStatus);
 		publishConfig('authorization_request', false).then()
 		publishConfig('rate/limitMinute', rateLimitStatus.limitMinute).then()
 		publishConfig('rate/remainingMinute', rateLimitStatus.remainingMinute).then()
@@ -68,7 +65,7 @@ async function loadDaikinAPI() {
 }
 
 async function startDaikinAPI() {
-	const devices = await daikinClient.getCloudDevices();
+	const devices = await getDevices();
 	logger.info("=> Subscribe to MQTT Action")
 	await subscribeDevices(devices)
 	logger.info("Generate Config Info")
@@ -88,7 +85,7 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 	mqttClient.on('message', async function (topic, message) {
 		logger.debug(`Topic : ${topic} \n- Message : ${message.toString()}`)
 
-		const devices = await daikinClient.getCloudDevices();
+		const devices = await getDevices();
 		for (let dev of devices) {
 			if (!topic.toString().includes(dev.getId())) continue;
 			let gateway = getModels(dev);
@@ -102,7 +99,7 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 }
 
 async function sendDevice(devices: DaikinCloudDevice[] | null = null) {
-	if (devices == null) devices = await daikinClient.getCloudDevices();
+	if (devices == null) devices = await getDevices();
 
 	if (devices && devices.length) {
 		for (let dev of devices) {
@@ -149,8 +146,23 @@ async function generateConfig(devices: DaikinCloudDevice[]) {
 	}
 }
 
-function timeout(ms) {
+function timeout(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function getDevices() {
+	const devices = cache.get('devices')
+
+	if (devices == undefined) {
+		logger.debug("Cache invalid, recuperation information sur le cloud")
+		const devices = await daikinClient.getCloudDevices();
+		cache.set('devices', devices);
+		return devices
+	} else {
+		logger.debug("Cache valide")
+	}
+
+	return devices
 }
 
 export {

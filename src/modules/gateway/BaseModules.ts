@@ -1,5 +1,6 @@
 import {PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../decorator";
 import {Gateways, ModulePropertyMetadata} from "../../types";
+import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
 const typeEnum = Object.freeze({
 	numeric: 0,
@@ -99,7 +100,7 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 	await updateDaikinDevice(device, gatewayClass)
 }
 
-async function updateDaikinDevice(device: any, gatewayClass: Gateways) {
+async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways) {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	Object.entries(data).forEach(entry => {
 		const [key, value] = entry;
@@ -107,19 +108,16 @@ async function updateDaikinDevice(device: any, gatewayClass: Gateways) {
 		try {
 			if (value.multiple == undefined && value.multiple !== true) {
 				if (value.dataPointPath !== undefined) {
-					// @ts-ignore
 					validateDataPath(device, value, value.dataPointPath, gatewayClass[key])
 				} else {
-					// @ts-ignore
 					validateData(device, value, gatewayClass[key])
 				}
 			} else if (value.multiple == true) {
-				let multipleValue;
+				let multipleValue: any;
 				if (value.multipleValue.dataPointPath !== undefined) multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, value.multipleValue.dataPointPath).value
 				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint).value
 
 				let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-				// @ts-ignore
 				validateDataPath(device, value, dataPointPath, gatewayClass[key])
 			}
 		} catch (e) {
@@ -130,7 +128,7 @@ async function updateDaikinDevice(device: any, gatewayClass: Gateways) {
 	await device.updateData();
 }
 
-async function validateData(device: any, def: ModulePropertyMetadata, value: any) {
+async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetadata, value: any) {
 	let params = device.getData(def.managementPoint, def.dataPoint);
 	if (def.converter !== undefined) value = convert(def.converter, value, 1)
 	let data = checkData(params, value)
@@ -139,7 +137,7 @@ async function validateData(device: any, def: ModulePropertyMetadata, value: any
 	await device.setData(def.managementPoint, def.dataPoint, data.value);
 }
 
-async function validateDataPath(device: any, def: ModulePropertyMetadata, dataPointPath: string, value: any) {
+async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMetadata, dataPointPath: string, value: any) {
 
 	let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
 	if (def.converter !== undefined) value = convert(def.converter, value, 1)

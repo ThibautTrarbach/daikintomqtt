@@ -24,7 +24,7 @@ function generateCMD(data: object, modules: object, device: DaikinCloudDevice) {
 				}
 			}
 		} catch (e) {
-			console.log(e)
+			logger.error(e)
 		}
 	});
 

@@ -6,9 +6,14 @@ import {
 	startDaikinAPI,
 } from "./modules";
 import {loadCron} from "./modules/cron";
+import NodeCache from "node-cache";
 
 
 (async () => {
+	global.cache = new NodeCache({
+		stdTTL: 600,
+		checkperiod: 120
+	});
 	global.datadir = process.env.STORE_DIR || process.cwd() + "/config"
 	global.logger = loadLogger()
 
