@@ -53,7 +53,7 @@ async function loadDaikinAPI() {
 	});
 
 	daikinClient.on('rate_limit_status', (rateLimitStatus) => {
-		logger.debug(rateLimitStatus);
+		logger.debug(JSON.stringify(rateLimitStatus));
 		publishConfig('authorization_request', false).then()
 		publishConfig('rate/limitMinute', rateLimitStatus.limitMinute).then()
 		publishConfig('rate/remainingMinute', rateLimitStatus.remainingMinute).then()
@@ -91,22 +91,41 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 			let gateway = getModels(dev);
 			if (gateway !== undefined) {
 				await eventValue(dev, gateway, JSON.parse(message.toString()))
-				await timeout(60000)
-				await sendDevice()
 			}
 		}
 	})
 }
 
-async function sendDevice(devices: DaikinCloudDevice[] | null = null) {
-	if (devices == null) devices = await getDevices();
+async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: boolean = false) {
+	if (devices == null) devices = await getDevices(cron);
 
 	if (devices && devices.length) {
 		for (let dev of devices) {
+			global.cache[dev.getId()] = dev;
 			let gateway = getModels(dev);
 			await publishToMQTT(dev.getId(), JSON.stringify(gateway))
 		}
 	}
+}
+
+async function timeUpdate() {
+	let time = Math.floor((Date.now() / 1000) - 60)
+	logger.debug("===> Time Update")
+	logger.debug(time)
+	let timerefresh = await cache.get('needRefresh')
+	logger.debug(timerefresh)
+	logger.debug("===> Time Update Finish")
+	if (timerefresh == undefined) return;
+	if (typeof(timerefresh) != "number") {
+		await cache.del('needRefresh');
+		return;
+	}
+	if (timerefresh <= time) {
+		logger.debug("===> Cron Update Push")
+		await cache.del('needRefresh');
+		await sendDevice(null, true)
+	}
+
 }
 
 function getModels(devices: any) {
@@ -146,22 +165,17 @@ async function generateConfig(devices: DaikinCloudDevice[]) {
 	}
 }
 
-function timeout(ms: number) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function getDevices() {
-	const devices = cache.get('devices')
-
-	if (devices == undefined) {
-		logger.debug("Cache invalid, recuperation information sur le cloud")
+async function getDevices(force: boolean = false) {
+	const devices = await cache.get('devices')
+	if (devices == undefined || force)  {
+		logger.debug("Cache invalid ou recup forcé, recuperation information sur le cloud")
+		logger.debug('=====================================> Send Request to cloud : Refresh')
 		const devices = await daikinClient.getCloudDevices();
-		cache.set('devices', devices);
+		await cache.set('devices', devices);
 		return devices
 	} else {
 		logger.debug("Cache valide")
 	}
-
 	return devices
 }
 
@@ -170,5 +184,7 @@ export {
 	subscribeDevices,
 	generateConfig,
 	sendDevice,
-	startDaikinAPI
+	startDaikinAPI,
+	getDevices,
+	timeUpdate
 }

@@ -1,6 +1,7 @@
 import {MqttClient} from "mqtt/types/lib/client";
 import {Daikin2MQTT} from "./types";
-import NodeCache from "node-cache";
+import {caching} from "cache-manager/dist/caching";
+import type {MemoryCache} from "cache-manager/dist/stores";
 
 declare global {
 	var mqttClient: MqttClient;
@@ -8,6 +9,6 @@ declare global {
 	var logger: winston.Logger;
 	var datadir: string;
 	var daikinClient: any;
-	var cache: NodeCache;
+	var cache: MemoryCache;
 }
 

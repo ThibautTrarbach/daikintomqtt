@@ -125,7 +125,6 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 			return
 		}
 	})
-	await device.updateData();
 }
 
 async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetadata, value: any) {
@@ -134,17 +133,26 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 	let data = checkData(params, value)
 	if (!data.isOK) return;
 
-	await device.setData(def.managementPoint, def.dataPoint, data.value);
+	if (params.value == data.value) return;
+	const deviceD = global.cache[device.getId()]
+
+	logger.debug('=====================================> Send Request to cloud : Action | '+ value)
+	await deviceD.setData(def.managementPoint, def.dataPoint, data.value);
+	await cache.set('needRefresh', Math.floor(Date.now() / 1000))
 }
 
 async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMetadata, dataPointPath: string, value: any) {
-
 	let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
 	if (def.converter !== undefined) value = convert(def.converter, value, 1)
 	let data = checkData(params, value)
 	if (!data.isOK) return;
 
-	await device.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value)
+	if (params.value == data.value) return;
+	const deviceD = global.cache[device.getId()]
+
+	logger.debug('=====================================> Send Request to cloud : Action | '+ value)
+	await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value)
+	await cache.set('needRefresh', Math.floor(Date.now() / 1000))
 }
 
 function checkData(params: any, value: any) {

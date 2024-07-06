@@ -24,8 +24,8 @@ async function loadMQTTClient() {
 }
 
 async function publishToMQTT(topic: string, data: string) {
-	if (cache.get(topic) == data) return;
-	cache.set(topic, data);
+	if (await cache.get(topic) == data) return;
+	await cache.set(topic, data);
 
 	mqttClient.publish(config.mqtt.topic + "/" + topic, data, {qos: 0, retain: true}, (error) => {
 		logger.debug("Send Data to MQTT : " + topic)
