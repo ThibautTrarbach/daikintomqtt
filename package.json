@@ -1,0 +1,39 @@
+{
+  "name": "daikin-deamon",
+  "version": "1.0.0",
+  "description": "",
+  "main": "daikinToMQTT.js",
+  "scripts": {
+    "run": "ts-node ./src/main.ts",
+    "clean": "tsc --build --clean",
+    "start": "node --preserve-symlinks dist/main.js",
+    "buildStart": "tsc --build && node --preserve-symlinks dist/main.js",
+    "build": "tsc --build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "daikin-controller-cloud": "2.4.0",
+    "js-yaml": "4.1.0",
+    "mqtt": "5.8.0",
+    "cache-manager": "^5.7.6",
+    "node-cron": "3.0.3",
+    "ts-morph": "^23.0.0",
+    "uuid": "^10.0.0",
+    "winston": "^3.14.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.14.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/uuid": "^10.0.0",
+    "@types/validator": "^13.12.0",
+    "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
