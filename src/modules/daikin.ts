@@ -55,6 +55,7 @@ async function loadDaikinAPI() {
 	daikinClient.on('rate_limit_status', (rateLimitStatus) => {
 		logger.debug(JSON.stringify(rateLimitStatus));
 		publishConfig('authorization_request', false).then()
+		publishConfig('authorization_timeout', false).then()
 		publishConfig('rate/limitMinute', rateLimitStatus.limitMinute).then()
 		publishConfig('rate/remainingMinute', rateLimitStatus.remainingMinute).then()
 		publishConfig('rate/limitDay', rateLimitStatus.limitDay).then()
