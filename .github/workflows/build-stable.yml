@@ -1,10 +1,10 @@
-name: Build
+name: Build - Stable
 on:
     push:
         branches:
             - stable
 jobs:
-    build:
+  build-and-push:
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v4
@@ -22,10 +22,10 @@ jobs:
           - name: Copy yarn.lock to build folder
             run: cp yarn.lock dist/yarn.lock
 
-          - name: Push compiled code to beta-release Branch
+          - name: Push compiled code to release-stable Branch
             uses: s0/git-publish-subdir-action@v2.6.0
             env:
               REPO: self
-              BRANCH: stable-release
+              BRANCH: release-stable
               FOLDER: dist
               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
