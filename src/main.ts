@@ -7,6 +7,9 @@ import {
 } from "./modules";
 import {loadCron} from "./modules/cron";
 import {createCache, memoryStore} from "cache-manager";
+import {resolve} from "node:path";
+import fs from "fs";
+import path from "path";
 
 
 (async () => {
@@ -29,6 +32,21 @@ import {createCache, memoryStore} from "cache-manager";
 	await startDaikinAPI()
 	logger.info("Load Polling Daikin")
 	await loadCron()
-})().catch(console.error)
+})().catch( error => {
+	if (error.error == "invalid_grant") {
+		try {
+			console.log('====> Token invalid, delete de l ancien token, une reconnection va être necesaire')
+			let path = resolve(datadir, 'daikin-controller-cloud-tokenset')
+			fs.unlinkSync(path);
+			process.exit(1)
+		} catch (e) {
+			console.error('Merci de delete le fichier : path');
+			process.exit(1)
+		}
+	} else {
+		console.error(error)
+	}
+})
+
 
 

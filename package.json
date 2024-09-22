@@ -6,21 +6,22 @@
   "scripts": {
     "run": "ts-node ./src/main.ts",
     "clean": "tsc --build --clean",
-    "start": "node --preserve-symlinks build/main.js",
-    "buildStart": "tsc --build && node --preserve-symlinks build/main.js"
+    "start": "node --preserve-symlinks dist/main.js",
+    "buildStart": "tsc --build && node --preserve-symlinks dist/main.js",
+    "build": "tsc --build"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "daikin-controller-cloud": "2.1.1",
+    "daikin-controller-cloud": "2.4.0",
     "js-yaml": "4.1.0",
     "mqtt": "5.8.0",
-    "cache-manager": "^5.7.1",
+    "cache-manager": "^5.7.6",
     "node-cron": "3.0.3",
     "ts-morph": "^23.0.0",
     "uuid": "^10.0.0",
-    "winston": "^3.13.0"
+    "winston": "^3.14.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

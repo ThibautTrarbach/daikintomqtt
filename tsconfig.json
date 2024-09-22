@@ -15,7 +15,7 @@
         /* Emit */
         "declaration": false,
         "moduleResolution": "Node",
-        "outDir": "./build",
+        "outDir": "./dist",
         "removeComments": true,
         "noEmitOnError": true,
 
