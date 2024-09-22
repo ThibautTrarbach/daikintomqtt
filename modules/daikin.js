@@ -35,10 +35,12 @@ async function loadDaikinAPI() {
 			Afterwards you are redirected to Daikin to approve the access and then redirected back.`);
         (0, mqtt_1.publishConfig)('url', url).then();
         (0, mqtt_1.publishConfig)('authorization_request', true).then();
+        (0, mqtt_1.publishConfig)('authorization_timeout', false).then();
     });
     daikinClient.on('rate_limit_status', (rateLimitStatus) => {
         logger.debug(JSON.stringify(rateLimitStatus));
         (0, mqtt_1.publishConfig)('authorization_request', false).then();
+        (0, mqtt_1.publishConfig)('authorization_timeout', false).then();
         (0, mqtt_1.publishConfig)('rate/limitMinute', rateLimitStatus.limitMinute).then();
         (0, mqtt_1.publishConfig)('rate/remainingMinute', rateLimitStatus.remainingMinute).then();
         (0, mqtt_1.publishConfig)('rate/limitDay', rateLimitStatus.limitDay).then();
