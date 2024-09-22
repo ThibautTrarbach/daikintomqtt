@@ -50,6 +50,7 @@ async function loadDaikinAPI() {
 
 		publishConfig('url', url).then()
 		publishConfig('authorization_request', true).then()
+		publishConfig('authorization_timeout', false).then()
 	});
 
 	daikinClient.on('rate_limit_status', (rateLimitStatus) => {
