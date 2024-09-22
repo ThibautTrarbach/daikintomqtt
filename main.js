@@ -8,6 +8,7 @@ const cron_1 = require("./modules/cron");
 const cache_manager_1 = require("cache-manager");
 const node_path_1 = require("node:path");
 const fs_1 = __importDefault(require("fs"));
+const promises_1 = require("timers/promises");
 (async () => {
     global.cache = (0, cache_manager_1.createCache)((0, cache_manager_1.memoryStore)({
         max: 100,
@@ -26,7 +27,7 @@ const fs_1 = __importDefault(require("fs"));
     await (0, modules_1.startDaikinAPI)();
     logger.info("Load Polling Daikin");
     await (0, cron_1.loadCron)();
-})().catch(error => {
+})().catch(async (error) => {
     if (error.error == "invalid_grant") {
         try {
             console.log('====> Token invalid, delete de l ancien token, une reconnection va être necesaire');
@@ -38,6 +39,12 @@ const fs_1 = __importDefault(require("fs"));
             console.error('Merci de delete le fichier : path');
             process.exit(1);
         }
+    }
+    else if (error == 'Error: Authorization time out') {
+        console.log('====> Authorization time out, please restart DaikinToMQTT and retry');
+        await (0, modules_1.publishConfig)('authorization_timeout', true);
+        await (0, promises_1.setTimeout)(5000);
+        process.exit(1);
     }
     else {
         console.error(error);
