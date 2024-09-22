@@ -16,10 +16,12 @@ jobs:
           - run: yarn
           - run: yarn build
 
-          - run: cp package.json dist/package.json
-          - run: cp yarn.lock dist/yarn.lock
+          - name: Copy package.json to build folder
+            run: cp package.json dist/package.json
+          - name: Copy yarn.lock to build folder
+            run: cp yarn.lock dist/yarn.lock
 
-          - name: Deploy
+          - name: Push compiled code to dev-release Branch
             uses: s0/git-publish-subdir-action@v2.6.0
             env:
               REPO: self
