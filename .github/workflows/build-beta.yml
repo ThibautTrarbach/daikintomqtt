@@ -1,0 +1,30 @@
+name: Build
+on:
+    push:
+        branches:
+            - beta
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+          - uses: actions/setup-node@v4
+            with:
+              node-version-file: 'package.json'
+              cache: 'yarn'
+
+          - run: yarn
+          - run: yarn build
+
+          - name: Copy package.json to build folder
+            run: cp package.json dist/package.json
+          - name: Copy yarn.lock to build folder
+            run: cp yarn.lock dist/yarn.lock
+
+          - name: Push compiled code to beta-release Branch
+            uses: s0/git-publish-subdir-action@v2.6.0
+            env:
+              REPO: self
+              BRANCH: beta-release
+              FOLDER: dist
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
