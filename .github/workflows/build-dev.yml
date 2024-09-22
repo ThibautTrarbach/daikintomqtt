@@ -1,10 +1,10 @@
-name: Build
+name: Build - Dev
 on:
     push:
         branches:
             - dev
 jobs:
-    build-dev:
+  build-and-push:
         runs-on: ubuntu-latest
         steps:
           - uses: actions/checkout@v4
@@ -18,6 +18,7 @@ jobs:
 
           - name: Copy package.json to build folder
             run: cp package.json dist/package.json
+
           - name: Copy yarn.lock to build folder
             run: cp yarn.lock dist/yarn.lock
 
