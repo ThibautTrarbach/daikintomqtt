@@ -2,14 +2,14 @@ import {
 	loadDaikinAPI,
 	loadGlobalConfig,
 	loadLogger,
-	loadMQTTClient,
+	loadMQTTClient, publishConfig,
 	startDaikinAPI,
 } from "./modules";
 import {loadCron} from "./modules/cron";
 import {createCache, memoryStore} from "cache-manager";
 import {resolve} from "node:path";
 import fs from "fs";
-import path from "path";
+import { setTimeout } from "timers/promises";
 
 
 (async () => {
@@ -32,7 +32,9 @@ import path from "path";
 	await startDaikinAPI()
 	logger.info("Load Polling Daikin")
 	await loadCron()
-})().catch( error => {
+
+})().catch(async error => {
+
 	if (error.error == "invalid_grant") {
 		try {
 			console.log('====> Token invalid, delete de l ancien token, une reconnection va être necesaire')
@@ -43,6 +45,11 @@ import path from "path";
 			console.error('Merci de delete le fichier : path');
 			process.exit(1)
 		}
+	} else if (error == 'Error: Authorization time out') {
+		console.log('====> Authorization time out, please restart DaikinToMQTT and retry')
+		await publishConfig('authorization_timeout', true);
+		await setTimeout(5000)
+		process.exit(1)
 	} else {
 		console.error(error)
 	}
