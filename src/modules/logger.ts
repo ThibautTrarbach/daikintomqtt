@@ -1,4 +1,5 @@
 import winston from "winston";
+const { combine, timestamp, printf, colorize, align } = winston.format;
 
 function loadLogger() {
 	const logger = winston.createLogger({
@@ -12,7 +13,14 @@ function loadLogger() {
 
 	if (process.env.NODE_ENV !== 'production' || config.system.jeedom) {
 		logger.add(new winston.transports.Console({
-			format: winston.format.simple(),
+			format: combine(
+				colorize({ all: true }),
+				timestamp({
+					format: 'YYYY-MM-DD hh:mm:ss.SSS A',
+				}),
+				align(),
+				printf((info) => `[${info.timestamp}] ${info.level}: ${info.message}`)
+			),
 		}));
 	}
 
