@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadLogger = loadLogger;
 const winston_1 = __importDefault(require("winston"));
+const { combine, timestamp, printf, colorize, align } = winston_1.default.format;
 function loadLogger() {
     const logger = winston_1.default.createLogger({
         level: "info",
@@ -16,7 +17,9 @@ function loadLogger() {
     });
     if (process.env.NODE_ENV !== 'production' || config.system.jeedom) {
         logger.add(new winston_1.default.transports.Console({
-            format: winston_1.default.format.simple(),
+            format: combine(colorize({ all: true }), timestamp({
+                format: 'YYYY-MM-DD hh:mm:ss.SSS A',
+            }), align(), printf((info) => `[${info.timestamp}] ${info.level}: ${info.message}`)),
         }));
     }
     return logger;

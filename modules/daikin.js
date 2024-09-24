@@ -14,7 +14,7 @@ const mqtt_1 = require("./mqtt");
 const daikin_controller_cloud_1 = require("daikin-controller-cloud");
 async function loadDaikinAPI() {
     if (!config.daikin.clientID || !config.daikin.clientSecret) {
-        logger.error('Please set the clientID and clientSecret in the settings files');
+        logger.error('[daikin.ts] => Please set the clientID and clientSecret in the settings files');
         process.exit(0);
     }
     const daikinClient = new daikin_controller_cloud_1.DaikinCloudController({
@@ -27,7 +27,7 @@ async function loadDaikinAPI() {
         oidcAuthorizationTimeoutS: 120
     });
     daikinClient.on('authorization_request', (url) => {
-        logger.info(`
+        logger.info(`[daikin.ts] =>
 			Please make sure that ${url} is set as "Redirect URL" in your Daikin Developer Portal account for the used Client!
 			 
 			Then please open the URL ${url} in your browser and accept the security warning for the self signed certificate (if you open this for the first time).
@@ -37,24 +37,25 @@ async function loadDaikinAPI() {
         (0, mqtt_1.publishConfig)('authorization_request', true).then();
         (0, mqtt_1.publishConfig)('authorization_timeout', false).then();
     });
-    daikinClient.on('rate_limit_status', (rateLimitStatus) => {
-        logger.debug(JSON.stringify(rateLimitStatus));
-        (0, mqtt_1.publishConfig)('authorization_request', false).then();
-        (0, mqtt_1.publishConfig)('authorization_timeout', false).then();
-        (0, mqtt_1.publishConfig)('rate/limitMinute', rateLimitStatus.limitMinute).then();
-        (0, mqtt_1.publishConfig)('rate/remainingMinute', rateLimitStatus.remainingMinute).then();
-        (0, mqtt_1.publishConfig)('rate/limitDay', rateLimitStatus.limitDay).then();
-        (0, mqtt_1.publishConfig)('rate/remainingDay', rateLimitStatus.remainingDay).then();
+    daikinClient.on('rate_limit_status', async (rateLimitStatus) => {
+        logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - START`);
+        await (0, mqtt_1.publishConfig)('authorization_request', false);
+        await (0, mqtt_1.publishConfig)('authorization_timeout', false);
+        await (0, mqtt_1.publishConfig)('rate/limitMinute', rateLimitStatus.limitMinute);
+        await (0, mqtt_1.publishConfig)('rate/remainingMinute', rateLimitStatus.remainingMinute);
+        await (0, mqtt_1.publishConfig)('rate/limitDay', rateLimitStatus.limitDay);
+        await (0, mqtt_1.publishConfig)('rate/remainingDay', rateLimitStatus.remainingDay);
+        logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - FINISH`);
     });
     global.daikinClient = daikinClient;
 }
 async function startDaikinAPI() {
     const devices = await getDevices();
-    logger.info("=> Subscribe to MQTT Action");
+    logger.info("[daikin.ts] => Subscribe to MQTT Action");
     await subscribeDevices(devices);
-    logger.info("Generate Config Info");
+    logger.info("[daikin.ts] => Generate Config Info");
     await generateConfig(devices);
-    logger.info("Send First Event Data Value");
+    logger.info("[daikin.ts] => Send First Event Data Value");
     await sendDevice(devices);
 }
 async function subscribeDevices(devices) {
@@ -62,11 +63,11 @@ async function subscribeDevices(devices) {
         let subscribeTopic = config.mqtt.topic + "/" + dev.getId() + "/set";
         mqttClient.subscribe(subscribeTopic, function (err) {
             if (!err)
-                logger.info("Subscribe to " + subscribeTopic);
+                logger.info("[daikin.ts] => Subscribe to " + subscribeTopic);
         });
     }
     mqttClient.on('message', async function (topic, message) {
-        logger.debug(`Topic : ${topic} \n- Message : ${message.toString()}`);
+        logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`);
         const devices = await getDevices();
         for (let dev of devices) {
             if (!topic.toString().includes(dev.getId()))
@@ -90,12 +91,11 @@ async function sendDevice(devices = null, cron = false) {
     }
 }
 async function timeUpdate() {
-    let time = Math.floor((Date.now() / 1000) - 60);
-    logger.debug("===> Time Update");
-    logger.debug(time);
+    logger.debug("[daikin.ts] => Refresh After Command => START");
+    let time = Math.floor((Date.now() / 1000) - 120);
+    logger.debug("[daikin.ts] => Timestamp Minimum : " + time);
     let timerefresh = await cache.get('needRefresh');
-    logger.debug(timerefresh);
-    logger.debug("===> Time Update Finish");
+    logger.debug("[daikin.ts] => Timestamp Save : " + timerefresh);
     if (timerefresh == undefined)
         return;
     if (typeof (timerefresh) != "number") {
@@ -103,10 +103,11 @@ async function timeUpdate() {
         return;
     }
     if (timerefresh <= time) {
-        logger.debug("===> Cron Update Push");
+        logger.debug("[daikin.ts] => CRON - Updates Daikin devices");
         await cache.del('needRefresh');
         await sendDevice(null, true);
     }
+    logger.debug("[daikin.ts] => Refresh After Command => FINISH");
 }
 function getModels(devices) {
     let value;
@@ -148,14 +149,14 @@ async function generateConfig(devices) {
 async function getDevices(force = false) {
     const devices = await cache.get('devices');
     if (devices == undefined || force) {
-        logger.debug("Cache invalid ou recup forcé, recuperation information sur le cloud");
-        logger.debug('=====================================> Send Request to cloud : Refresh');
+        logger.debug("[daikin.ts] => Cache invalid ou recup forcé, recuperation information sur le cloud");
+        logger.debug('[daikin.ts] => Send Request to cloud : Refresh');
         const devices = await daikinClient.getCloudDevices();
         await cache.set('devices', devices);
         return devices;
     }
     else {
-        logger.debug("Cache valide");
+        logger.debug("[daikin.ts] => Cache valide");
     }
     return devices;
 }

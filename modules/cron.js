@@ -8,11 +8,13 @@ const node_cron_1 = __importDefault(require("node-cron"));
 const daikin_1 = require("./daikin");
 async function loadCron() {
     node_cron_1.default.schedule('0 */15 * * * *', async function () {
-        logger.debug("Run Polling Daikin");
+        logger.debug("[cron.ts] => CRON - Daikin Polling = RUN");
         await (0, daikin_1.sendDevice)(null, true);
+        logger.debug("[cron.ts] => CRON - Daikin Polling = FINISH");
     });
     node_cron_1.default.schedule('*/30 * * * * *', async function () {
-        logger.debug("Run refresh after command");
+        logger.debug("[cron.ts] => CRON - Refresh data after action = RUN");
         await (0, daikin_1.timeUpdate)();
+        logger.debug("[cron.ts] => CRON - Refresh data after action = FINISH");
     });
 }

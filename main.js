@@ -16,16 +16,16 @@ const promises_1 = require("timers/promises");
     }));
     global.datadir = process.env.STORE_DIR || process.cwd() + "/config";
     global.logger = (0, modules_1.loadLogger)();
-    console.info("Starting DaikinToMQTT");
-    logger.info("=> Load configuration");
+    console.info("[main.ts] => Starting DaikinToMQTT");
+    logger.info("[main.ts] => Load configuration");
     await (0, modules_1.loadGlobalConfig)();
-    logger.info("=> Connect to MQTT");
+    logger.info("[main.ts] => Connect to MQTT");
     await (0, modules_1.loadMQTTClient)();
-    logger.info("=> Connect to Daikin");
+    logger.info("[main.ts] => Connect to Daikin");
     await (0, modules_1.loadDaikinAPI)();
-    logger.info("DaikinToMQTT Started !!");
+    logger.info("[main.ts] => DaikinToMQTT Started !!");
     await (0, modules_1.startDaikinAPI)();
-    logger.info("Load Polling Daikin");
+    logger.info("[main.ts] => Load Polling Daikin");
     await (0, cron_1.loadCron)();
 })().catch(async (error) => {
     if (error.error == "invalid_grant") {

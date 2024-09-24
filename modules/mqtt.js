@@ -26,9 +26,11 @@ async function publishToMQTT(topic, data) {
         return;
     await cache.set(topic, data);
     mqttClient.publish(config.mqtt.topic + "/" + topic, data, { qos: 0, retain: true }, (error) => {
-        logger.debug("Send Data to MQTT : " + topic);
-        if (error)
+        logger.debug("[mqtt.ts] => Send Data to MQTT : " + topic);
+        if (error) {
+            logger.error("[mqtt.ts] => ");
             logger.error(error);
+        }
     });
 }
 async function publishConfig(key, value) {
