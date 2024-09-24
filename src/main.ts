@@ -21,16 +21,16 @@ import { setTimeout } from "timers/promises";
 	global.datadir = process.env.STORE_DIR || process.cwd() + "/config"
 	global.logger = loadLogger()
 
-	console.info("Starting DaikinToMQTT")
-	logger.info("=> Load configuration")
+	console.info("[main.ts] => Starting DaikinToMQTT")
+	logger.info("[main.ts] => Load configuration")
 	await loadGlobalConfig()
-	logger.info("=> Connect to MQTT")
+	logger.info("[main.ts] => Connect to MQTT")
 	await loadMQTTClient()
-	logger.info("=> Connect to Daikin")
+	logger.info("[main.ts] => Connect to Daikin")
 	await loadDaikinAPI()
-	logger.info("DaikinToMQTT Started !!")
+	logger.info("[main.ts] => DaikinToMQTT Started !!")
 	await startDaikinAPI()
-	logger.info("Load Polling Daikin")
+	logger.info("[main.ts] => Load Polling Daikin")
 	await loadCron()
 
 })().catch(async error => {

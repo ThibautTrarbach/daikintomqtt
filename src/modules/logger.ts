@@ -27,7 +27,6 @@ function loadLogger() {
 	return logger;
 }
 
-
 export {
 	loadLogger
 }
