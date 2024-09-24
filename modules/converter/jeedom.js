@@ -23,6 +23,7 @@ function generateCMD(data, modules, device) {
             }
         }
         catch (e) {
+            logger.error("[jeedom.ts] => ");
             logger.error(e);
         }
     });

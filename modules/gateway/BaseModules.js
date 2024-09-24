@@ -119,6 +119,7 @@ async function updateDaikinDevice(device, gatewayClass) {
             }
         }
         catch (e) {
+            logger.error("[BaseModules.ts] => ");
             logger.error(e);
             return;
         }
@@ -134,7 +135,7 @@ async function validateData(device, def, value) {
     if (params.value == data.value)
         return;
     const deviceD = global.cache[device.getId()];
-    logger.debug('=====================================> Send Request to cloud : Action | ' + value);
+    logger.debug('[BaseModules.ts] => Send Request to cloud : Action | ' + value);
     await deviceD.setData(def.managementPoint, def.dataPoint, data.value);
     await cache.set('needRefresh', Math.floor(Date.now() / 1000));
 }
@@ -148,7 +149,7 @@ async function validateDataPath(device, def, dataPointPath, value) {
     if (params.value == data.value)
         return;
     const deviceD = global.cache[device.getId()];
-    logger.debug('=====================================> Send Request to cloud : Action | ' + value);
+    logger.debug('[BaseModules.ts] => Send Request to cloud : Action | ' + value);
     await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
     await cache.set('needRefresh', Math.floor(Date.now() / 1000));
 }

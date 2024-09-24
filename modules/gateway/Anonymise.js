@@ -14,11 +14,11 @@ function anonymise(dev, value) {
     if (!fs_1.default.existsSync(configFolder))
         fs_1.default.mkdirSync(configFolder);
     if (!fs_1.default.existsSync(configFile)) {
-        logger.info('New Module Detected Generate Anonymize Config For Integration');
+        logger.info('[Anonymise.ts] => New Module Detected Generate Anonymize Config For Integration');
         fs_1.default.writeFileSync(configFile, JSON.stringify(data));
     }
     else {
-        logger.debug('New Module Detected Anonymize Config already exists');
+        logger.debug('[Anonymise.ts] => New Module Detected Anonymize Config already exists');
     }
 }
 function recurse(resp) {
