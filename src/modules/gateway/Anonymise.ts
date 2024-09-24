@@ -11,10 +11,10 @@ function anonymise(dev: any, value: string) {
 	if (!fs.existsSync(configFolder)) fs.mkdirSync(configFolder)
 
 	if (!fs.existsSync(configFile)) {
-		logger.info('New Module Detected Generate Anonymize Config For Integration')
+		logger.info('[Anonymise.ts] => New Module Detected Generate Anonymize Config For Integration')
 		fs.writeFileSync(configFile, JSON.stringify(data));
 	} else {
-		logger.debug('New Module Detected Anonymize Config already exists')
+		logger.debug('[Anonymise.ts] => New Module Detected Anonymize Config already exists')
 	}
 }
 
