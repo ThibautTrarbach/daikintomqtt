@@ -17,8 +17,8 @@ function loadLogger() {
     });
     if (process.env.NODE_ENV !== 'production' || config.system.jeedom) {
         logger.add(new winston_1.default.transports.Console({
-            format: combine(colorize({ all: true }), timestamp({
-                format: 'YYYY-MM-DD hh:mm:ss.SSS A',
+            format: combine(timestamp({
+                format: 'YYYY-MM-DD HH:mm:ss.SSS',
             }), align(), printf((info) => `[${info.timestamp}] ${info.level}: ${info.message}`)),
         }));
     }
