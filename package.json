@@ -14,10 +14,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "daikin-controller-cloud": "2.4.0",
+    "cache-manager": "^5.7.6",
+    "daikin-controller-cloud": "github:ThibautTrarbach/daikin-controller-cloud",
     "js-yaml": "4.1.0",
     "mqtt": "5.8.0",
-    "cache-manager": "^5.7.6",
     "node-cron": "3.0.3",
     "ts-morph": "^23.0.0",
     "uuid": "^10.0.0",
