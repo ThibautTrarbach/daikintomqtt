@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "ES2022",
+        "target": "esnext",
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
 
@@ -13,8 +13,10 @@
          "checkJs": true,
 
         /* Emit */
-        "declaration": false,
-        "moduleResolution": "Node",
+        "declaration": true,
+        "declarationMap": false,
+        "sourceMap": true,
+        "moduleResolution": "node",
         "outDir": "./dist",
         "removeComments": true,
         "noEmitOnError": true,
