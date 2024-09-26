@@ -64,6 +64,16 @@ async function loadDaikinAPI() {
 		logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - FINISH`)
 	});
 
+	daikinClient.on('token_update', async (set) => {
+		logger.debug(`[daikin.ts] => EVENT - Token Update - Tentative de sauvgarde d'un nouveau token`)
+		logger.debug(`[daikin.ts] => EVENT - Token Update - DATA : `)
+		logger.debug(set)
+	});
+
+	daikinClient.on('error', async (error) => {
+		logger.error(`[daikin.ts] => EVENT - ERROR - : ` +error)
+	});
+
 	global.daikinClient = daikinClient;
 }
 
