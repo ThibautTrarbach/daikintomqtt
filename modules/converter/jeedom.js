@@ -180,3 +180,4 @@ function generateActionSelect(id, value) {
     };
     return [cmd_slider];
 }
+//# sourceMappingURL=jeedom.js.map

@@ -110,16 +110,16 @@
   integrity sha512-0ikrnug3/IyneSHqCBeslAhlK2aBfYek1fGo4bP4QnZPmiqSGRK+Oy7ZMisLWkesffJvQ1cqAcBnJC+8+nxIAg==
 
 "@types/node@*":
-  version "22.5.5"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-22.5.5.tgz#52f939dd0f65fc552a4ad0b392f3c466cc5d7a44"
-  integrity sha512-Xjs4y5UPO/CLdzpgR6GirZJx36yScjh73+2NlLlkFRSoQN8B0DpfXPdZGnvVmLRLOsqDpOfTNv7D9trgGhmOIA==
+  version "22.7.2"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-22.7.2.tgz#80ed66c0a5025ffa037587fd69a816f29b54e4c7"
+  integrity sha512-866lXSrpGpgyHBZUa2m9YNWqHDjjM0aBTJlNtYaGEw4rqY/dcD7deRVTbBBAJelfA7oaGDbNftXF/TL/A6RgoA==
   dependencies:
     undici-types "~6.19.2"
 
 "@types/node@^20.14.0":
-  version "20.16.5"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.16.5.tgz#d43c7f973b32ffdf9aa7bd4f80e1072310fd7a53"
-  integrity sha512-VwYCweNo3ERajwy0IUlqqcyZ8/A7Zwa9ZP3MnENWcB11AejO+tLy3pu850goUW2FC/IJMdZUfKpX/yxL1gymCA==
+  version "20.16.9"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.16.9.tgz#1217c6cc77c4f3aaf4a6c76fb56b790e81e48120"
+  integrity sha512-rkvIVJxsOfBejxK7I0FO5sa2WxFmJCzoDwcd88+fq/CUfynNywTo/1/T6hyFz22CyztsnLS9nVlHOnTI36RH5w==
   dependencies:
     undici-types "~6.19.2"
 
@@ -198,9 +198,9 @@ base64-js@^1.3.1:
   integrity sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==
 
 bl@^6.0.8:
-  version "6.0.15"
-  resolved "https://registry.yarnpkg.com/bl/-/bl-6.0.15.tgz#eeee4af50c6f16eb08fc5ddbca6f2d9f2ff12d78"
-  integrity sha512-RGhjD1XCPS7ZdAH6cEJVaR3gLV4KJP2hvkQ49AH5kwScjiyd0jBM8RsP4oHKzcx+kNCON9752zPeRnuv0HHwzw==
+  version "6.0.16"
+  resolved "https://registry.yarnpkg.com/bl/-/bl-6.0.16.tgz#29b190f1a754e2d168de3dc8c74ed8d12bf78e6e"
+  integrity sha512-V/kz+z2Mx5/6qDfRCilmrukUXcXuCoXKg3/3hDvzKKoSUx8CJKudfIoT29XZc3UE9xBvxs5qictiHdprwtteEg==
   dependencies:
     "@types/readable-stream" "^4.0.0"
     buffer "^6.0.3"
@@ -310,13 +310,12 @@ create-require@^1.1.0:
   resolved "https://registry.yarnpkg.com/create-require/-/create-require-1.1.1.tgz#c1d7e8f1e5f6cfc9ff65f9cd352d37348756c333"
   integrity sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==
 
-daikin-controller-cloud@2.4.0:
+"daikin-controller-cloud@github:ThibautTrarbach/daikin-controller-cloud":
   version "2.4.0"
-  resolved "https://registry.yarnpkg.com/daikin-controller-cloud/-/daikin-controller-cloud-2.4.0.tgz#fbccc005bb24d20cfcd0deb97b7998b63c165c47"
-  integrity sha512-MWP5V9CIOiZnYLKY53UBI0vhlgE2HcMB3DXpI8Eq3/VinVhr31q7yx801t5gqxZWId57sz6PmyFHdn25OVj3dQ==
+  resolved "https://codeload.github.com/ThibautTrarbach/daikin-controller-cloud/tar.gz/6ad1d5c998730d7e61c54397a55d128c2037a381"
   dependencies:
     ip "^2.0.1"
-    openid-client "^5.6.5"
+    openid-client "^5.7.0"
 
 debug@^4.3.1, debug@^4.3.4:
   version "4.3.7"
@@ -624,7 +623,7 @@ one-time@^1.0.0:
   dependencies:
     fn.name "1.x.x"
 
-openid-client@^5.6.5:
+openid-client@^5.7.0:
   version "5.7.0"
   resolved "https://registry.yarnpkg.com/openid-client/-/openid-client-5.7.0.tgz#61dbea7251f561e82342278063ce37c5c05347f2"
   integrity sha512-4GCCGZt1i2kTHpwvaC/sCpTpQqDnBzDzuJcJMbH+y1Q5qI8U8RBvoSh28svarXszZHR5BAMXbJPX1PGPRE3VOA==

@@ -225,3 +225,4 @@ function getConsumptionData(values, consumptionT) {
             return values.cooling.m;
     }
 }
+//# sourceMappingURL=BaseModules.js.map

@@ -24,3 +24,4 @@ function loadLogger() {
     }
     return logger;
 }
+//# sourceMappingURL=logger.js.map

@@ -557,3 +557,4 @@ __decorate([
     }),
     __metadata("design:type", Boolean)
 ], BRP069A62.prototype, "_setpointMode2", void 0);
+//# sourceMappingURL=BRP069A62.js.map

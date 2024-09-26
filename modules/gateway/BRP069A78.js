@@ -589,3 +589,4 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069A78.prototype, "_domesticHotWaterTemperatureTank", void 0);
+//# sourceMappingURL=BRP069A78.js.map

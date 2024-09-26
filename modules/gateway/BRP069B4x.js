@@ -506,3 +506,4 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069B4x.prototype, "_coolingConsumptionM", void 0);
+//# sourceMappingURL=BRP069B4x.js.map
