@@ -50,7 +50,7 @@ async function loadDaikinAPI() {
     daikinClient.on('token_update', async (set) => {
         logger.debug(`[daikin.ts] => EVENT - Token Update - Tentative de sauvgarde d'un nouveau token`);
         logger.debug(`[daikin.ts] => EVENT - Token Update - DATA : `);
-        logger.debug(set);
+        logger.debug(JSON.stringify(set));
     });
     daikinClient.on('error', async (error) => {
         logger.error(`[daikin.ts] => EVENT - ERROR - : ` + error);
@@ -168,3 +168,4 @@ async function getDevices(force = false) {
     }
     return devices;
 }
+//# sourceMappingURL=daikin.js.map

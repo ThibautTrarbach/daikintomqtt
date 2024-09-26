@@ -1,0 +1,35 @@
+import "reflect-metadata";
+import { ClassModule, DevicesInformation } from "../../types";
+export declare class BRP069A4x implements ClassModule {
+    private _device;
+    private _isHolidayModeActive?;
+    private _isInErrorState?;
+    private _isInModeConflict?;
+    private _operationMode?;
+    private _onOffMode?;
+    private _powerfulMode?;
+    private _roomTemperature?;
+    private _temperatureControl?;
+    private _fanCurrentMode?;
+    private _fanFixed?;
+    private _fanVertical?;
+    private _heatingConsumptionD?;
+    private _heatingConsumptionW?;
+    private _heatingConsumptionM?;
+    private _coolingConsumptionD?;
+    private _coolingConsumptionW?;
+    private _coolingConsumptionM?;
+    set isHolidayModeActive(value: boolean);
+    set isInErrorState(value: boolean);
+    set isInModeConflict(value: boolean);
+    set operationMode(value: string);
+    set onOffMode(value: boolean);
+    set powerfulMode(value: boolean);
+    set roomTemperature(value: number);
+    set temperatureControl(value: number);
+    set fanCurrentMode(value: string);
+    set fanFixed(value: string);
+    set fanVertical(value: string);
+    set device(value: DevicesInformation);
+    constructor(device: any);
+}
