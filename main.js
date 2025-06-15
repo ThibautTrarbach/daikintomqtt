@@ -10,10 +10,7 @@ const node_path_1 = require("node:path");
 const fs_1 = __importDefault(require("fs"));
 const promises_1 = require("timers/promises");
 (async () => {
-    global.cache = (0, cache_manager_1.createCache)((0, cache_manager_1.memoryStore)({
-        max: 100,
-        ttl: 10 * 60 * 1000,
-    }));
+    global.cache = (0, cache_manager_1.createCache)();
     global.datadir = process.env.STORE_DIR || process.cwd() + "/config";
     global.logger = (0, modules_1.loadLogger)();
     console.info("[main.ts] => Starting DaikinToMQTT");
