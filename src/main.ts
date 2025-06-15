@@ -6,17 +6,14 @@ import {
 	startDaikinAPI,
 } from "./modules";
 import {loadCron} from "./modules/cron";
-import {createCache, memoryStore} from "cache-manager";
+import {createCache} from "cache-manager";
 import {resolve} from "node:path";
 import fs from "fs";
 import { setTimeout } from "timers/promises";
 
 
 (async () => {
-	global.cache = createCache(memoryStore({
-		max: 100,
-		ttl: 10 * 60 * 1000 /*milliseconds*/,
-	}));
+	global.cache = createCache();
 
 	global.datadir = process.env.STORE_DIR || process.cwd() + "/config"
 	global.logger = loadLogger()
