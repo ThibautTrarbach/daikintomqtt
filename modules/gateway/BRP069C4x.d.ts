@@ -15,6 +15,7 @@ export declare class BRP069C4x implements ClassModule {
     private _streamerMode?;
     private _roomTemperature?;
     private _outdoorTemperature?;
+    private _roomHumidity?;
     private _outdoorSilentMode?;
     private _temperatureControl?;
     private _fanCurrentMode?;
@@ -40,6 +41,7 @@ export declare class BRP069C4x implements ClassModule {
     set isInCautionState(value: boolean);
     set roomTemperature(value: number);
     set outdoorTemperature(value: number);
+    set roomHumidity(value: number);
     set temperatureControl(value: number);
     set fanVertical(value: string);
     set fanHorizontal(value: string);
