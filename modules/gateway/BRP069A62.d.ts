@@ -13,6 +13,7 @@ export declare class BRP069A62 implements ClassModule {
     private _roomTemperature1?;
     private _outdoorTemperature1?;
     private _leavingWaterTemperature1?;
+    private _leavingWaterOffset1?;
     private _temperatureControl1?;
     private _targetTemperature1?;
     private _isHolidayModeActive2?;
@@ -39,6 +40,7 @@ export declare class BRP069A62 implements ClassModule {
     set roomTemperature1(value: number);
     set outdoorTemperature1(value: number);
     set leavingWaterTemperature1(value: number);
+    set leavingWaterOffset1(value: number);
     set temperatureControl1(value: number);
     set targetTemperature1(value: number);
     set isHolidayModeActive2(value: boolean);

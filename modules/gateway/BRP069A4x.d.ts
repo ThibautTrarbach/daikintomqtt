@@ -9,6 +9,7 @@ export declare class BRP069A4x implements ClassModule {
     private _onOffMode?;
     private _powerfulMode?;
     private _roomTemperature?;
+    private _roomHumidity?;
     private _temperatureControl?;
     private _fanCurrentMode?;
     private _fanFixed?;
@@ -26,6 +27,7 @@ export declare class BRP069A4x implements ClassModule {
     set onOffMode(value: boolean);
     set powerfulMode(value: boolean);
     set roomTemperature(value: number);
+    set roomHumidity(value: number);
     set temperatureControl(value: number);
     set fanCurrentMode(value: string);
     set fanFixed(value: string);

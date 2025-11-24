@@ -34,6 +34,7 @@ class BRP069A78 {
     _roomTemperatureMain;
     _outdoorTemperatureMain;
     _leavingWaterTemperatureMain;
+    _leavingWaterOffsetMain;
     _setpointModeMain;
     _temperatureControlMain;
     _temperatureControlWaterMain;
@@ -85,6 +86,9 @@ class BRP069A78 {
     }
     set leavingWaterTemperatureMain(value) {
         this._leavingWaterTemperatureMain = value;
+    }
+    set leavingWaterOffsetMain(value) {
+        this._leavingWaterOffsetMain = value;
     }
     set setpointModeMain(value) {
         this._setpointModeMain = value;
@@ -337,6 +341,25 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069A78.prototype, "_leavingWaterTemperatureMain", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControlMainZone",
+        dataPoint: "sensoryData",
+        dataPointPath: "/leavingWaterOffset"
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Main Zone - Leaving Water Offset',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minMaxValue: {
+            managementPoint: "climateControlMainZone",
+            dataPoint: "sensoryData",
+            dataPointPath: "/leavingWaterOffset"
+        },
+        unite: '°C'
+    }),
+    __metadata("design:type", Number)
+], BRP069A78.prototype, "_leavingWaterOffsetMain", void 0);
 __decorate([
     (0, decorator_1.modulesDaikinAcces)({
         managementPoint: "climateControlMainZone",
