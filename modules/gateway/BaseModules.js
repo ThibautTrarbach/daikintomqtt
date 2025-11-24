@@ -36,6 +36,8 @@ function convertDaikinDevice(device, gatewayClass) {
             if (value.multiple == undefined && value.multiple !== true) {
                 if (value.dataPointPath !== undefined) {
                     if (value.dataPoint == "consumptionData") {
+                        logger.debug("[BaseModules.ts] => Récupération consommation avec dataPointPath");
+                        logger.debug(value.dataPointPath);
                         let datavalue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath);
                         daikinValue = getConsumptionData(datavalue, value.consumptionT);
                     }
