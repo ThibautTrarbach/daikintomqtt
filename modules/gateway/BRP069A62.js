@@ -34,6 +34,7 @@ class BRP069A62 {
     _roomTemperature1;
     _outdoorTemperature1;
     _leavingWaterTemperature1;
+    _leavingWaterOffset1;
     _temperatureControl1;
     _targetTemperature1;
     _isHolidayModeActive2;
@@ -83,6 +84,9 @@ class BRP069A62 {
     }
     set leavingWaterTemperature1(value) {
         this._leavingWaterTemperature1 = value;
+    }
+    set leavingWaterOffset1(value) {
+        this._leavingWaterOffset1 = value;
     }
     set temperatureControl1(value) {
         this._temperatureControl1 = value;
@@ -335,6 +339,25 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069A62.prototype, "_leavingWaterTemperature1", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "1",
+        dataPoint: "sensoryData",
+        dataPointPath: "/leavingWaterOffset"
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: '1 - Leaving Water Offset',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minMaxValue: {
+            managementPoint: "1",
+            dataPoint: "sensoryData",
+            dataPointPath: "/leavingWaterOffset"
+        },
+        unite: '°C'
+    }),
+    __metadata("design:type", Number)
+], BRP069A62.prototype, "_leavingWaterOffset1", void 0);
 __decorate([
     (0, decorator_1.modulesDaikinAcces)({
         managementPoint: "1",

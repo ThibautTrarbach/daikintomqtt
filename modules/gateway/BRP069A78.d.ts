@@ -13,6 +13,7 @@ export declare class BRP069A78 implements ClassModule {
     private _roomTemperatureMain?;
     private _outdoorTemperatureMain?;
     private _leavingWaterTemperatureMain?;
+    private _leavingWaterOffsetMain?;
     private _setpointModeMain?;
     private _temperatureControlMain?;
     private _temperatureControlWaterMain?;
@@ -41,6 +42,7 @@ export declare class BRP069A78 implements ClassModule {
     set roomTemperatureMain(value: number);
     set outdoorTemperatureMain(value: number);
     set leavingWaterTemperatureMain(value: number);
+    set leavingWaterOffsetMain(value: number);
     set setpointModeMain(value: boolean);
     set temperatureControlMain(value: number);
     set temperatureControlWaterMain(value: number);
