@@ -152,6 +152,25 @@ export class BRP069B4x implements ClassModule{
         unite: '°C'
     })
     private _roomTemperature?: number;
+    // Room humidity
+    @modulesDaikinAcces({
+        managementPoint: "climateControl",
+        dataPoint: "sensoryData",
+        dataPointPath: "/roomHumidity"
+    })
+    @modulesDataDescription({
+        name: 'Room Humidity',
+        settable: false,
+        type: typeEnum.numeric,
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "sensoryData",
+            dataPointPath: "/roomHumidity"
+        },
+        unite: '%'
+    })
+    private _roomHumidity?: number;
+
     @modulesDaikinAcces({
         managementPoint: "climateControl",
         dataPoint: "sensoryData",
@@ -412,6 +431,9 @@ export class BRP069B4x implements ClassModule{
     }
     set roomTemperature(value: number) {
         this._roomTemperature = value;
+    }
+    set roomHumidity(value: number) {
+        this._roomHumidity = value;
     }
     set outdoorTemperature(value: number) {
         this._outdoorTemperature = value;
