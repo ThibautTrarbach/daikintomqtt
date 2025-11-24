@@ -6,6 +6,7 @@ import {
 import {consumptionEnum, convertDaikinDevice, converterEnum, typeEnum} from "./BaseModules";
 import {ClassModule, DevicesInformation} from "../../types";
 
+// Air - to - air Heat Pump / Air Purifier
 export class BRP069C4x implements ClassModule {
 
     @modulesDaikinDevice({
@@ -169,6 +170,7 @@ export class BRP069C4x implements ClassModule {
         type: typeEnum.binary
     })
     private _streamerMode?: boolean;
+    // Room Temperature
     @modulesDaikinAcces({
         managementPoint: "climateControl",
         dataPoint: "sensoryData",
@@ -186,6 +188,7 @@ export class BRP069C4x implements ClassModule {
         unite: '°C'
     })
     private _roomTemperature?: number;
+    // Outdoor Temperature
     @modulesDaikinAcces({
         managementPoint: "climateControl",
         dataPoint: "sensoryData",
@@ -203,6 +206,25 @@ export class BRP069C4x implements ClassModule {
         unite: '°C'
     })
     private _outdoorTemperature?: number;
+    // Room humidity
+    @modulesDaikinAcces({
+        managementPoint: "climateControl",
+        dataPoint: "sensoryData",
+        dataPointPath: "/roomHumidity"
+    })
+    @modulesDataDescription({
+        name: 'Room Humidity',
+        settable: false,
+        type: typeEnum.numeric,
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "sensoryData",
+            dataPointPath: "/roomHumidity"
+        },
+        unite: '%'
+    })
+    private _roomHumidity?: number;
+
     @modulesDaikinAcces({
         managementPoint: "climateControl",
         dataPoint: "outdoorSilentMode",
@@ -469,6 +491,9 @@ export class BRP069C4x implements ClassModule {
     }
     set outdoorTemperature(value: number) {
         this._outdoorTemperature = value;
+    }
+    set roomHumidity(value: number) {
+        this._roomHumidity = value;
     }
     set temperatureControl(value: number) {
         this._temperatureControl = value;
