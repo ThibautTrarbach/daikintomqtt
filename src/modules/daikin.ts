@@ -12,7 +12,7 @@ import {
 } from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishConfig, publishToMQTT} from "./mqtt";
-import {DaikinCloudController} from "daikin-controller-cloud";
+import {DaikinCloudController, OnectaMockDevice} from "daikin-controller-cloud";
 import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
 async function loadDaikinAPI() {
@@ -79,6 +79,7 @@ async function loadDaikinAPI() {
 
 async function startDaikinAPI() {
 	const devices = await getDevices();
+	console.log(devices);
 	logger.info("[daikin.ts] => Subscribe to MQTT Action")
 	await subscribeDevices(devices)
 	logger.info("[daikin.ts] => Generate Config Info")
@@ -95,12 +96,28 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 		})
 	}
 
+	// Subscribe to refresh command topic
+	let refreshTopic = config.mqtt.topic + "/system/bridge/refresh/set"
+	mqttClient.subscribe(refreshTopic, function (err) {
+		if (!err) logger.info("[daikin.ts] => Subscribe to " + refreshTopic)
+	})
+
 	mqttClient.on('message', async function (topic, message) {
 		logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`)
 
+		const topicString = topic.toString();
+		const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
+
+		// Handle refresh command
+		if (topicString === refreshTopicPath) {
+			logger.info("[daikin.ts] => Refresh command received, updating all devices")
+			await sendDevice(null, true) // Force refresh from cloud
+			return
+		}
+
 		const devices = await getDevices();
 		for (let dev of devices) {
-			if (!topic.toString().includes(dev.getId())) continue;
+			if (!topicString.includes(dev.getId())) continue;
 			let gateway = getModels(dev);
 			if (gateway !== undefined) {
 				await eventValue(dev, gateway, JSON.parse(message.toString()))
