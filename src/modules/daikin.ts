@@ -12,7 +12,7 @@ import {
 } from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishConfig, publishToMQTT} from "./mqtt";
-import {DaikinCloudController, OnectaMockDevice} from "daikin-controller-cloud";
+import {DaikinCloudController} from "daikin-controller-cloud";
 import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
 async function loadDaikinAPI() {
@@ -129,22 +129,22 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 				return;
 			}
 
-		const topicString = topic.toString();
-		const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
+			const topicString = topic.toString();
+			const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
 
-		// Handle refresh command
-		if (topicString === refreshTopicPath) {
-			logger.info("[daikin.ts] => Refresh command received, updating all devices")
-			await sendDevice(null, true) // Force refresh from cloud
-			return
-		}
+			// Handle refresh command
+			if (topicString === refreshTopicPath) {
+				logger.info("[daikin.ts] => Refresh command received, updating all devices")
+				await sendDevice(null, true) // Force refresh from cloud
+				return
+			}
 
-		const devices = await getDevices();
-		for (let dev of devices) {
-			if (!topicString.includes(dev.getId())) continue;
-			let gateway = getModels(dev);
-			if (gateway !== undefined) {
-				await eventValue(dev, gateway, JSON.parse(message.toString()))
+			for (let dev of devices) {
+				if (!topicString.includes(dev.getId())) continue;
+				let gateway = getModels(dev);
+				if (gateway !== undefined) {
+					await eventValue(dev, gateway, JSON.parse(message.toString()))
+				}
 			}
 		} catch (error) {
 			logger.error(`[daikin.ts] => Error processing MQTT message: ${error}`);
