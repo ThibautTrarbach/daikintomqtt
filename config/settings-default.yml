@@ -1,6 +1,9 @@
 system:
   logLevel: 'info' # Indicates the level of log that the system must use
   jeedom: false # Activate the integration for the Jeedom home automation system
+homeassistant:
+  enabled: false # Activate the integration for Home Assistant via MQTT Discovery
+  discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)
 daikin:
   clientID: null # Client ID allowing connection to the Daikin Onecta Cloud
   clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud

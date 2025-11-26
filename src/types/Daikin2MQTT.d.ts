@@ -4,11 +4,17 @@ export interface Daikin2MQTT {
 	system: ConfigSystem
 	daikin: ConfigDaikin
 	mqtt: ConfigMQTT
+	homeassistant?: ConfigHomeAssistant
 }
 
 export interface ConfigSystem {
 	logLevel: string
 	jeedom: boolean
+}
+
+export interface ConfigHomeAssistant {
+	enabled: boolean
+	discoveryPrefix?: string
 }
 
 export interface ConfigDaikin {
@@ -84,7 +90,7 @@ export interface ClassModule {
 	device: DevicesInformation;
 }
 
-type Gateways =
+export type Gateways =
 	BRP069C4x |
 	BRP069A62 |
 	BRP069A78 |
