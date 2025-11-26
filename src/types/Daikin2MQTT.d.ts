@@ -4,6 +4,7 @@ export interface Daikin2MQTT {
 	system: ConfigSystem
 	daikin: ConfigDaikin
 	mqtt: ConfigMQTT
+	homeassistant?: ConfigHomeAssistant
 }
 
 export interface ConfigSystem {
@@ -17,6 +18,11 @@ export interface ConfigPolling {
 	nightInterval: number // Intervalle en minutes pour le polling la nuit
 	nightStart: number // Heure de début de la période nuit (0-23)
 	nightEnd: number // Heure de fin de la période nuit (0-23)
+}
+
+export interface ConfigHomeAssistant {
+	enabled: boolean
+	discoveryPrefix?: string
 }
 
 export interface ConfigDaikin {
@@ -92,7 +98,7 @@ export interface ClassModule {
 	device: DevicesInformation;
 }
 
-type Gateways =
+export type Gateways =
 	BRP069C4x |
 	BRP069A62 |
 	BRP069A78 |
