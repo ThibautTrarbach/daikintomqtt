@@ -19,50 +19,50 @@ async function getOptions() {
 async function loadMQTTClient() {
 	try {
 		if (!config.mqtt) {
-			throw new Error("Configuration MQTT non trouvée");
+			throw new Error("MQTT configuration not found");
 		}
 
 		let options: IClientOptions = await getOptions();
 		const mqttHost = `mqtt://${config.mqtt.host}:${config.mqtt.port}`;
 		
-		logger.info(`[mqtt.ts] => Connexion au broker MQTT: ${config.mqtt.host}:${config.mqtt.port}`);
-		logger.debug(`[mqtt.ts] => Options de connexion: clientId=${options.clientId}, clean=${options.clean}, timeout=${options.connectTimeout}ms`);
+		logger.info(`[mqtt.ts] => Connecting to MQTT broker: ${config.mqtt.host}:${config.mqtt.port}`);
+		logger.debug(`[mqtt.ts] => Connection options: clientId=${options.clientId}, clean=${options.clean}, timeout=${options.connectTimeout}ms`);
 		
 		global.mqttClient = connect(mqttHost, options);
 
-		// Gestion des événements MQTT
+		// Handle MQTT events
 		mqttClient.on('connect', () => {
-			logger.info(`[mqtt.ts] => Connecté au broker MQTT: ${mqttHost}`);
+			logger.info(`[mqtt.ts] => Connected to MQTT broker: ${mqttHost}`);
 		});
 
 		mqttClient.on('error', (error) => {
-			logger.error(`[mqtt.ts] => Erreur de connexion MQTT: ${error.message}`);
+			logger.error(`[mqtt.ts] => MQTT connection error: ${error.message}`);
 			if (error.stack) {
 				logger.debug(`[mqtt.ts] => Stack trace: ${error.stack}`);
 			}
 		});
 
 		mqttClient.on('close', () => {
-			logger.warn(`[mqtt.ts] => Connexion MQTT fermée`);
+			logger.warn(`[mqtt.ts] => MQTT connection closed`);
 		});
 
 		mqttClient.on('reconnect', () => {
-			logger.info(`[mqtt.ts] => Reconnexion au broker MQTT en cours...`);
+			logger.info(`[mqtt.ts] => Reconnecting to MQTT broker...`);
 		});
 
 		mqttClient.on('offline', () => {
-			logger.warn(`[mqtt.ts] => Client MQTT hors ligne`);
+			logger.warn(`[mqtt.ts] => MQTT client offline`);
 		});
 
-		// Attendre la connexion avant de continuer
+		// Wait for connection before continuing
 		return new Promise<void>((resolve, reject) => {
 			const timeout = setTimeout(() => {
-				reject(new Error(`Timeout de connexion MQTT après ${config.mqtt.connectTimeout}ms`));
+				reject(new Error(`MQTT connection timeout after ${config.mqtt.connectTimeout}ms`));
 			}, config.mqtt.connectTimeout);
 
 			mqttClient.once('connect', () => {
 				clearTimeout(timeout);
-				logger.info(`[mqtt.ts] => Connexion MQTT établie avec succès`);
+				logger.info(`[mqtt.ts] => MQTT connection established successfully`);
 				resolve();
 			});
 
@@ -72,7 +72,7 @@ async function loadMQTTClient() {
 			});
 		});
 	} catch (error) {
-		logger.error(`[mqtt.ts] => Erreur lors de l'initialisation du client MQTT: ${error instanceof Error ? error.message : String(error)}`);
+		logger.error(`[mqtt.ts] => Error initializing MQTT client: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
 			logger.debug(`[mqtt.ts] => Stack trace: ${error.stack}`);
 		}
@@ -83,50 +83,50 @@ async function loadMQTTClient() {
 async function publishToMQTT(topic: string, data: string): Promise<void> {
 	try {
 		if (!global.mqttClient) {
-			throw new Error("Client MQTT non initialisé");
+			throw new Error("MQTT client not initialized");
 		}
 
 		if (!mqttClient.connected) {
-			logger.warn(`[mqtt.ts] => Client MQTT non connecté, tentative de publication pour le topic: ${topic}`);
+			logger.warn(`[mqtt.ts] => MQTT client not connected, attempting to publish to topic: ${topic}`);
 		}
 
-		// Vérifier le cache pour éviter les publications inutiles
+		// Check cache to avoid unnecessary publications
 		const cachedData = await cache.get(topic);
 		if (cachedData === data) {
-			logger.debug(`[mqtt.ts] => Données identiques en cache pour ${topic}, publication ignorée`);
+			logger.debug(`[mqtt.ts] => Identical data in cache for ${topic}, publication skipped`);
 			return;
 		}
 		
-		// Mettre à jour le cache
+		// Update cache
 		await cache.set(topic, data);
 
 		const fullTopic = config.mqtt.topic + "/" + topic;
 		const dataSize = Buffer.byteLength(data, 'utf8');
 		
-		logger.debug(`[mqtt.ts] => Publication vers ${fullTopic} (${dataSize} bytes)`);
+		logger.debug(`[mqtt.ts] => Publishing to ${fullTopic} (${dataSize} bytes)`);
 
 		return new Promise<void>((resolve, reject) => {
 			const publishTimeout = setTimeout(() => {
-				reject(new Error(`Timeout lors de la publication vers ${fullTopic}`));
-			}, 5000); // 5 secondes de timeout
+				reject(new Error(`Timeout publishing to ${fullTopic}`));
+			}, 5000); // 5 second timeout
 
 			mqttClient.publish(fullTopic, data, {qos: 0, retain: true}, (error) => {
 				clearTimeout(publishTimeout);
 				
 				if (error) {
-					logger.error(`[mqtt.ts] => Erreur lors de la publication vers ${fullTopic}: ${error.message}`);
+					logger.error(`[mqtt.ts] => Error publishing to ${fullTopic}: ${error.message}`);
 					if (error.stack) {
 						logger.debug(`[mqtt.ts] => Stack trace: ${error.stack}`);
 					}
 					reject(error);
 				} else {
-					logger.debug(`[mqtt.ts] => Données publiées avec succès vers ${fullTopic}`);
+					logger.debug(`[mqtt.ts] => Data published successfully to ${fullTopic}`);
 					resolve();
 				}
 			});
 		});
 	} catch (error) {
-		logger.error(`[mqtt.ts] => Erreur dans publishToMQTT pour le topic ${topic}: ${error instanceof Error ? error.message : String(error)}`);
+		logger.error(`[mqtt.ts] => Error in publishToMQTT for topic ${topic}: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
 			logger.debug(`[mqtt.ts] => Stack trace: ${error.stack}`);
 		}

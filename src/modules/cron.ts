@@ -2,7 +2,7 @@ import cron from "node-cron";
 import {sendDevice, timeUpdate} from "./daikin";
 
 /**
- * Détermine si on est actuellement en période nuit
+ * Determines if we are currently in night period
  */
 function isNightTime(): boolean {
 	const now = new Date();
@@ -10,30 +10,30 @@ function isNightTime(): boolean {
 	
 	const pollingConfig = config.system.polling;
 	if (!pollingConfig) {
-		// Par défaut, si pas de config, on considère qu'on est en journée
+		// By default, if no config, consider it's daytime
 		return false;
 	}
 	
 	const nightStart = pollingConfig.nightStart ?? 22;
 	const nightEnd = pollingConfig.nightEnd ?? 7;
 	
-	// Gestion du cas où la période nuit traverse minuit (ex: 22h-7h)
+	// Handle case where night period crosses midnight (e.g., 22h-7h)
 	if (nightStart > nightEnd) {
-		// Période nuit qui traverse minuit (ex: 22h à 7h)
+		// Night period crossing midnight (e.g., 22h to 7h)
 		return currentHour >= nightStart || currentHour < nightEnd;
 	} else {
-		// Période nuit dans la même journée (ex: 0h à 6h)
+		// Night period within same day (e.g., 0h to 6h)
 		return currentHour >= nightStart && currentHour < nightEnd;
 	}
 }
 
 /**
- * Récupère l'intervalle de polling actuel en fonction de l'heure
+ * Gets the current polling interval based on time
  */
 function getCurrentPollingInterval(): number {
 	const pollingConfig = config.system.polling;
 	if (!pollingConfig) {
-		// Par défaut, 10 minutes si pas de config
+		// Default, 10 minutes if no config
 		return 10;
 	}
 	
@@ -43,7 +43,7 @@ function getCurrentPollingInterval(): number {
 }
 
 /**
- * Calcule le temps jusqu'au prochain intervalle en millisecondes
+ * Calculates time until next interval in milliseconds
  */
 function getTimeUntilNextInterval(): number {
 	const intervalMinutes = getCurrentPollingInterval();
@@ -51,13 +51,13 @@ function getTimeUntilNextInterval(): number {
 	const currentMinutes = now.getMinutes();
 	const currentSeconds = now.getSeconds();
 	
-	// Calculer les secondes écoulées dans l'heure actuelle
+	// Calculate seconds elapsed in current hour
 	const secondsInCurrentHour = currentMinutes * 60 + currentSeconds;
 	
-	// Calculer le prochain intervalle (en secondes)
+	// Calculate next interval (in seconds)
 	const intervalSeconds = intervalMinutes * 60;
 	
-	// Calculer le temps jusqu'au prochain intervalle
+	// Calculate time until next interval
 	const nextInterval = Math.ceil(secondsInCurrentHour / intervalSeconds) * intervalSeconds;
 	const timeUntilNext = (nextInterval - secondsInCurrentHour) * 1000;
 	
@@ -67,10 +67,10 @@ function getTimeUntilNextInterval(): number {
 let pollingTimer: NodeJS.Timeout | null = null;
 
 /**
- * Planifie le prochain polling en fonction de l'heure actuelle
+ * Schedules next polling based on current time
  */
 function scheduleNextPolling() {
-	// Annuler le timer précédent s'il existe
+	// Cancel previous timer if it exists
 	if (pollingTimer) {
 		clearTimeout(pollingTimer);
 	}
@@ -79,21 +79,21 @@ function scheduleNextPolling() {
 	const isNight = isNightTime();
 	const interval = getCurrentPollingInterval();
 	
-	logger.debug(`[cron.ts] => Prochain polling dans ${Math.round(timeUntilNext / 1000)}s (${isNight ? 'nuit' : 'jour'} - intervalle: ${interval}min)`);
+	logger.debug(`[cron.ts] => Next polling in ${Math.round(timeUntilNext / 1000)}s (${isNight ? 'night' : 'day'} - interval: ${interval}min)`);
 	
 	pollingTimer = setTimeout(async () => {
 		const currentIsNight = isNightTime();
-		logger.info(`[cron.ts] => CRON - Daikin Polling = START (${currentIsNight ? 'nuit' : 'jour'})`);
+		logger.info(`[cron.ts] => CRON - Daikin Polling = START (${currentIsNight ? 'night' : 'day'})`);
 		try {
 			await sendDevice(null, true);
-			logger.info(`[cron.ts] => CRON - Daikin Polling = SUCCESS (${currentIsNight ? 'nuit' : 'jour'})`);
+			logger.info(`[cron.ts] => CRON - Daikin Polling = SUCCESS (${currentIsNight ? 'night' : 'day'})`);
 		} catch (error) {
-			logger.error(`[cron.ts] => CRON - Erreur lors du polling Daikin: ${error instanceof Error ? error.message : String(error)}`);
+			logger.error(`[cron.ts] => CRON - Error during Daikin polling: ${error instanceof Error ? error.message : String(error)}`);
 			if (error instanceof Error && error.stack) {
 				logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
 			}
 		} finally {
-			// Planifier le prochain polling même en cas d'erreur
+			// Schedule next polling even on error
 			scheduleNextPolling();
 		}
 	}, timeUntilNext);
@@ -101,7 +101,7 @@ function scheduleNextPolling() {
 
 async function loadCron() {
 	try {
-		// Configuration par défaut si non définie
+		// Default configuration if not defined
 		if (!config.system.polling) {
 			config.system.polling = {
 				dayInterval: 10,
@@ -109,60 +109,60 @@ async function loadCron() {
 				nightStart: 22,
 				nightEnd: 7
 			};
-			logger.warn("[cron.ts] => Configuration polling non trouvée, utilisation des valeurs par défaut");
+			logger.warn("[cron.ts] => Polling configuration not found, using default values");
 		}
 		
 		const pollingConfig = config.system.polling;
 		const isNight = isNightTime();
 		const currentInterval = getCurrentPollingInterval();
 		const now = new Date();
-		const currentTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+		const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 		
-		// Log des informations de configuration au démarrage
-		logger.info("[cron.ts] => Configuration du polling dynamique :");
-		logger.info(`[cron.ts] =>   - Intervalle journée : ${pollingConfig.dayInterval} minutes`);
-		logger.info(`[cron.ts] =>   - Intervalle nuit : ${pollingConfig.nightInterval} minutes`);
-		logger.info(`[cron.ts] =>   - Période nuit : ${pollingConfig.nightStart}h - ${pollingConfig.nightEnd}h`);
-		logger.info(`[cron.ts] =>   - Heure actuelle : ${currentTime} (${isNight ? 'nuit' : 'jour'})`);
-		logger.info(`[cron.ts] =>   - Intervalle actuel : ${currentInterval} minutes`);
+		// Log configuration information at startup
+		logger.info("[cron.ts] => Dynamic polling configuration:");
+		logger.info(`[cron.ts] =>   - Day interval: ${pollingConfig.dayInterval} minutes`);
+		logger.info(`[cron.ts] =>   - Night interval: ${pollingConfig.nightInterval} minutes`);
+		logger.info(`[cron.ts] =>   - Night period: ${pollingConfig.nightStart}h - ${pollingConfig.nightEnd}h`);
+		logger.info(`[cron.ts] =>   - Current time: ${currentTime} (${isNight ? 'night' : 'day'})`);
+		logger.info(`[cron.ts] =>   - Current interval: ${currentInterval} minutes`);
 		
-		// Démarrer le polling dynamique
+		// Start dynamic polling
 		scheduleNextPolling();
-		logger.info("[cron.ts] => Système de polling dynamique démarré");
+		logger.info("[cron.ts] => Dynamic polling system started");
 		
-		// Refresh forcé à 23h58 chaque jour pour les stats électriques
+		// Forced refresh at 23:58 every day for electrical stats
 		cron.schedule('58 23 * * *', async function () {
-			logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = START");
+			logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = START");
 			try {
 				await sendDevice(null, true);
-				logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = SUCCESS");
+				logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = SUCCESS");
 			} catch (error) {
-				logger.error(`[cron.ts] => CRON - Erreur lors du refresh forcé à 23h58: ${error instanceof Error ? error.message : String(error)}`);
+				logger.error(`[cron.ts] => CRON - Error during forced refresh at 23:58: ${error instanceof Error ? error.message : String(error)}`);
 				if (error instanceof Error && error.stack) {
 					logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
 				}
 			}
 		});
-		logger.debug("[cron.ts] => Tâche CRON planifiée pour le refresh quotidien à 23h58");
+		logger.debug("[cron.ts] => CRON task scheduled for daily refresh at 23:58");
 		
-		// Vérification toutes les 15 secondes pour le refresh après action
+		// Check every 15 seconds for refresh after action
 		cron.schedule('*/15 * * * * *', async function () {
-			logger.debug("[cron.ts] => CRON - Vérification du refresh après action = START");
+			logger.debug("[cron.ts] => CRON - Checking refresh after action = START");
 			try {
 				await timeUpdate();
-				logger.debug("[cron.ts] => CRON - Vérification du refresh après action = FINISH");
+				logger.debug("[cron.ts] => CRON - Checking refresh after action = FINISH");
 			} catch (error) {
-				logger.error(`[cron.ts] => CRON - Erreur lors de la vérification du refresh: ${error instanceof Error ? error.message : String(error)}`);
+				logger.error(`[cron.ts] => CRON - Error checking refresh: ${error instanceof Error ? error.message : String(error)}`);
 				if (error instanceof Error && error.stack) {
 					logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
 				}
 			}
 		});
-		logger.debug("[cron.ts] => Tâche CRON planifiée pour la vérification du refresh toutes les 15 secondes");
+		logger.debug("[cron.ts] => CRON task scheduled for refresh check every 15 seconds");
 		
-		logger.info("[cron.ts] => Système CRON initialisé avec succès");
+		logger.info("[cron.ts] => CRON system initialized successfully");
 	} catch (error) {
-		logger.error(`[cron.ts] => Erreur lors de l'initialisation du système CRON: ${error instanceof Error ? error.message : String(error)}`);
+		logger.error(`[cron.ts] => Error initializing CRON system: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
 			logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
 		}

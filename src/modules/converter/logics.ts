@@ -10,40 +10,40 @@ async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null
 		let id = moduleClass._device?.id;
 		
 		if (!id) {
-			logger.error(`[logics.ts] => Impossible de récupérer l'ID du device depuis moduleClass`);
+			logger.error(`[logics.ts] => Unable to retrieve device ID from moduleClass`);
 			return;
 		}
 		
 		let data = Reflect.getMetadata(PROPERTY_METADATA_CMD, moduleClass);
 		
 		if (!data) {
-			logger.warn(`[logics.ts] => Aucune métadonnée trouvée pour le device ${id}`);
+			logger.warn(`[logics.ts] => No metadata found for device ${id}`);
 			return;
 		}
 		
-		// Génération pour Jeedom
+		// Generation for Jeedom
 		if (config.system.jeedom) {
 			try {
-				logger.debug(`[logics.ts] => Génération de la configuration Jeedom pour le device ${id}`);
+				logger.debug(`[logics.ts] => Generating Jeedom configuration for device ${id}`);
 				let cmd = generateCMD(data, moduleClass, device);
 				await publishToMQTT('jeedom/' + id, JSON.stringify(cmd));
-				logger.debug(`[logics.ts] => Configuration Jeedom publiée avec succès pour le device ${id}`);
+				logger.debug(`[logics.ts] => Jeedom configuration published successfully for device ${id}`);
 			} catch (jeedomError) {
-				logger.error(`[logics.ts] => Erreur lors de la génération de la configuration Jeedom pour ${id}: ${jeedomError instanceof Error ? jeedomError.message : String(jeedomError)}`);
+				logger.error(`[logics.ts] => Error generating Jeedom configuration for ${id}: ${jeedomError instanceof Error ? jeedomError.message : String(jeedomError)}`);
 				if (jeedomError instanceof Error && jeedomError.stack) {
 					logger.debug(`[logics.ts] => Stack trace: ${jeedomError.stack}`);
 				}
 			}
 		}
 
-		// Génération pour Home Assistant
+		// Generation for Home Assistant
 		if (config.homeassistant?.enabled && device !== null) {
 			try {
 				const discoveryPrefix = config.homeassistant.discoveryPrefix || "homeassistant";
-				logger.debug(`[logics.ts] => Génération de la configuration Home Assistant pour le device ${id} (prefix: ${discoveryPrefix})`);
+				logger.debug(`[logics.ts] => Generating Home Assistant configuration for device ${id} (prefix: ${discoveryPrefix})`);
 				const discoveryConfigs = generateHADiscovery(data, moduleClass, device);
 				
-				// Publier chaque configuration de découverte
+				// Publish each discovery configuration
 				for (const [componentType, configs] of Object.entries(discoveryConfigs)) {
 					for (const [objectId, haConfig] of Object.entries(configs)) {
 						const topic = `${discoveryPrefix}/${componentType}/${objectId}/config`;
@@ -51,7 +51,7 @@ async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null
 						try {
 							await new Promise<void>((resolve, reject) => {
 								if (!global.mqttClient || !global.mqttClient.connected) {
-									reject(new Error("Client MQTT non connecté"));
+									reject(new Error("MQTT client not connected"));
 									return;
 								}
 								
@@ -64,22 +64,22 @@ async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null
 								});
 							});
 							
-							logger.debug(`[logics.ts] => Configuration Home Assistant publiée: ${componentType}/${objectId}`);
+							logger.debug(`[logics.ts] => Home Assistant configuration published: ${componentType}/${objectId}`);
 						} catch (publishError) {
-							logger.error(`[logics.ts] => Erreur lors de la publication de la configuration Home Assistant ${componentType}/${objectId}: ${publishError instanceof Error ? publishError.message : String(publishError)}`);
+							logger.error(`[logics.ts] => Error publishing Home Assistant configuration ${componentType}/${objectId}: ${publishError instanceof Error ? publishError.message : String(publishError)}`);
 						}
 					}
 				}
-				logger.debug(`[logics.ts] => Configuration Home Assistant générée avec succès pour le device ${id}`);
+				logger.debug(`[logics.ts] => Home Assistant configuration generated successfully for device ${id}`);
 			} catch (haError) {
-				logger.error(`[logics.ts] => Erreur lors de la génération de la configuration Home Assistant pour ${id}: ${haError instanceof Error ? haError.message : String(haError)}`);
+				logger.error(`[logics.ts] => Error generating Home Assistant configuration for ${id}: ${haError instanceof Error ? haError.message : String(haError)}`);
 				if (haError instanceof Error && haError.stack) {
 					logger.debug(`[logics.ts] => Stack trace: ${haError.stack}`);
 				}
 			}
 		}
 	} catch (error) {
-		logger.error(`[logics.ts] => Erreur critique dans makeDefineFile: ${error instanceof Error ? error.message : String(error)}`);
+		logger.error(`[logics.ts] => Critical error in makeDefineFile: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
 			logger.debug(`[logics.ts] => Stack trace: ${error.stack}`);
 		}

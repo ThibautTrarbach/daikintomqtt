@@ -1,5 +1,5 @@
 /**
- * Module de gestion du rate limiting avec logique de retry sophistiquée
+ * Rate limiting management module with sophisticated retry logic
  */
 
 interface RateLimitInfo {
@@ -7,13 +7,13 @@ interface RateLimitInfo {
 	remainingMinute: number;
 	limitDay: number;
 	remainingDay: number;
-	lastUpdate: number; // Timestamp de la dernière mise à jour
+	lastUpdate: number; // Timestamp of last update
 }
 
 interface RetryQueueItem {
 	id: string;
 	operation: () => Promise<any>;
-	priority: number; // Plus élevé = plus prioritaire
+	priority: number; // Higher = more priority
 	retryCount: number;
 	maxRetries: number;
 	lastAttempt: number;
@@ -22,9 +22,9 @@ interface RetryQueueItem {
 
 interface RetryConfig {
 	maxRetries?: number;
-	baseDelay?: number; // Délai de base en ms
-	maxDelay?: number; // Délai maximum en ms
-	backoffMultiplier?: number; // Multiplicateur pour le backoff exponentiel
+	baseDelay?: number; // Base delay in ms
+	maxDelay?: number; // Maximum delay in ms
+	backoffMultiplier?: number; // Multiplier for exponential backoff
 }
 
 class RateLimiter {
@@ -33,13 +33,13 @@ class RateLimiter {
 	private isProcessingQueue = false;
 	private defaultConfig: Required<RetryConfig> = {
 		maxRetries: 5,
-		baseDelay: 1000, // 1 seconde
-		maxDelay: 60000, // 60 secondes
+		baseDelay: 1000, // 1 second
+		maxDelay: 60000, // 60 seconds
 		backoffMultiplier: 2
 	};
 
 	/**
-	 * Met à jour les informations de rate limiting
+	 * Updates rate limiting information
 	 */
 	updateRateLimit(rateLimitStatus: any): void {
 		this.rateLimitInfo = {
@@ -50,11 +50,11 @@ class RateLimiter {
 			lastUpdate: Date.now()
 		};
 
-		logger.debug(`[rateLimiter.ts] => Rate limit mis à jour - Minute: ${this.rateLimitInfo.remainingMinute}/${this.rateLimitInfo.limitMinute}, Jour: ${this.rateLimitInfo.remainingDay}/${this.rateLimitInfo.limitDay}`);
+		logger.debug(`[rateLimiter.ts] => Rate limit updated - Minute: ${this.rateLimitInfo.remainingMinute}/${this.rateLimitInfo.limitMinute}, Day: ${this.rateLimitInfo.remainingDay}/${this.rateLimitInfo.limitDay}`);
 	}
 
 	/**
-	 * Charge les informations de rate limiting depuis le cache
+	 * Loads rate limiting information from cache
 	 */
 	async loadRateLimitFromCache(): Promise<void> {
 		try {
@@ -73,56 +73,56 @@ class RateLimiter {
 					remainingDay: remainingDay !== undefined ? Number(remainingDay) : 0,
 					lastUpdate: Date.now()
 				};
-				logger.debug(`[rateLimiter.ts] => Rate limit chargé depuis le cache`);
+				logger.debug(`[rateLimiter.ts] => Rate limit loaded from cache`);
 			}
 		} catch (error) {
-			logger.warn(`[rateLimiter.ts] => Erreur lors du chargement du rate limit depuis le cache: ${error instanceof Error ? error.message : String(error)}`);
+			logger.warn(`[rateLimiter.ts] => Error loading rate limit from cache: ${error instanceof Error ? error.message : String(error)}`);
 		}
 	}
 
 	/**
-	 * Vérifie si une requête peut être effectuée maintenant
+	 * Checks if a request can be made now
 	 */
 	canMakeRequest(): boolean {
 		if (!this.rateLimitInfo) {
-			// Si on n'a pas d'info, on autorise (première requête)
+			// If we don't have info, allow (first request)
 			return true;
 		}
 
-		// Vérifier les limites par minute et par jour
+		// Check limits per minute and per day
 		const canMakeRequest = this.rateLimitInfo.remainingMinute > 0 && this.rateLimitInfo.remainingDay > 0;
 
 		if (!canMakeRequest) {
-			logger.warn(`[rateLimiter.ts] => Rate limit atteint - Minute: ${this.rateLimitInfo.remainingMinute}/${this.rateLimitInfo.limitMinute}, Jour: ${this.rateLimitInfo.remainingDay}/${this.rateLimitInfo.limitDay}`);
+			logger.warn(`[rateLimiter.ts] => Rate limit reached - Minute: ${this.rateLimitInfo.remainingMinute}/${this.rateLimitInfo.limitMinute}, Day: ${this.rateLimitInfo.remainingDay}/${this.rateLimitInfo.limitDay}`);
 		}
 
 		return canMakeRequest;
 	}
 
 	/**
-	 * Calcule le temps d'attente nécessaire avant de pouvoir faire une nouvelle requête
+	 * Calculates wait time needed before making a new request
 	 */
 	getWaitTime(): number {
 		if (!this.rateLimitInfo) {
 			return 0;
 		}
 
-		// Si on a encore des requêtes disponibles, pas d'attente
+		// If we still have requests available, no wait
 		if (this.rateLimitInfo.remainingMinute > 0 && this.rateLimitInfo.remainingDay > 0) {
 			return 0;
 		}
 
-		// Calculer le temps d'attente basé sur la limite la plus restrictive
+		// Calculate wait time based on most restrictive limit
 		let waitTime = 0;
 
-		// Si limite par minute atteinte, attendre jusqu'à la prochaine minute
+		// If per-minute limit reached, wait until next minute
 		if (this.rateLimitInfo.remainingMinute <= 0) {
 			waitTime = Math.max(waitTime, 60000); // 1 minute minimum
 		}
 
-		// Si limite par jour atteinte, attendre jusqu'au prochain jour
+		// If per-day limit reached, wait until next day
 		if (this.rateLimitInfo.remainingDay <= 0) {
-			// Calculer le temps jusqu'à minuit
+			// Calculate time until midnight
 			const now = new Date();
 			const tomorrow = new Date(now);
 			tomorrow.setDate(tomorrow.getDate() + 1);
@@ -135,7 +135,7 @@ class RateLimiter {
 	}
 
 	/**
-	 * Détecte si une erreur est liée au rate limiting
+	 * Detects if an error is related to rate limiting
 	 */
 	isRateLimitError(error: any): boolean {
 		if (!error) return false;
@@ -143,7 +143,7 @@ class RateLimiter {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		const errorString = String(error).toLowerCase();
 
-		// Patterns d'erreur de rate limiting
+		// Rate limiting error patterns
 		const rateLimitPatterns = [
 			'rate limit',
 			'rate_limit',
@@ -161,7 +161,7 @@ class RateLimiter {
 	}
 
 	/**
-	 * Exécute une opération avec retry automatique en cas de rate limiting
+	 * Executes an operation with automatic retry on rate limiting
 	 */
 	async executeWithRetry<T>(
 		operation: () => Promise<T>,
@@ -174,24 +174,24 @@ class RateLimiter {
 
 		while (attempt <= finalConfig.maxRetries) {
 			try {
-				// Vérifier si on peut faire la requête
+				// Check if we can make the request
 				if (!this.canMakeRequest()) {
 					const waitTime = this.getWaitTime();
 					if (waitTime > 0) {
-						logger.info(`[rateLimiter.ts] => Rate limit atteint pour ${operationId}, attente de ${Math.round(waitTime / 1000)}s`);
+						logger.info(`[rateLimiter.ts] => Rate limit reached for ${operationId}, waiting ${Math.round(waitTime / 1000)}s`);
 						await this.wait(waitTime);
-						// Recharger les infos depuis le cache après l'attente
+						// Reload info from cache after wait
 						await this.loadRateLimitFromCache();
 						continue;
 					}
 				}
 
-				// Exécuter l'opération
+				// Execute operation
 				const result = await operation();
 				
-				// Si succès et ce n'était pas le premier essai, logger
+				// If success and it wasn't the first attempt, log
 				if (attempt > 0) {
-					logger.info(`[rateLimiter.ts] => Opération ${operationId} réussie après ${attempt} tentative(s)`);
+					logger.info(`[rateLimiter.ts] => Operation ${operationId} succeeded after ${attempt} attempt(s)`);
 				}
 
 				return result;
@@ -199,46 +199,46 @@ class RateLimiter {
 				lastError = error instanceof Error ? error : new Error(String(error));
 				attempt++;
 
-				// Vérifier si c'est une erreur de rate limiting
+				// Check if it's a rate limiting error
 				if (this.isRateLimitError(error)) {
-					logger.warn(`[rateLimiter.ts] => Rate limit détecté pour ${operationId} (tentative ${attempt}/${finalConfig.maxRetries + 1})`);
+					logger.warn(`[rateLimiter.ts] => Rate limit detected for ${operationId} (attempt ${attempt}/${finalConfig.maxRetries + 1})`);
 
 					if (attempt > finalConfig.maxRetries) {
-						logger.error(`[rateLimiter.ts] => Nombre maximum de tentatives atteint pour ${operationId}`);
+						logger.error(`[rateLimiter.ts] => Maximum number of attempts reached for ${operationId}`);
 						break;
 					}
 
-					// Calculer le délai avec backoff exponentiel
+					// Calculate delay with exponential backoff
 					const delay = Math.min(
 						finalConfig.baseDelay * Math.pow(finalConfig.backoffMultiplier, attempt - 1),
 						finalConfig.maxDelay
 					);
 
-					// Ajouter le temps d'attente du rate limit si nécessaire
+					// Add rate limit wait time if necessary
 					const waitTime = this.getWaitTime();
 					const totalDelay = Math.max(delay, waitTime);
 
-					logger.info(`[rateLimiter.ts] => Attente de ${Math.round(totalDelay / 1000)}s avant retry pour ${operationId}`);
+					logger.info(`[rateLimiter.ts] => Waiting ${Math.round(totalDelay / 1000)}s before retry for ${operationId}`);
 					await this.wait(totalDelay);
 
-					// Recharger les infos depuis le cache après l'attente
+					// Reload info from cache after wait
 					await this.loadRateLimitFromCache();
 					continue;
 				}
 
-				// Si ce n'est pas une erreur de rate limiting, propager l'erreur
-				logger.error(`[rateLimiter.ts] => Erreur non liée au rate limit pour ${operationId}: ${lastError.message}`);
+				// If it's not a rate limiting error, propagate the error
+				logger.error(`[rateLimiter.ts] => Error not related to rate limit for ${operationId}: ${lastError.message}`);
 				throw lastError;
 			}
 		}
 
-		// Si on arrive ici, toutes les tentatives ont échoué
-		logger.error(`[rateLimiter.ts] => Échec définitif pour ${operationId} après ${attempt} tentative(s)`);
-		throw lastError || new Error(`Échec de l'opération ${operationId} après ${finalConfig.maxRetries + 1} tentatives`);
+		// If we get here, all attempts failed
+		logger.error(`[rateLimiter.ts] => Final failure for ${operationId} after ${attempt} attempt(s)`);
+		throw lastError || new Error(`Operation ${operationId} failed after ${finalConfig.maxRetries + 1} attempts`);
 	}
 
 	/**
-	 * Ajoute une opération à la file d'attente de retry
+	 * Adds an operation to the retry queue
 	 */
 	async queueOperation(
 		operation: () => Promise<any>,
@@ -256,18 +256,18 @@ class RateLimiter {
 		};
 
 		this.retryQueue.push(item);
-		this.retryQueue.sort((a, b) => b.priority - a.priority); // Trier par priorité décroissante
+		this.retryQueue.sort((a, b) => b.priority - a.priority); // Sort by descending priority
 
-		logger.debug(`[rateLimiter.ts] => Opération ${operationId} ajoutée à la file d'attente (priorité: ${priority}, file: ${this.retryQueue.length})`);
+		logger.debug(`[rateLimiter.ts] => Operation ${operationId} added to queue (priority: ${priority}, queue: ${this.retryQueue.length})`);
 
-		// Démarrer le traitement de la file si ce n'est pas déjà en cours
+		// Start queue processing if not already in progress
 		if (!this.isProcessingQueue) {
 			this.processQueue();
 		}
 	}
 
 	/**
-	 * Traite la file d'attente de retry
+	 * Processes the retry queue
 	 */
 	private async processQueue(): Promise<void> {
 		if (this.isProcessingQueue) {
@@ -275,7 +275,7 @@ class RateLimiter {
 		}
 
 		this.isProcessingQueue = true;
-		logger.debug(`[rateLimiter.ts] => Démarrage du traitement de la file d'attente (${this.retryQueue.length} opération(s))`);
+		logger.debug(`[rateLimiter.ts] => Starting queue processing (${this.retryQueue.length} operation(s))`);
 
 		while (this.retryQueue.length > 0) {
 			const item = this.retryQueue.shift();
@@ -285,42 +285,42 @@ class RateLimiter {
 				await this.executeWithRetry(item.operation, item.id, {
 					maxRetries: item.maxRetries
 				});
-				logger.debug(`[rateLimiter.ts] => Opération ${item.id} traitée avec succès depuis la file`);
+				logger.debug(`[rateLimiter.ts] => Operation ${item.id} processed successfully from queue`);
 			} catch (error) {
-				logger.error(`[rateLimiter.ts] => Échec définitif de l'opération ${item.id} depuis la file: ${error instanceof Error ? error.message : String(error)}`);
+				logger.error(`[rateLimiter.ts] => Final failure of operation ${item.id} from queue: ${error instanceof Error ? error.message : String(error)}`);
 			}
 		}
 
 		this.isProcessingQueue = false;
-		logger.debug(`[rateLimiter.ts] => Fin du traitement de la file d'attente`);
+		logger.debug(`[rateLimiter.ts] => Queue processing finished`);
 	}
 
 	/**
-	 * Attend un certain temps
+	 * Waits for a certain amount of time
 	 */
 	private wait(ms: number): Promise<void> {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
 	/**
-	 * Obtient les informations de rate limiting actuelles
+	 * Gets current rate limiting information
 	 */
 	getRateLimitInfo(): RateLimitInfo | null {
 		return this.rateLimitInfo;
 	}
 
 	/**
-	 * Réinitialise le rate limiter
+	 * Resets the rate limiter
 	 */
 	reset(): void {
 		this.rateLimitInfo = null;
 		this.retryQueue = [];
 		this.isProcessingQueue = false;
-		logger.debug(`[rateLimiter.ts] => Rate limiter réinitialisé`);
+		logger.debug(`[rateLimiter.ts] => Rate limiter reset`);
 	}
 }
 
-// Instance singleton
+// Singleton instance
 const rateLimiter = new RateLimiter();
 
 export {

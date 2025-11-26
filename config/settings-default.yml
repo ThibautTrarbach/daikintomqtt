@@ -2,10 +2,10 @@ system:
   logLevel: 'info' # Indicates the level of log that the system must use
   jeedom: false # Activate the integration for the Jeedom home automation system
   polling:
-    dayInterval: 10 # Intervalle de rafraîchissement en minutes pendant la journée
-    nightInterval: 20 # Intervalle de rafraîchissement en minutes pendant la nuit
-    nightStart: 22 # Heure de début de la période nuit (0-23)
-    nightEnd: 7 # Heure de fin de la période nuit (0-23)
+    dayInterval: 10 # Refresh interval in minutes during the day
+    nightInterval: 20 # Refresh interval in minutes during the night
+    nightStart: 22 # Night period start hour (0-23)
+    nightEnd: 7 # Night period end hour (0-23)
 homeassistant:
   enabled: false # Activate the integration for Home Assistant via MQTT Discovery
   discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)

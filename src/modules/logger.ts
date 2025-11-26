@@ -4,7 +4,7 @@ import path from "path";
 const { combine, timestamp, printf, colorize, align } = winston.format;
 
 function loadLogger() {
-	// Créer le répertoire de logs s'il n'existe pas
+	// Create log directory if it doesn't exist
 	const logDir = path.join(process.cwd(), 'log');
 	if (!fs.existsSync(logDir)) {
 		fs.mkdirSync(logDir, { recursive: true });
@@ -43,8 +43,8 @@ function loadLogger() {
 		],
 	});
 
-	// Toujours ajouter la console en développement, ou si config n'est pas encore chargé
-	// La config sera mise à jour après le chargement dans config.ts
+	// Always add console in development, or if config is not yet loaded
+	// Config will be updated after loading in config.ts
 	const shouldAddConsole = process.env.NODE_ENV !== 'production' || 
 	                         (typeof global.config !== 'undefined' && global.config?.system?.jeedom);
 

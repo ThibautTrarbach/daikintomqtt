@@ -8,57 +8,57 @@ export interface ValidationError {
 
 export class ConfigValidationError extends Error {
 	constructor(public errors: ValidationError[]) {
-		const messages = errors.map(e => `  - ${e.field}: ${e.message}${e.value !== undefined ? ` (valeur: ${JSON.stringify(e.value)})` : ''}`).join('\n');
-		super(`Erreurs de validation de configuration:\n${messages}`);
+		const messages = errors.map(e => `  - ${e.field}: ${e.message}${e.value !== undefined ? ` (value: ${JSON.stringify(e.value)})` : ''}`).join('\n');
+		super(`Configuration validation errors:\n${messages}`);
 		this.name = 'ConfigValidationError';
 	}
 }
 
 /**
- * Valide la configuration complète au démarrage
+ * Validates complete configuration at startup
  */
 export function validateConfig(config: any): void {
 	const errors: ValidationError[] = [];
 
-	// Validation de la structure de base
+	// Validate base structure
 	if (!config) {
 		throw new ConfigValidationError([{
 			field: 'config',
-			message: 'La configuration est vide ou n\'existe pas'
+			message: 'Configuration is empty or does not exist'
 		}]);
 	}
 
-	// Validation de la section system
+	// Validate system section
 	if (!config.system) {
 		errors.push({
 			field: 'system',
-			message: 'La section system est requise'
+			message: 'System section is required'
 		});
 	} else {
 		errors.push(...validateSystemConfig(config.system));
 	}
 
-	// Validation de la section daikin
+	// Validate daikin section
 	if (!config.daikin) {
 		errors.push({
 			field: 'daikin',
-			message: 'La section daikin est requise'
+			message: 'Daikin section is required'
 		});
 	} else {
 		errors.push(...validateDaikinConfig(config.daikin));
 	}
 
-	// Validation de la section mqtt
+	// Validate mqtt section
 	if (!config.mqtt) {
 		errors.push({
 			field: 'mqtt',
-			message: 'La section mqtt est requise'
+			message: 'MQTT section is required'
 		});
 	} else {
 		errors.push(...validateMQTTConfig(config.mqtt));
 	}
 
-	// Validation optionnelle de la section homeassistant
+	// Optional validation of homeassistant section
 	if (config.homeassistant) {
 		errors.push(...validateHomeAssistantConfig(config.homeassistant));
 	}
@@ -69,37 +69,37 @@ export function validateConfig(config: any): void {
 }
 
 /**
- * Valide la configuration système
+ * Validates system configuration
  */
 function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 	const errors: ValidationError[] = [];
 
-	// Validation du logLevel
+	// Validate logLevel
 	const validLogLevels = ['error', 'warn', 'info', 'debug', 'verbose'];
 	if (!system.logLevel) {
 		errors.push({
 			field: 'system.logLevel',
-			message: 'Le niveau de log est requis',
+			message: 'Log level is required',
 			value: system.logLevel
 		});
 	} else if (!validLogLevels.includes(system.logLevel.toLowerCase())) {
 		errors.push({
 			field: 'system.logLevel',
-			message: `Le niveau de log doit être l'un des suivants: ${validLogLevels.join(', ')}`,
+			message: `Log level must be one of: ${validLogLevels.join(', ')}`,
 			value: system.logLevel
 		});
 	}
 
-	// Validation de jeedom (doit être un booléen)
+	// Validate jeedom (must be a boolean)
 	if (typeof system.jeedom !== 'boolean') {
 		errors.push({
 			field: 'system.jeedom',
-			message: 'La valeur doit être un booléen (true/false)',
+			message: 'Value must be a boolean (true/false)',
 			value: system.jeedom
 		});
 	}
 
-	// Validation de la section polling si présente
+	// Validate polling section if present
 	if (system.polling) {
 		errors.push(...validatePollingConfig(system.polling));
 	}
@@ -108,91 +108,91 @@ function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 }
 
 /**
- * Valide la configuration du polling
+ * Validates polling configuration
  */
 function validatePollingConfig(polling: ConfigPolling): ValidationError[] {
 	const errors: ValidationError[] = [];
 
-	// Validation de dayInterval
+	// Validate dayInterval
 	if (polling.dayInterval === undefined || polling.dayInterval === null) {
 		errors.push({
 			field: 'system.polling.dayInterval',
-			message: 'L\'intervalle de polling en journée est requis',
+			message: 'Day polling interval is required',
 			value: polling.dayInterval
 		});
 	} else if (typeof polling.dayInterval !== 'number' || polling.dayInterval <= 0) {
 		errors.push({
 			field: 'system.polling.dayInterval',
-			message: 'L\'intervalle de polling en journée doit être un nombre positif (en minutes)',
+			message: 'Day polling interval must be a positive number (in minutes)',
 			value: polling.dayInterval
 		});
 	} else if (polling.dayInterval < 1 || polling.dayInterval > 1440) {
 		errors.push({
 			field: 'system.polling.dayInterval',
-			message: 'L\'intervalle de polling en journée doit être entre 1 et 1440 minutes (24h)',
+			message: 'Day polling interval must be between 1 and 1440 minutes (24h)',
 			value: polling.dayInterval
 		});
 	}
 
-	// Validation de nightInterval
+	// Validate nightInterval
 	if (polling.nightInterval === undefined || polling.nightInterval === null) {
 		errors.push({
 			field: 'system.polling.nightInterval',
-			message: 'L\'intervalle de polling la nuit est requis',
+			message: 'Night polling interval is required',
 			value: polling.nightInterval
 		});
 	} else if (typeof polling.nightInterval !== 'number' || polling.nightInterval <= 0) {
 		errors.push({
 			field: 'system.polling.nightInterval',
-			message: 'L\'intervalle de polling la nuit doit être un nombre positif (en minutes)',
+			message: 'Night polling interval must be a positive number (in minutes)',
 			value: polling.nightInterval
 		});
 	} else if (polling.nightInterval < 1 || polling.nightInterval > 1440) {
 		errors.push({
 			field: 'system.polling.nightInterval',
-			message: 'L\'intervalle de polling la nuit doit être entre 1 et 1440 minutes (24h)',
+			message: 'Night polling interval must be between 1 and 1440 minutes (24h)',
 			value: polling.nightInterval
 		});
 	}
 
-	// Validation de nightStart
+	// Validate nightStart
 	if (polling.nightStart === undefined || polling.nightStart === null) {
 		errors.push({
 			field: 'system.polling.nightStart',
-			message: 'L\'heure de début de la période nuit est requise',
+			message: 'Night period start hour is required',
 			value: polling.nightStart
 		});
 	} else if (typeof polling.nightStart !== 'number' || !Number.isInteger(polling.nightStart)) {
 		errors.push({
 			field: 'system.polling.nightStart',
-			message: 'L\'heure de début de la période nuit doit être un entier',
+			message: 'Night period start hour must be an integer',
 			value: polling.nightStart
 		});
 	} else if (polling.nightStart < 0 || polling.nightStart > 23) {
 		errors.push({
 			field: 'system.polling.nightStart',
-			message: 'L\'heure de début de la période nuit doit être entre 0 et 23',
+			message: 'Night period start hour must be between 0 and 23',
 			value: polling.nightStart
 		});
 	}
 
-	// Validation de nightEnd
+	// Validate nightEnd
 	if (polling.nightEnd === undefined || polling.nightEnd === null) {
 		errors.push({
 			field: 'system.polling.nightEnd',
-			message: 'L\'heure de fin de la période nuit est requise',
+			message: 'Night period end hour is required',
 			value: polling.nightEnd
 		});
 	} else if (typeof polling.nightEnd !== 'number' || !Number.isInteger(polling.nightEnd)) {
 		errors.push({
 			field: 'system.polling.nightEnd',
-			message: 'L\'heure de fin de la période nuit doit être un entier',
+			message: 'Night period end hour must be an integer',
 			value: polling.nightEnd
 		});
 	} else if (polling.nightEnd < 0 || polling.nightEnd > 23) {
 		errors.push({
 			field: 'system.polling.nightEnd',
-			message: 'L\'heure de fin de la période nuit doit être entre 0 et 23',
+			message: 'Night period end hour must be between 0 and 23',
 			value: polling.nightEnd
 		});
 	}
@@ -201,73 +201,73 @@ function validatePollingConfig(polling: ConfigPolling): ValidationError[] {
 }
 
 /**
- * Valide la configuration Daikin
+ * Validates Daikin configuration
  */
 function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 	const errors: ValidationError[] = [];
 
-	// Validation de clientID
+	// Validate clientID
 	if (!daikin.clientID || typeof daikin.clientID !== 'string' || daikin.clientID.trim().length === 0) {
 		errors.push({
 			field: 'daikin.clientID',
-			message: 'Le clientID Daikin est requis et ne peut pas être vide',
+			message: 'Daikin clientID is required and cannot be empty',
 			value: daikin.clientID
 		});
 	}
 
-	// Validation de clientSecret
+	// Validate clientSecret
 	if (!daikin.clientSecret || typeof daikin.clientSecret !== 'string' || daikin.clientSecret.trim().length === 0) {
 		errors.push({
 			field: 'daikin.clientSecret',
-			message: 'Le clientSecret Daikin est requis et ne peut pas être vide',
+			message: 'Daikin clientSecret is required and cannot be empty',
 			value: daikin.clientSecret ? '***' : daikin.clientSecret
 		});
 	}
 
-	// Validation de clientURL
+	// Validate clientURL
 	if (!daikin.clientURL || typeof daikin.clientURL !== 'string' || daikin.clientURL.trim().length === 0) {
 		errors.push({
 			field: 'daikin.clientURL',
-			message: 'L\'URL du client est requise et ne peut pas être vide',
+			message: 'Client URL is required and cannot be empty',
 			value: daikin.clientURL
 		});
 	} else {
-		// Validation du format URL
+		// Validate URL format
 		try {
 			const url = new URL(daikin.clientURL);
 			if (url.protocol !== 'http:' && url.protocol !== 'https:') {
 				errors.push({
 					field: 'daikin.clientURL',
-					message: 'L\'URL doit utiliser le protocole http ou https',
+					message: 'URL must use http or https protocol',
 					value: daikin.clientURL
 				});
 			}
 		} catch (e) {
 			errors.push({
 				field: 'daikin.clientURL',
-				message: 'L\'URL n\'est pas valide',
+				message: 'URL is not valid',
 				value: daikin.clientURL
 			});
 		}
 	}
 
-	// Validation de clientPort
+	// Validate clientPort
 	if (daikin.clientPort === undefined || daikin.clientPort === null) {
 		errors.push({
 			field: 'daikin.clientPort',
-			message: 'Le port du client est requis',
+			message: 'Client port is required',
 			value: daikin.clientPort
 		});
 	} else if (typeof daikin.clientPort !== 'number' || !Number.isInteger(daikin.clientPort)) {
 		errors.push({
 			field: 'daikin.clientPort',
-			message: 'Le port du client doit être un entier',
+			message: 'Client port must be an integer',
 			value: daikin.clientPort
 		});
 	} else if (daikin.clientPort < 1 || daikin.clientPort > 65535) {
 		errors.push({
 			field: 'daikin.clientPort',
-			message: 'Le port du client doit être entre 1 et 65535',
+			message: 'Client port must be between 1 and 65535',
 			value: daikin.clientPort
 		});
 	}
@@ -276,134 +276,134 @@ function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 }
 
 /**
- * Valide la configuration MQTT
+ * Validates MQTT configuration
  */
 function validateMQTTConfig(mqtt: ConfigMQTT): ValidationError[] {
 	const errors: ValidationError[] = [];
 
-	// Validation de host
+	// Validate host
 	if (!mqtt.host || typeof mqtt.host !== 'string' || mqtt.host.trim().length === 0) {
 		errors.push({
 			field: 'mqtt.host',
-			message: 'L\'adresse IP ou le nom d\'hôte du broker MQTT est requis',
+			message: 'MQTT broker IP address or hostname is required',
 			value: mqtt.host
 		});
 	} else {
-		// Validation basique de l'adresse IP ou du nom d'hôte
+		// Basic validation of IP address or hostname
 		const hostRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^(\d{1,3}\.){3}\d{1,3}$|^localhost$|^\[([0-9a-fA-F]{0,4}:){7}[0-9a-fA-F]{0,4}\]$/;
 		if (!hostRegex.test(mqtt.host)) {
 			errors.push({
 				field: 'mqtt.host',
-				message: 'Le format de l\'adresse IP ou du nom d\'hôte n\'est pas valide',
+				message: 'IP address or hostname format is not valid',
 				value: mqtt.host
 			});
 		}
 	}
 
-	// Validation de port
+	// Validate port
 	if (mqtt.port === undefined || mqtt.port === null) {
 		errors.push({
 			field: 'mqtt.port',
-			message: 'Le port du broker MQTT est requis',
+			message: 'MQTT broker port is required',
 			value: mqtt.port
 		});
 	} else if (typeof mqtt.port !== 'number' || !Number.isInteger(mqtt.port)) {
 		errors.push({
 			field: 'mqtt.port',
-			message: 'Le port du broker MQTT doit être un entier',
+			message: 'MQTT broker port must be an integer',
 			value: mqtt.port
 		});
 	} else if (mqtt.port < 1 || mqtt.port > 65535) {
 		errors.push({
 			field: 'mqtt.port',
-			message: 'Le port du broker MQTT doit être entre 1 et 65535',
+			message: 'MQTT broker port must be between 1 and 65535',
 			value: mqtt.port
 		});
 	}
 
-	// Validation de auth
+	// Validate auth
 	if (typeof mqtt.auth !== 'boolean') {
 		errors.push({
 			field: 'mqtt.auth',
-			message: 'La valeur auth doit être un booléen (true/false)',
+			message: 'Auth value must be a boolean (true/false)',
 			value: mqtt.auth
 		});
 	}
 
-	// Validation de username et password si auth est true
+	// Validate username and password if auth is true
 	if (mqtt.auth === true) {
 		if (!mqtt.username || typeof mqtt.username !== 'string' || mqtt.username.trim().length === 0) {
 			errors.push({
 				field: 'mqtt.username',
-				message: 'Le nom d\'utilisateur MQTT est requis lorsque auth est activé',
+				message: 'MQTT username is required when auth is enabled',
 				value: mqtt.username
 			});
 		}
 		if (!mqtt.password || typeof mqtt.password !== 'string' || mqtt.password.trim().length === 0) {
 			errors.push({
 				field: 'mqtt.password',
-				message: 'Le mot de passe MQTT est requis lorsque auth est activé',
+				message: 'MQTT password is required when auth is enabled',
 				value: mqtt.password ? '***' : mqtt.password
 			});
 		}
 	}
 
-	// Validation de connectTimeout
+	// Validate connectTimeout
 	if (mqtt.connectTimeout === undefined || mqtt.connectTimeout === null) {
 		errors.push({
 			field: 'mqtt.connectTimeout',
-			message: 'Le timeout de connexion est requis',
+			message: 'Connection timeout is required',
 			value: mqtt.connectTimeout
 		});
 	} else if (typeof mqtt.connectTimeout !== 'number' || mqtt.connectTimeout <= 0) {
 		errors.push({
 			field: 'mqtt.connectTimeout',
-			message: 'Le timeout de connexion doit être un nombre positif (en millisecondes)',
+			message: 'Connection timeout must be a positive number (in milliseconds)',
 			value: mqtt.connectTimeout
 		});
 	} else if (mqtt.connectTimeout < 1000 || mqtt.connectTimeout > 60000) {
 		errors.push({
 			field: 'mqtt.connectTimeout',
-			message: 'Le timeout de connexion doit être entre 1000 et 60000 millisecondes',
+			message: 'Connection timeout must be between 1000 and 60000 milliseconds',
 			value: mqtt.connectTimeout
 		});
 	}
 
-	// Validation de reconnectPeriod
+	// Validate reconnectPeriod
 	if (mqtt.reconnectPeriod === undefined || mqtt.reconnectPeriod === null) {
 		errors.push({
 			field: 'mqtt.reconnectPeriod',
-			message: 'La période de reconnexion est requise',
+			message: 'Reconnection period is required',
 			value: mqtt.reconnectPeriod
 		});
 	} else if (typeof mqtt.reconnectPeriod !== 'number' || mqtt.reconnectPeriod < 0) {
 		errors.push({
 			field: 'mqtt.reconnectPeriod',
-			message: 'La période de reconnexion doit être un nombre positif ou nul (en millisecondes)',
+			message: 'Reconnection period must be a positive number or zero (in milliseconds)',
 			value: mqtt.reconnectPeriod
 		});
 	} else if (mqtt.reconnectPeriod > 300000) {
 		errors.push({
 			field: 'mqtt.reconnectPeriod',
-			message: 'La période de reconnexion ne devrait pas dépasser 300000 millisecondes (5 minutes)',
+			message: 'Reconnection period should not exceed 300000 milliseconds (5 minutes)',
 			value: mqtt.reconnectPeriod
 		});
 	}
 
-	// Validation de topic
+	// Validate topic
 	if (!mqtt.topic || typeof mqtt.topic !== 'string' || mqtt.topic.trim().length === 0) {
 		errors.push({
 			field: 'mqtt.topic',
-			message: 'Le topic MQTT de base est requis et ne peut pas être vide',
+			message: 'Base MQTT topic is required and cannot be empty',
 			value: mqtt.topic
 		});
 	} else {
-		// Validation du format du topic MQTT
+		// Validate MQTT topic format
 		const topicRegex = /^[^#+$]+$/;
 		if (!topicRegex.test(mqtt.topic)) {
 			errors.push({
 				field: 'mqtt.topic',
-				message: 'Le topic MQTT ne peut pas contenir les caractères #, + ou $',
+				message: 'MQTT topic cannot contain characters #, + or $',
 				value: mqtt.topic
 			});
 		}
@@ -413,26 +413,26 @@ function validateMQTTConfig(mqtt: ConfigMQTT): ValidationError[] {
 }
 
 /**
- * Valide la configuration Home Assistant
+ * Validates Home Assistant configuration
  */
 function validateHomeAssistantConfig(homeassistant: ConfigHomeAssistant): ValidationError[] {
 	const errors: ValidationError[] = [];
 
-	// Validation de enabled
+	// Validate enabled
 	if (typeof homeassistant.enabled !== 'boolean') {
 		errors.push({
 			field: 'homeassistant.enabled',
-			message: 'La valeur enabled doit être un booléen (true/false)',
+			message: 'Enabled value must be a boolean (true/false)',
 			value: homeassistant.enabled
 		});
 	}
 
-	// Validation de discoveryPrefix si présent
+	// Validate discoveryPrefix if present
 	if (homeassistant.discoveryPrefix !== undefined) {
 		if (typeof homeassistant.discoveryPrefix !== 'string' || homeassistant.discoveryPrefix.trim().length === 0) {
 			errors.push({
 				field: 'homeassistant.discoveryPrefix',
-				message: 'Le préfixe de découverte doit être une chaîne non vide',
+				message: 'Discovery prefix must be a non-empty string',
 				value: homeassistant.discoveryPrefix
 			});
 		} else {
@@ -440,7 +440,7 @@ function validateHomeAssistantConfig(homeassistant: ConfigHomeAssistant): Valida
 			if (!prefixRegex.test(homeassistant.discoveryPrefix)) {
 				errors.push({
 					field: 'homeassistant.discoveryPrefix',
-					message: 'Le préfixe de découverte ne peut contenir que des lettres, chiffres, tirets et underscores',
+					message: 'Discovery prefix can only contain letters, numbers, dashes and underscores',
 					value: homeassistant.discoveryPrefix
 				});
 			}
