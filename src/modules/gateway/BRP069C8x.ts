@@ -348,7 +348,7 @@ export class BRP069C8x implements ClassModule{
 		this._fanFixed = value;
 	}
 	set fanCurrentMode(value: string) {
-		this.fanCurrentMode = value;
+		this._fanCurrentMode = value;
 	}
 	set device(value: DevicesInformation) {
 		this._device = value;
