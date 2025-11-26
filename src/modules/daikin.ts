@@ -40,7 +40,7 @@ async function loadDaikinAPI() {
 		oidcAuthorizationTimeoutS: 120
 	});
 
-	daikinClient.on('authorization_request', (url) => {
+	daikinClient.on('authorization_request', async (url) => {
 		logger.info(`[daikin.ts] =>
 			Please make sure that ${url} is set as "Redirect URL" in your Daikin Developer Portal account for the used Client!
 			 
@@ -48,9 +48,13 @@ async function loadDaikinAPI() {
 			 
 			Afterwards you are redirected to Daikin to approve the access and then redirected back.`);
 
-		publishConfig('url', url).then()
-		publishConfig('authorization_request', true).then()
-		publishConfig('authorization_timeout', false).then()
+		try {
+			await publishConfig('url', url);
+			await publishConfig('authorization_request', true);
+			await publishConfig('authorization_timeout', false);
+		} catch (error) {
+			logger.error(`[daikin.ts] => Error publishing authorization config: ${error}`);
+		}
 	});
 
 	daikinClient.on('rate_limit_status', async (rateLimitStatus) => {
@@ -79,7 +83,11 @@ async function loadDaikinAPI() {
 
 async function startDaikinAPI() {
 	const devices = await getDevices();
-	console.log(devices);
+	if (!devices) {
+		logger.error("[daikin.ts] => No devices found, cannot start API");
+		return;
+	}
+	logger.debug(`[daikin.ts] => Found ${devices.length} device(s)`);
 	logger.info("[daikin.ts] => Subscribe to MQTT Action")
 	await subscribeDevices(devices)
 	logger.info("[daikin.ts] => Generate Config Info")
@@ -103,7 +111,23 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 	})
 
 	mqttClient.on('message', async function (topic, message) {
-		logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`)
+		try {
+			logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`)
+
+			// Utiliser le cache des devices au lieu de les récupérer à chaque fois
+			const cachedDevices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
+			// Vérifier explicitement null/undefined pour distinguer "pas de cache" de "cache avec tableau vide"
+			const devices = (cachedDevices !== undefined && cachedDevices !== null) ? cachedDevices : await getDevices();
+			
+			const topicStr = topic.toString();
+			let parsedMessage: any;
+			
+			try {
+				parsedMessage = JSON.parse(message.toString());
+			} catch (parseError) {
+				logger.error(`[daikin.ts] => Error parsing MQTT message: ${parseError}`);
+				return;
+			}
 
 		const topicString = topic.toString();
 		const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
@@ -122,6 +146,8 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 			if (gateway !== undefined) {
 				await eventValue(dev, gateway, JSON.parse(message.toString()))
 			}
+		} catch (error) {
+			logger.error(`[daikin.ts] => Error processing MQTT message: ${error}`);
 		}
 	})
 }
@@ -131,7 +157,9 @@ async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: bool
 
 	if (devices && devices.length) {
 		for (let dev of devices) {
-			global.cache[dev.getId()] = dev;
+			// Utiliser cache.set() au lieu de l'indexation directe
+			// TTL de 10 minutes pour correspondre au cache de la liste des devices
+			await cache.set(`device_${dev.getId()}`, dev, 600000);
 			let gateway = getModels(dev);
 			await publishToMQTT(dev.getId(), JSON.stringify(gateway))
 		}
@@ -145,7 +173,7 @@ async function timeUpdate() {
 	let timerefresh = await cache.get('needRefresh')
 	logger.debug("[daikin.ts] => Timestamp Save : " + timerefresh)
 	if (timerefresh == undefined) return;
-	if (typeof(timerefresh) != "number") {
+	if (typeof timerefresh !== "number") {
 		await cache.del('needRefresh');
 		return;
 	}
@@ -195,17 +223,26 @@ async function generateConfig(devices: DaikinCloudDevice[]) {
 }
 
 async function getDevices(force: boolean = false) {
-	const devices = await cache.get('devices')
+	const devices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
 	if (devices == undefined || force)  {
 		logger.debug("[daikin.ts] => Cache invalid ou recup forcé, recuperation information sur le cloud")
 		logger.debug('[daikin.ts] => Send Request to cloud : Refresh')
-		const devices = await daikinClient.getCloudDevices();
-		await cache.set('devices', devices);
-		return devices
+		const freshDevices = await daikinClient.getCloudDevices();
+		// Mettre en cache avec TTL de 10 minutes (600000 millisecondes = 600 secondes)
+		await cache.set('devices', freshDevices, 600000);
+		
+		// Invalider les devices individuels en cache pour garantir la cohérence
+		if (devices && devices.length) {
+			for (const dev of devices) {
+				await cache.del(`device_${dev.getId()}`);
+			}
+		}
+		
+		return freshDevices;
 	} else {
 		logger.debug("[daikin.ts] => Cache valide")
 	}
-	return devices
+	return devices;
 }
 
 export {

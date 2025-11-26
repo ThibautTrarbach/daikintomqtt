@@ -32,7 +32,7 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 		let daikinValue;
 
 		try {
-			if (value.multiple == undefined && value.multiple !== true) {
+			if (value.multiple !== true) {
 				if (value.dataPointPath !== undefined) {
 					if (value.dataPoint == "consumptionData") {
 						logger.debug("[BaseModules.ts] => Récupération consommation avec dataPointPath")
@@ -45,7 +45,7 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 				}
 				else daikinValue = device.getData(value.managementPoint, value.dataPoint).value
 
-			} else if (value.multiple == true) {
+			} else if (value.multiple === true) {
 				let multipleValue;
 
 				if (value.multipleValue.dataPointPath !== undefined) multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, value.multipleValue.dataPointPath).value
@@ -108,13 +108,13 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 		const [key, value] = entry;
 
 		try {
-			if (value.multiple == undefined && value.multiple !== true) {
+			if (value.multiple !== true) {
 				if (value.dataPointPath !== undefined) {
 					validateDataPath(device, value, value.dataPointPath, gatewayClass[key])
 				} else {
 					validateData(device, value, gatewayClass[key])
 				}
-			} else if (value.multiple == true) {
+			} else if (value.multiple === true) {
 				let multipleValue: any;
 				if (value.multipleValue.dataPointPath !== undefined) multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, value.multipleValue.dataPointPath).value
 				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, null).value
@@ -137,10 +137,15 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 	if (!data.isOK) return;
 
 	if (params.value == data.value) return;
-	const deviceD = global.cache[device.getId()]
+	const deviceD = await cache.get(`device_${device.getId()}`) as DaikinCloudDevice | undefined;
+	
+	if (!deviceD) {
+		logger.error(`[BaseModules.ts] => Device ${device.getId()} not found in cache`);
+		return;
+	}
 
 	logger.debug('[BaseModules.ts] => Send Request to cloud : Action | '+ value)
-	await deviceD.setData(def.managementPoint, def.dataPoint, data.value);
+	await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
 	await cache.set('needRefresh', Math.floor(Date.now() / 1000))
 }
 
@@ -151,7 +156,12 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 	if (!data.isOK) return;
 
 	if (params.value == data.value) return;
-	const deviceD = global.cache[device.getId()]
+	const deviceD = await cache.get(`device_${device.getId()}`) as DaikinCloudDevice | undefined;
+	
+	if (!deviceD) {
+		logger.error(`[BaseModules.ts] => Device ${device.getId()} not found in cache`);
+		return;
+	}
 
 	logger.debug('[BaseModules.ts] => Send Request to cloud : Action | '+ value)
 	await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value)
