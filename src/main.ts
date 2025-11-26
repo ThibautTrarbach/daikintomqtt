@@ -18,7 +18,7 @@ import { setTimeout } from "timers/promises";
 	global.datadir = process.env.STORE_DIR || process.cwd() + "/config"
 	global.logger = loadLogger()
 
-	console.info("[main.ts] => Starting DaikinToMQTT")
+	logger.info("[main.ts] => Starting DaikinToMQTT")
 	logger.info("[main.ts] => Load configuration")
 	await loadGlobalConfig()
 	logger.info("[main.ts] => Connect to MQTT")
@@ -34,21 +34,21 @@ import { setTimeout } from "timers/promises";
 
 	if (error.error == "invalid_grant") {
 		try {
-			console.log('====> Token invalid, delete de l ancien token, une reconnection va être necesaire')
-			let path = resolve(datadir, 'daikin-controller-cloud-tokenset')
-			fs.unlinkSync(path);
+			logger.error('====> Token invalid, delete de l ancien token, une reconnection va être necesaire')
+			const tokenPath = resolve(datadir, 'daikin-controller-cloud-tokenset')
+			fs.unlinkSync(tokenPath);
 			process.exit(1)
 		} catch (e) {
-			console.error('Merci de delete le fichier : path');
+			logger.error(`Merci de delete le fichier : ${resolve(datadir, 'daikin-controller-cloud-tokenset')}`);
 			process.exit(1)
 		}
 	} else if (error == 'Error: Authorization time out') {
-		console.log('====> Authorization time out, please restart DaikinToMQTT and retry')
+		logger.error('====> Authorization time out, please restart DaikinToMQTT and retry')
 		await publishConfig('authorization_timeout', true);
 		await setTimeout(5000)
 		process.exit(1)
 	} else {
-		console.error(error)
+		logger.error(`[main.ts] => Unhandled error: ${error}`)
 	}
 })
 

@@ -23,17 +23,29 @@ async function loadMQTTClient() {
 	global.mqttClient = connect(mqttHost, options);
 }
 
-async function publishToMQTT(topic: string, data: string) {
-	if (await cache.get(topic) == data) return;
-	await cache.set(topic, data);
+async function publishToMQTT(topic: string, data: string): Promise<void> {
+	try {
+		const cachedData = await cache.get(topic);
+		if (cachedData === data) return;
+		
+		await cache.set(topic, data);
 
-	mqttClient.publish(config.mqtt.topic + "/" + topic, data, {qos: 0, retain: true}, (error) => {
-		logger.debug("[mqtt.ts] => Send Data to MQTT : " + topic)
-		if (error) {
-			logger.error("[mqtt.ts] => ")
-			logger.error(error)
-		}
-	})
+		return new Promise<void>((resolve, reject) => {
+			const fullTopic = config.mqtt.topic + "/" + topic;
+			mqttClient.publish(fullTopic, data, {qos: 0, retain: true}, (error) => {
+				if (error) {
+					logger.error(`[mqtt.ts] => Error publishing to ${fullTopic}: ${error}`);
+					reject(error);
+				} else {
+					logger.debug(`[mqtt.ts] => Send Data to MQTT : ${topic}`);
+					resolve();
+				}
+			});
+		});
+	} catch (error) {
+		logger.error(`[mqtt.ts] => Error in publishToMQTT for topic ${topic}: ${error}`);
+		throw error;
+	}
 }
 
 async function publishConfig(key: string, value: any) {
