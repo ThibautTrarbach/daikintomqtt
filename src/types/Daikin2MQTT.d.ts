@@ -9,6 +9,14 @@ export interface Daikin2MQTT {
 export interface ConfigSystem {
 	logLevel: string
 	jeedom: boolean
+	polling?: ConfigPolling
+}
+
+export interface ConfigPolling {
+	dayInterval: number // Intervalle en minutes pour le polling en journée
+	nightInterval: number // Intervalle en minutes pour le polling la nuit
+	nightStart: number // Heure de début de la période nuit (0-23)
+	nightEnd: number // Heure de fin de la période nuit (0-23)
 }
 
 export interface ConfigDaikin {
