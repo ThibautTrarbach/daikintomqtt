@@ -33,13 +33,13 @@ function isNightTime(): boolean {
 function getCurrentPollingInterval(): number {
 	const pollingConfig = config.system.polling;
 	if (!pollingConfig) {
-		// Par défaut, 15 minutes si pas de config
-		return 15;
+		// Par défaut, 10 minutes si pas de config
+		return 10;
 	}
 	
 	return isNightTime() 
-		? (pollingConfig.nightInterval ?? 60)
-		: (pollingConfig.dayInterval ?? 15);
+		? (pollingConfig.nightInterval ?? 20)
+		: (pollingConfig.dayInterval ?? 10);
 }
 
 /**
@@ -95,16 +95,37 @@ async function loadCron() {
 	// Configuration par défaut si non définie
 	if (!config.system.polling) {
 		config.system.polling = {
-			dayInterval: 15,
-			nightInterval: 60,
+			dayInterval: 10,
+			nightInterval: 20,
 			nightStart: 22,
 			nightEnd: 7
 		};
 		logger.warn("[cron.ts] => Configuration polling non trouvée, utilisation des valeurs par défaut");
 	}
 	
+	const pollingConfig = config.system.polling;
+	const isNight = isNightTime();
+	const currentInterval = getCurrentPollingInterval();
+	const now = new Date();
+	const currentTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+	
+	// Log des informations de configuration au démarrage
+	logger.info("[cron.ts] => Configuration du polling dynamique :");
+	logger.info(`[cron.ts] =>   - Intervalle journée : ${pollingConfig.dayInterval} minutes`);
+	logger.info(`[cron.ts] =>   - Intervalle nuit : ${pollingConfig.nightInterval} minutes`);
+	logger.info(`[cron.ts] =>   - Période nuit : ${pollingConfig.nightStart}h - ${pollingConfig.nightEnd}h`);
+	logger.info(`[cron.ts] =>   - Heure actuelle : ${currentTime} (${isNight ? 'nuit' : 'jour'})`);
+	logger.info(`[cron.ts] =>   - Intervalle actuel : ${currentInterval} minutes`);
+	
 	// Démarrer le polling dynamique
 	scheduleNextPolling();
+	
+	// Refresh forcé à 23h58 chaque jour pour les stats électriques
+	cron.schedule('58 23 * * *', async function () {
+		logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = RUN");
+		await sendDevice(null, true);
+		logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = FINISH");
+	});
 	
 	// Garder le cron pour le refresh après action (toutes les 30 secondes)
 	cron.schedule('*/30 * * * * *', async function () {

@@ -2,8 +2,8 @@ system:
   logLevel: 'info' # Indicates the level of log that the system must use
   jeedom: false # Activate the integration for the Jeedom home automation system
   polling:
-    dayInterval: 15 # Intervalle de rafraîchissement en minutes pendant la journée
-    nightInterval: 60 # Intervalle de rafraîchissement en minutes pendant la nuit
+    dayInterval: 10 # Intervalle de rafraîchissement en minutes pendant la journée
+    nightInterval: 20 # Intervalle de rafraîchissement en minutes pendant la nuit
     nightStart: 22 # Heure de début de la période nuit (0-23)
     nightEnd: 7 # Heure de fin de la période nuit (0-23)
 daikin:
