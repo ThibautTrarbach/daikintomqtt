@@ -8,7 +8,7 @@ async function loadCron() {
 		logger.debug("[cron.ts] => CRON - Daikin Polling = FINISH")
 	});
 
-	cron.schedule('*/30 * * * * *', async function () {
+	cron.schedule('*/15 * * * * *', async function () {
 		logger.debug("[cron.ts] => CRON - Refresh data after action = RUN")
 		await timeUpdate()
 		logger.debug("[cron.ts] => CRON - Refresh data after action = FINISH")

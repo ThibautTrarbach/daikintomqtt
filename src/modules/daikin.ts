@@ -8,12 +8,15 @@ import {
 	BRP069B4x,
 	BRP069C41,
 	BRP069C4x, BRP069C8x,
-	eventValue
+	eventValue,
+	SystemBridge
 } from "./gateway";
 import {makeDefineFile} from "./converter";
-import {publishConfig, publishToMQTT} from "./mqtt";
+import {publishToMQTT} from "./mqtt";
 import {DaikinCloudController, OnectaMockDevice} from "daikin-controller-cloud";
 import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import fs from "fs";
+import {INSTANCE_ID} from "./instanceId";
 
 async function loadDaikinAPI() {
 	if (!config.daikin.clientID || !config.daikin.clientSecret) {
@@ -40,7 +43,7 @@ async function loadDaikinAPI() {
 		oidcAuthorizationTimeoutS: 120
 	});
 
-	daikinClient.on('authorization_request', (url) => {
+	daikinClient.on('authorization_request', async (url) => {
 		logger.info(`[daikin.ts] =>
 			Please make sure that ${url} is set as "Redirect URL" in your Daikin Developer Portal account for the used Client!
 			 
@@ -48,19 +51,26 @@ async function loadDaikinAPI() {
 			 
 			Afterwards you are redirected to Daikin to approve the access and then redirected back.`);
 
-		publishConfig('url', url).then()
-		publishConfig('authorization_request', true).then()
-		publishConfig('authorization_timeout', false).then()
+		// Mettre à jour le module système avec les informations d'autorisation
+		await updateSystemBridge(null, null, {
+			authorizationUrl: url,
+			authorizationRequest: true,
+			authorizationTimeout: false
+		});
 	});
 
 	daikinClient.on('rate_limit_status', async (rateLimitStatus) => {
 		logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - START`)
-		await publishConfig('authorization_request', false)
-		await publishConfig('authorization_timeout', false)
-		await publishConfig('rate/limitMinute', rateLimitStatus.limitMinute)
-		await publishConfig('rate/remainingMinute', rateLimitStatus.remainingMinute)
-		await publishConfig('rate/limitDay', rateLimitStatus.limitDay)
-		await publishConfig('rate/remainingDay', rateLimitStatus.remainingDay)
+		// Stocker dans le cache pour récupération ultérieure
+		await cache.set('rate/limitMinute', rateLimitStatus.limitMinute)
+		await cache.set('rate/remainingMinute', rateLimitStatus.remainingMinute)
+		await cache.set('rate/limitDay', rateLimitStatus.limitDay)
+		await cache.set('rate/remainingDay', rateLimitStatus.remainingDay)
+		// Mettre à jour le module système avec les informations de rate limit et d'autorisation
+		await updateSystemBridge(rateLimitStatus, null, {
+			authorizationRequest: false,
+			authorizationTimeout: false
+		})
 		logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - FINISH`)
 	});
 
@@ -86,6 +96,8 @@ async function startDaikinAPI() {
 	await generateConfig(devices)
 	logger.info("[daikin.ts] => Send First Event Data Value")
 	await sendDevice(devices)
+	logger.info("[daikin.ts] => Initialize System Bridge")
+	await initializeSystemBridge(devices)
 }
 
 async function subscribeDevices(devices: DaikinCloudDevice[]) {
@@ -96,22 +108,26 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 		})
 	}
 
-	// Subscribe to refresh command topic
-	let refreshTopic = config.mqtt.topic + "/system/bridge/refresh/set"
-	mqttClient.subscribe(refreshTopic, function (err) {
-		if (!err) logger.info("[daikin.ts] => Subscribe to " + refreshTopic)
+	// Subscribe to Daikin2MQTT bridge set topic
+	const systemBridgeSetTopic = config.mqtt.topic + "/" + INSTANCE_ID + "/set"
+	mqttClient.subscribe(systemBridgeSetTopic, function (err) {
+		if (!err) logger.info("[daikin.ts] => Subscribe to " + systemBridgeSetTopic)
 	})
 
 	mqttClient.on('message', async function (topic, message) {
 		logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`)
 
 		const topicString = topic.toString();
-		const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
+		const systemBridgeSetTopicPath = config.mqtt.topic + "/" + INSTANCE_ID + "/set";
 
-		// Handle refresh command
-		if (topicString === refreshTopicPath) {
-			logger.info("[daikin.ts] => Refresh command received, updating all devices")
-			await sendDevice(null, true) // Force refresh from cloud
+		// Handle system bridge actions
+		if (topicString === systemBridgeSetTopicPath) {
+			const data = JSON.parse(message.toString());
+			if (data.refreshAllDevices !== undefined || data._refreshAllDevices !== undefined) {
+				logger.info("[daikin.ts] => Refresh all devices command from system bridge")
+				await sendDevice(null, true) // Force refresh from cloud
+				await updateSystemBridge() // Mettre à jour le module système après refresh
+			}
 			return
 		}
 
@@ -135,12 +151,14 @@ async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: bool
 			let gateway = getModels(dev);
 			await publishToMQTT(dev.getId(), JSON.stringify(gateway))
 		}
+		// Mettre à jour le module système après envoi des devices
+		await updateSystemBridge(null, devices)
 	}
 }
 
 async function timeUpdate() {
 	logger.debug("[daikin.ts] => Refresh After Command => START")
-	let time = Math.floor((Date.now() / 1000) - 120)
+	let time = Math.floor((Date.now() / 1000) - 60)
 	logger.debug("[daikin.ts] => Timestamp Minimum : " + time)
 	let timerefresh = await cache.get('needRefresh')
 	logger.debug("[daikin.ts] => Timestamp Save : " + timerefresh)
@@ -208,6 +226,133 @@ async function getDevices(force: boolean = false) {
 	return devices
 }
 
+async function initializeSystemBridge(devices: DaikinCloudDevice[]) {
+	const systemBridge = new SystemBridge();
+	systemBridge.device.id = INSTANCE_ID;
+	systemBridge.device.serialNumber = INSTANCE_ID;
+	await updateSystemBridge(null, devices, undefined, systemBridge);
+}
+
+async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDevice[] | null, authorizationInfo?: {authorizationUrl?: string, authorizationRequest?: boolean, authorizationTimeout?: boolean}, existingBridge?: SystemBridge) {
+	const systemBridge = existingBridge || new SystemBridge();
+	
+	if (!existingBridge) {
+		systemBridge.device.id = INSTANCE_ID;
+		systemBridge.device.serialNumber = INSTANCE_ID;
+	}
+	
+	// Mettre à jour les informations de rate limit
+	if (rateLimitStatus) {
+		systemBridge.rateLimitMinute = rateLimitStatus.limitMinute;
+		systemBridge.rateRemainingMinute = rateLimitStatus.remainingMinute;
+		systemBridge.rateLimitDay = rateLimitStatus.limitDay;
+		systemBridge.rateRemainingDay = rateLimitStatus.remainingDay;
+	} else {
+		const [limitMinute, remainingMinute, limitDay, remainingDay] = await Promise.all([
+			cache.get('rate/limitMinute'),
+			cache.get('rate/remainingMinute'),
+			cache.get('rate/limitDay'),
+			cache.get('rate/remainingDay')
+		]);
+		if (limitMinute !== undefined) systemBridge.rateLimitMinute = Number(limitMinute);
+		if (remainingMinute !== undefined) systemBridge.rateRemainingMinute = Number(remainingMinute);
+		if (limitDay !== undefined) systemBridge.rateLimitDay = Number(limitDay);
+		if (remainingDay !== undefined) systemBridge.rateRemainingDay = Number(remainingDay);
+	}
+
+	// Mettre à jour les informations d'autorisation
+	if (authorizationInfo) {
+		if (authorizationInfo.authorizationUrl !== undefined) {
+			systemBridge.authorizationUrl = authorizationInfo.authorizationUrl;
+			await cache.set('authorizationUrl', authorizationInfo.authorizationUrl);
+		}
+		if (authorizationInfo.authorizationRequest !== undefined) {
+			systemBridge.authorizationRequest = authorizationInfo.authorizationRequest;
+			await cache.set('authorizationRequest', authorizationInfo.authorizationRequest);
+		}
+		if (authorizationInfo.authorizationTimeout !== undefined) {
+			systemBridge.authorizationTimeout = authorizationInfo.authorizationTimeout;
+			await cache.set('authorizationTimeout', authorizationInfo.authorizationTimeout);
+		}
+	} else {
+		const [authUrl, authRequest, authTimeout] = await Promise.all([
+			cache.get('authorizationUrl'),
+			cache.get('authorizationRequest'),
+			cache.get('authorizationTimeout')
+		]);
+		if (authUrl !== undefined) systemBridge.authorizationUrl = String(authUrl);
+		if (authRequest !== undefined) systemBridge.authorizationRequest = Boolean(authRequest);
+		if (authTimeout !== undefined) systemBridge.authorizationTimeout = Boolean(authTimeout);
+	}
+
+	// Mettre à jour les informations sur les modules
+	if (devices === null || devices === undefined) {
+		devices = await getDevices();
+	}
+	
+	if (devices && devices.length) {
+		const modulesInfo = devices.map(dev => {
+			const modelInfo = dev.getData('gateway', 'modelInfo', null)?.value || dev.getData('0', 'modelInfo', null)?.value || 'Unknown';
+			return {
+				id: dev.getId(),
+				model: modelInfo,
+				name: dev.getData('climateControl', 'name', null)?.value || dev.getId()
+			};
+		});
+		
+		systemBridge.modulesCount = modulesInfo.length;
+		systemBridge.modulesList = JSON.stringify(modulesInfo);
+	} else {
+		systemBridge.modulesCount = 0;
+		systemBridge.modulesList = "[]";
+	}
+
+	// Mettre à jour les informations sur les modules non gérés
+	const unsupportedModules = getUnsupportedModules();
+	systemBridge.unsupportedModulesCount = unsupportedModules.length;
+	systemBridge.unsupportedModulesList = JSON.stringify(unsupportedModules);
+
+	// Publier le module système
+	await publishSystemBridge(systemBridge);
+}
+
+async function publishSystemBridge(systemBridge: SystemBridge) {
+	// Publier l'objet complet comme les autres devices (inclut device)
+	await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
+	
+	if (config.system.jeedom) {
+		await makeDefineFile(systemBridge, null);
+	}
+}
+
+function getUnsupportedModules(): Array<{fileName: string, model?: string}> {
+	const configFolder = resolve(datadir, '/newConfig');
+	const unsupportedModules: Array<{fileName: string, model?: string}> = [];
+
+	if (!fs.existsSync(configFolder)) {
+		return unsupportedModules;
+	}
+
+	const files = fs.readdirSync(configFolder);
+	files.forEach(file => {
+		if (file.endsWith('.json')) {
+			const fileName = file.replace('.json', '');
+			try {
+				const filePath = resolve(configFolder, file);
+				const content = fs.readFileSync(filePath, 'utf8');
+				const data = JSON.parse(content);
+				// Essayer d'extraire le modelInfo si disponible
+				const model = data?.gateway?.modelInfo?.value || data?.['0']?.modelInfo?.value || fileName;
+				unsupportedModules.push({ fileName, model });
+			} catch (e) {
+				unsupportedModules.push({ fileName });
+			}
+		}
+	});
+
+	return unsupportedModules;
+}
+
 export {
 	loadDaikinAPI,
 	subscribeDevices,
@@ -215,5 +360,6 @@ export {
 	sendDevice,
 	startDaikinAPI,
 	getDevices,
-	timeUpdate
+	timeUpdate,
+	updateSystemBridge
 }
