@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadDaikinAPI = loadDaikinAPI;
 exports.subscribeDevices = subscribeDevices;
@@ -7,11 +10,14 @@ exports.sendDevice = sendDevice;
 exports.startDaikinAPI = startDaikinAPI;
 exports.getDevices = getDevices;
 exports.timeUpdate = timeUpdate;
+exports.updateSystemBridge = updateSystemBridge;
 const node_path_1 = require("node:path");
 const gateway_1 = require("./gateway");
 const converter_1 = require("./converter");
 const mqtt_1 = require("./mqtt");
 const daikin_controller_cloud_1 = require("daikin-controller-cloud");
+const fs_1 = __importDefault(require("fs"));
+const instanceId_1 = require("./instanceId");
 async function loadDaikinAPI() {
     if (!config.daikin.clientID || !config.daikin.clientSecret) {
         logger.error('[daikin.ts] => Please set the clientID and clientSecret in the settings files');
@@ -33,23 +39,22 @@ async function loadDaikinAPI() {
 			Then please open the URL ${url} in your browser and accept the security warning for the self signed certificate (if you open this for the first time).
 			 
 			Afterwards you are redirected to Daikin to approve the access and then redirected back.`);
-        try {
-            await (0, mqtt_1.publishConfig)('url', url);
-            await (0, mqtt_1.publishConfig)('authorization_request', true);
-            await (0, mqtt_1.publishConfig)('authorization_timeout', false);
-        }
-        catch (error) {
-            logger.error(`[daikin.ts] => Error publishing authorization config: ${error}`);
-        }
+        await updateSystemBridge(null, null, {
+            authorizationUrl: url,
+            authorizationRequest: true,
+            authorizationTimeout: false
+        });
     });
     daikinClient.on('rate_limit_status', async (rateLimitStatus) => {
         logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - START`);
-        await (0, mqtt_1.publishConfig)('authorization_request', false);
-        await (0, mqtt_1.publishConfig)('authorization_timeout', false);
-        await (0, mqtt_1.publishConfig)('rate/limitMinute', rateLimitStatus.limitMinute);
-        await (0, mqtt_1.publishConfig)('rate/remainingMinute', rateLimitStatus.remainingMinute);
-        await (0, mqtt_1.publishConfig)('rate/limitDay', rateLimitStatus.limitDay);
-        await (0, mqtt_1.publishConfig)('rate/remainingDay', rateLimitStatus.remainingDay);
+        await cache.set('rate/limitMinute', rateLimitStatus.limitMinute);
+        await cache.set('rate/remainingMinute', rateLimitStatus.remainingMinute);
+        await cache.set('rate/limitDay', rateLimitStatus.limitDay);
+        await cache.set('rate/remainingDay', rateLimitStatus.remainingDay);
+        await updateSystemBridge(rateLimitStatus, null, {
+            authorizationRequest: false,
+            authorizationTimeout: false
+        });
         logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - FINISH`);
     });
     daikinClient.on('token_update', async (set) => {
@@ -75,6 +80,8 @@ async function startDaikinAPI() {
     await generateConfig(devices);
     logger.info("[daikin.ts] => Send First Event Data Value");
     await sendDevice(devices);
+    logger.info("[daikin.ts] => Initialize System Bridge");
+    await initializeSystemBridge(devices);
 }
 async function subscribeDevices(devices) {
     for (let dev of devices) {
@@ -84,30 +91,23 @@ async function subscribeDevices(devices) {
                 logger.info("[daikin.ts] => Subscribe to " + subscribeTopic);
         });
     }
-    let refreshTopic = config.mqtt.topic + "/system/bridge/refresh/set";
-    mqttClient.subscribe(refreshTopic, function (err) {
+    const systemBridgeSetTopic = config.mqtt.topic + "/" + instanceId_1.INSTANCE_ID + "/set";
+    mqttClient.subscribe(systemBridgeSetTopic, function (err) {
         if (!err)
-            logger.info("[daikin.ts] => Subscribe to " + refreshTopic);
+            logger.info("[daikin.ts] => Subscribe to " + systemBridgeSetTopic);
     });
     mqttClient.on('message', async function (topic, message) {
         try {
             logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`);
-            const cachedDevices = await cache.get('devices');
-            const devices = (cachedDevices !== undefined && cachedDevices !== null) ? cachedDevices : await getDevices();
-            const topicStr = topic.toString();
-            let parsedMessage;
-            try {
-                parsedMessage = JSON.parse(message.toString());
-            }
-            catch (parseError) {
-                logger.error(`[daikin.ts] => Error parsing MQTT message: ${parseError}`);
-                return;
-            }
             const topicString = topic.toString();
-            const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
-            if (topicString === refreshTopicPath) {
-                logger.info("[daikin.ts] => Refresh command received, updating all devices");
-                await sendDevice(null, true);
+            const systemBridgeSetTopicPath = config.mqtt.topic + "/" + instanceId_1.INSTANCE_ID + "/set";
+            if (topicString === systemBridgeSetTopicPath) {
+                const data = JSON.parse(message.toString());
+                if (data.refreshAllDevices !== undefined || data._refreshAllDevices !== undefined) {
+                    logger.info("[daikin.ts] => Refresh all devices command from system bridge");
+                    await sendDevice(null, true);
+                    await updateSystemBridge();
+                }
                 return;
             }
             for (let dev of devices) {
@@ -133,11 +133,12 @@ async function sendDevice(devices = null, cron = false) {
             let gateway = getModels(dev);
             await (0, mqtt_1.publishToMQTT)(dev.getId(), JSON.stringify(gateway));
         }
+        await updateSystemBridge(null, devices);
     }
 }
 async function timeUpdate() {
     logger.debug("[daikin.ts] => Refresh After Command => START");
-    let time = Math.floor((Date.now() / 1000) - 120);
+    let time = Math.floor((Date.now() / 1000) - 60);
     logger.debug("[daikin.ts] => Timestamp Minimum : " + time);
     let timerefresh = await cache.get('needRefresh');
     logger.debug("[daikin.ts] => Timestamp Save : " + timerefresh);
@@ -209,5 +210,120 @@ async function getDevices(force = false) {
         logger.debug("[daikin.ts] => Cache valide");
     }
     return devices;
+}
+async function initializeSystemBridge(devices) {
+    const systemBridge = new gateway_1.SystemBridge();
+    systemBridge.device.id = instanceId_1.INSTANCE_ID;
+    systemBridge.device.serialNumber = instanceId_1.INSTANCE_ID;
+    await updateSystemBridge(null, devices, undefined, systemBridge);
+}
+async function updateSystemBridge(rateLimitStatus, devices, authorizationInfo, existingBridge) {
+    const systemBridge = existingBridge || new gateway_1.SystemBridge();
+    if (!existingBridge) {
+        systemBridge.device.id = instanceId_1.INSTANCE_ID;
+        systemBridge.device.serialNumber = instanceId_1.INSTANCE_ID;
+    }
+    if (rateLimitStatus) {
+        systemBridge.rateLimitMinute = rateLimitStatus.limitMinute;
+        systemBridge.rateRemainingMinute = rateLimitStatus.remainingMinute;
+        systemBridge.rateLimitDay = rateLimitStatus.limitDay;
+        systemBridge.rateRemainingDay = rateLimitStatus.remainingDay;
+    }
+    else {
+        const [limitMinute, remainingMinute, limitDay, remainingDay] = await Promise.all([
+            cache.get('rate/limitMinute'),
+            cache.get('rate/remainingMinute'),
+            cache.get('rate/limitDay'),
+            cache.get('rate/remainingDay')
+        ]);
+        if (limitMinute !== undefined)
+            systemBridge.rateLimitMinute = Number(limitMinute);
+        if (remainingMinute !== undefined)
+            systemBridge.rateRemainingMinute = Number(remainingMinute);
+        if (limitDay !== undefined)
+            systemBridge.rateLimitDay = Number(limitDay);
+        if (remainingDay !== undefined)
+            systemBridge.rateRemainingDay = Number(remainingDay);
+    }
+    if (authorizationInfo) {
+        if (authorizationInfo.authorizationUrl !== undefined) {
+            systemBridge.authorizationUrl = authorizationInfo.authorizationUrl;
+            await cache.set('authorizationUrl', authorizationInfo.authorizationUrl);
+        }
+        if (authorizationInfo.authorizationRequest !== undefined) {
+            systemBridge.authorizationRequest = authorizationInfo.authorizationRequest;
+            await cache.set('authorizationRequest', authorizationInfo.authorizationRequest);
+        }
+        if (authorizationInfo.authorizationTimeout !== undefined) {
+            systemBridge.authorizationTimeout = authorizationInfo.authorizationTimeout;
+            await cache.set('authorizationTimeout', authorizationInfo.authorizationTimeout);
+        }
+    }
+    else {
+        const [authUrl, authRequest, authTimeout] = await Promise.all([
+            cache.get('authorizationUrl'),
+            cache.get('authorizationRequest'),
+            cache.get('authorizationTimeout')
+        ]);
+        if (authUrl !== undefined)
+            systemBridge.authorizationUrl = String(authUrl);
+        if (authRequest !== undefined)
+            systemBridge.authorizationRequest = Boolean(authRequest);
+        if (authTimeout !== undefined)
+            systemBridge.authorizationTimeout = Boolean(authTimeout);
+    }
+    if (devices === null || devices === undefined) {
+        devices = await getDevices();
+    }
+    if (devices && devices.length) {
+        const modulesInfo = devices.map(dev => {
+            const modelInfo = dev.getData('gateway', 'modelInfo', null)?.value || dev.getData('0', 'modelInfo', null)?.value || 'Unknown';
+            return {
+                id: dev.getId(),
+                model: modelInfo,
+                name: dev.getData('climateControl', 'name', null)?.value || dev.getId()
+            };
+        });
+        systemBridge.modulesCount = modulesInfo.length;
+        systemBridge.modulesList = JSON.stringify(modulesInfo);
+    }
+    else {
+        systemBridge.modulesCount = 0;
+        systemBridge.modulesList = "[]";
+    }
+    const unsupportedModules = getUnsupportedModules();
+    systemBridge.unsupportedModulesCount = unsupportedModules.length;
+    systemBridge.unsupportedModulesList = JSON.stringify(unsupportedModules);
+    await publishSystemBridge(systemBridge);
+}
+async function publishSystemBridge(systemBridge) {
+    await (0, mqtt_1.publishToMQTT)(instanceId_1.INSTANCE_ID, JSON.stringify(systemBridge));
+    if (config.system.jeedom) {
+        await (0, converter_1.makeDefineFile)(systemBridge, null);
+    }
+}
+function getUnsupportedModules() {
+    const configFolder = (0, node_path_1.resolve)(datadir, '/newConfig');
+    const unsupportedModules = [];
+    if (!fs_1.default.existsSync(configFolder)) {
+        return unsupportedModules;
+    }
+    const files = fs_1.default.readdirSync(configFolder);
+    files.forEach(file => {
+        if (file.endsWith('.json')) {
+            const fileName = file.replace('.json', '');
+            try {
+                const filePath = (0, node_path_1.resolve)(configFolder, file);
+                const content = fs_1.default.readFileSync(filePath, 'utf8');
+                const data = JSON.parse(content);
+                const model = data?.gateway?.modelInfo?.value || data?.['0']?.modelInfo?.value || fileName;
+                unsupportedModules.push({ fileName, model });
+            }
+            catch (e) {
+                unsupportedModules.push({ fileName });
+            }
+        }
+    });
+    return unsupportedModules;
 }
 //# sourceMappingURL=daikin.js.map

@@ -85,7 +85,7 @@ async function loadCron() {
         await (0, daikin_1.sendDevice)(null, true);
         logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = FINISH");
     });
-    node_cron_1.default.schedule('*/30 * * * * *', async function () {
+    node_cron_1.default.schedule('*/15 * * * * *', async function () {
         logger.debug("[cron.ts] => CRON - Refresh data after action = RUN");
         await (0, daikin_1.timeUpdate)();
         logger.debug("[cron.ts] => CRON - Refresh data after action = FINISH");

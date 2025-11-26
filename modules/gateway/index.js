@@ -16,6 +16,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./Anonymise"), exports);
 __exportStar(require("./BaseModules"), exports);
+__exportStar(require("./SystemBridge"), exports);
 __exportStar(require("./BRP069C4x"), exports);
 __exportStar(require("./BRP069A62"), exports);
 __exportStar(require("./BRP069A78"), exports);

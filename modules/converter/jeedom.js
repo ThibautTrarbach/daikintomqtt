@@ -8,7 +8,7 @@ function generateCMD(data, modules, device) {
         try {
             let [key, value] = entry;
             if (modules[key] !== undefined && modules[key] !== null) {
-                if (value.type == gateway_1.typeEnum.numeric && value.minMaxValue !== undefined) {
+                if (value.type == gateway_1.typeEnum.numeric && value.minMaxValue !== undefined && device !== null) {
                     let minmax = getMinMaxValue(value, device);
                     value.minValue = minmax.min;
                     value.maxValue = minmax.max;

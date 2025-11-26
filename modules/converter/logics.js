@@ -10,9 +10,9 @@ async function makeDefineFile(moduleClass, device) {
     let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_CMD, moduleClass);
     if (config.system.jeedom) {
         let cmd = (0, jeedom_1.generateCMD)(data, moduleClass, device);
-        await (0, mqtt_1.publishToMQTT)('system/jeedom/' + id, JSON.stringify(cmd));
+        await (0, mqtt_1.publishToMQTT)('jeedom/' + id, JSON.stringify(cmd));
     }
-    if (config.homeassistant?.enabled) {
+    if (config.homeassistant?.enabled && device !== null) {
         const discoveryPrefix = config.homeassistant.discoveryPrefix || "homeassistant";
         const discoveryConfigs = (0, homeassistant_1.generateHADiscovery)(data, moduleClass, device);
         for (const [componentType, configs] of Object.entries(discoveryConfigs)) {
