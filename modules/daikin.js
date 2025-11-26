@@ -497,7 +497,41 @@ async function getDevices(force = false) {
                 return freshDevices;
             }
             catch (cloudError) {
-                logger.error(`[daikin.ts] => Error retrieving devices from cloud: ${cloudError instanceof Error ? cloudError.message : String(cloudError)}`);
+                const errorMessage = cloudError instanceof Error ? cloudError.message : String(cloudError);
+                const errorString = String(cloudError);
+                if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || cloudError?.error === "invalid_grant") {
+                    try {
+                        logger.error('[daikin.ts] => Invalid token detected (invalid_grant) in getDevices, deleting old token');
+                        const tokenPath = (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset');
+                        if (fs_1.default.existsSync(tokenPath)) {
+                            fs_1.default.unlinkSync(tokenPath);
+                            logger.info(`[daikin.ts] => Token file deleted: ${tokenPath}`);
+                        }
+                        else {
+                            logger.warn(`[daikin.ts] => Token file does not exist: ${tokenPath}`);
+                        }
+                        try {
+                            await updateSystemBridge(null, [], {
+                                authorizationRequest: true,
+                                authorizationTimeout: false
+                            });
+                        }
+                        catch (bridgeError) {
+                            logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+                        }
+                        logger.info('[daikin.ts] => Token deleted. Please restart the application to trigger a new authorization request.');
+                    }
+                    catch (deleteError) {
+                        logger.error(`[daikin.ts] => Error deleting token: ${deleteError instanceof Error ? deleteError.message : String(deleteError)}`);
+                        logger.error(`[daikin.ts] => Please manually delete the file: ${(0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset')}`);
+                    }
+                    if (devices && devices.length > 0 && !force) {
+                        logger.warn(`[daikin.ts] => Using cached devices due to invalid token`);
+                        return devices;
+                    }
+                    throw new Error("Invalid token (invalid_grant). Token has been deleted. Please restart the application.");
+                }
+                logger.error(`[daikin.ts] => Error retrieving devices from cloud: ${errorMessage}`);
                 if (cloudError instanceof Error && cloudError.stack) {
                     logger.debug(`[daikin.ts] => Stack trace: ${cloudError.stack}`);
                 }
