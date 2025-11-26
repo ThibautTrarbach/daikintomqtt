@@ -179,8 +179,20 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 		logger.info(`[BaseModules.ts] => Envoi de la requête au cloud pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
 		
 		try {
-			await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
-			await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+			// Utiliser le rate limiter pour gérer les retries automatiques
+			const {rateLimiter} = await import("../rateLimiter");
+			await rateLimiter.executeWithRetry(
+				async () => {
+					await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
+					await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+				},
+				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`,
+				{
+					maxRetries: 3,
+					baseDelay: 1000,
+					maxDelay: 60000
+				}
+			);
 			logger.debug(`[BaseModules.ts] => Mise à jour réussie pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
 		} catch (setError) {
 			logger.error(`[BaseModules.ts] => Erreur lors de la mise à jour du cloud pour ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);
@@ -233,8 +245,20 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 		logger.info(`[BaseModules.ts] => Envoi de la requête au cloud pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
 		
 		try {
-			await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
-			await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+			// Utiliser le rate limiter pour gérer les retries automatiques
+			const {rateLimiter} = await import("../rateLimiter");
+			await rateLimiter.executeWithRetry(
+				async () => {
+					await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
+					await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+				},
+				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`,
+				{
+					maxRetries: 3,
+					baseDelay: 1000,
+					maxDelay: 60000
+				}
+			);
 			logger.debug(`[BaseModules.ts] => Mise à jour réussie pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
 		} catch (setError) {
 			logger.error(`[BaseModules.ts] => Erreur lors de la mise à jour du cloud pour ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);

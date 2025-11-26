@@ -66,6 +66,11 @@ async function loadDaikinAPI() {
 		await cache.set('rate/remainingMinute', rateLimitStatus.remainingMinute)
 		await cache.set('rate/limitDay', rateLimitStatus.limitDay)
 		await cache.set('rate/remainingDay', rateLimitStatus.remainingDay)
+		
+		// Mettre à jour le rate limiter
+		const {rateLimiter} = await import("./rateLimiter");
+		rateLimiter.updateRateLimit(rateLimitStatus);
+		
 		// Mettre à jour le module système avec les informations de rate limit et d'autorisation
 		await updateSystemBridge(rateLimitStatus, null, {
 			authorizationRequest: false,
@@ -97,6 +102,10 @@ async function loadDaikinAPI() {
 async function startDaikinAPI() {
 	try {
 		logger.info("[daikin.ts] => Démarrage de l'API Daikin");
+		
+		// Charger les informations de rate limiting depuis le cache au démarrage
+		const {rateLimiter} = await import("./rateLimiter");
+		await rateLimiter.loadRateLimitFromCache();
 		
 		const devices = await getDevices();
 		if (!devices || devices.length === 0) {
@@ -435,7 +444,18 @@ async function getDevices(force: boolean = false): Promise<DaikinCloudDevice[]> 
 			
 			try {
 				logger.debug('[daikin.ts] => Envoi de la requête au cloud Daikin pour récupérer les devices');
-				const freshDevices = await daikinClient.getCloudDevices();
+				
+				// Utiliser le rate limiter pour gérer les retries automatiques
+				const {rateLimiter} = await import("./rateLimiter");
+				const freshDevices = await rateLimiter.executeWithRetry(
+					async () => await daikinClient.getCloudDevices(),
+					'getCloudDevices',
+					{
+						maxRetries: 3,
+						baseDelay: 2000, // 2 secondes de base
+						maxDelay: 120000 // 2 minutes maximum
+					}
+				);
 				
 				if (!Array.isArray(freshDevices)) {
 					logger.error(`[daikin.ts] => La réponse du cloud Daikin n'est pas un tableau: ${typeof freshDevices}`);
