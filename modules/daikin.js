@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -46,42 +79,63 @@ async function loadDaikinAPI() {
         });
     });
     daikinClient.on('rate_limit_status', async (rateLimitStatus) => {
-        logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - START`);
+        logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limit Status - START`);
         await cache.set('rate/limitMinute', rateLimitStatus.limitMinute);
         await cache.set('rate/remainingMinute', rateLimitStatus.remainingMinute);
         await cache.set('rate/limitDay', rateLimitStatus.limitDay);
         await cache.set('rate/remainingDay', rateLimitStatus.remainingDay);
+        const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("./rateLimiter")));
+        rateLimiter.updateRateLimit(rateLimitStatus);
         await updateSystemBridge(rateLimitStatus, null, {
             authorizationRequest: false,
             authorizationTimeout: false
         });
-        logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limite Status - FINISH`);
+        logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limit Status - FINISH`);
     });
     daikinClient.on('token_update', async (set) => {
-        logger.debug(`[daikin.ts] => EVENT - Token Update - Tentative de sauvgarde d'un nouveau token`);
-        logger.debug(`[daikin.ts] => EVENT - Token Update - DATA : `);
+        logger.debug(`[daikin.ts] => EVENT - Token Update - Attempting to save a new token`);
+        logger.debug(`[daikin.ts] => EVENT - Token Update - DATA: `);
         logger.debug(JSON.stringify(set));
     });
     daikinClient.on('error', async (error) => {
-        logger.error(`[daikin.ts] => EVENT - ERROR - : ` + error);
+        logger.error(`[daikin.ts] => EVENT - Daikin client error: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+        }
+        if (error instanceof Error && 'code' in error) {
+            logger.debug(`[daikin.ts] => Error code: ${error.code}`);
+        }
     });
     global.daikinClient = daikinClient;
 }
 async function startDaikinAPI() {
-    const devices = await getDevices();
-    if (!devices) {
-        logger.error("[daikin.ts] => No devices found, cannot start API");
-        return;
+    try {
+        logger.info("[daikin.ts] => Starting Daikin API");
+        const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("./rateLimiter")));
+        await rateLimiter.loadRateLimitFromCache();
+        const devices = await getDevices();
+        if (!devices || devices.length === 0) {
+            logger.error("[daikin.ts] => No devices found, cannot start API");
+            return;
+        }
+        logger.info(`[daikin.ts] => Found ${devices.length} device(s)`);
+        logger.info("[daikin.ts] => Subscribing to MQTT actions");
+        await subscribeDevices(devices);
+        logger.info("[daikin.ts] => Generating configuration files");
+        await generateConfig(devices);
+        logger.info("[daikin.ts] => Sending initial data values");
+        await sendDevice(devices);
+        logger.info("[daikin.ts] => Initializing system bridge");
+        await initializeSystemBridge(devices);
+        logger.info("[daikin.ts] => Daikin API started successfully");
     }
-    logger.debug(`[daikin.ts] => Found ${devices.length} device(s)`);
-    logger.info("[daikin.ts] => Subscribe to MQTT Action");
-    await subscribeDevices(devices);
-    logger.info("[daikin.ts] => Generate Config Info");
-    await generateConfig(devices);
-    logger.info("[daikin.ts] => Send First Event Data Value");
-    await sendDevice(devices);
-    logger.info("[daikin.ts] => Initialize System Bridge");
-    await initializeSystemBridge(devices);
+    catch (error) {
+        logger.error(`[daikin.ts] => Critical error during API startup: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+        }
+        throw error;
+    }
 }
 async function subscribeDevices(devices) {
     for (let dev of devices) {
@@ -98,118 +152,314 @@ async function subscribeDevices(devices) {
     });
     mqttClient.on('message', async function (topic, message) {
         try {
-            logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`);
             const topicString = topic.toString();
+            const messageString = message.toString();
+            logger.debug(`[daikin.ts] => MQTT message received - Topic: ${topicString}, Size: ${messageString.length} bytes`);
             const systemBridgeSetTopicPath = config.mqtt.topic + "/" + instanceId_1.INSTANCE_ID + "/set";
             if (topicString === systemBridgeSetTopicPath) {
-                const data = JSON.parse(message.toString());
+                let data;
+                try {
+                    data = JSON.parse(messageString);
+                }
+                catch (parseError) {
+                    logger.error(`[daikin.ts] => JSON parsing error for system topic: ${topicString}. Message: ${messageString.substring(0, 100)}`);
+                    return;
+                }
                 if (data.refreshAllDevices !== undefined || data._refreshAllDevices !== undefined) {
-                    logger.info("[daikin.ts] => Refresh all devices command from system bridge");
-                    await sendDevice(null, true);
-                    await updateSystemBridge();
+                    logger.info(`[daikin.ts] => Refresh all devices command received from system bridge`);
+                    try {
+                        await sendDevice(null, true);
+                        await updateSystemBridge();
+                        logger.info(`[daikin.ts] => Refresh of all devices completed successfully`);
+                    }
+                    catch (refreshError) {
+                        logger.error(`[daikin.ts] => Error during device refresh: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+                        if (refreshError instanceof Error && refreshError.stack) {
+                            logger.debug(`[daikin.ts] => Stack trace: ${refreshError.stack}`);
+                        }
+                    }
                 }
                 return;
             }
             for (let dev of devices) {
-                if (!topicString.includes(dev.getId()))
+                const deviceId = dev.getId();
+                if (!topicString.includes(deviceId))
                     continue;
+                logger.debug(`[daikin.ts] => Processing message for device: ${deviceId}`);
                 let gateway = getModels(dev);
                 if (gateway !== undefined) {
-                    await (0, gateway_1.eventValue)(dev, gateway, JSON.parse(message.toString()));
+                    let eventData;
+                    try {
+                        eventData = JSON.parse(messageString);
+                    }
+                    catch (parseError) {
+                        logger.error(`[daikin.ts] => JSON parsing error for device ${deviceId}, topic: ${topicString}. Message: ${messageString.substring(0, 100)}`);
+                        continue;
+                    }
+                    try {
+                        await (0, gateway_1.eventValue)(dev, gateway, eventData);
+                        logger.debug(`[daikin.ts] => Command processed successfully for device: ${deviceId}`);
+                    }
+                    catch (eventError) {
+                        logger.error(`[daikin.ts] => Error processing event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
+                        if (eventError instanceof Error && eventError.stack) {
+                            logger.debug(`[daikin.ts] => Stack trace: ${eventError.stack}`);
+                        }
+                    }
+                }
+                else {
+                    logger.warn(`[daikin.ts] => No gateway found for device ${deviceId}, unsupported model`);
                 }
             }
         }
         catch (error) {
-            logger.error(`[daikin.ts] => Error processing MQTT message: ${error}`);
+            logger.error(`[daikin.ts] => Unexpected error processing MQTT message: ${error instanceof Error ? error.message : String(error)}`);
+            if (error instanceof Error && error.stack) {
+                logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+            }
         }
     });
 }
 async function sendDevice(devices = null, cron = false) {
-    if (devices == null)
-        devices = await getDevices(cron);
-    if (devices && devices.length) {
-        for (let dev of devices) {
-            await cache.set(`device_${dev.getId()}`, dev, 600000);
-            let gateway = getModels(dev);
-            await (0, mqtt_1.publishToMQTT)(dev.getId(), JSON.stringify(gateway));
+    try {
+        if (devices == null) {
+            logger.debug(`[daikin.ts] => Retrieving devices${cron ? ' (forced from cloud)' : ' (from cache if available)'}`);
+            devices = await getDevices(cron);
         }
-        await updateSystemBridge(null, devices);
+        if (!devices || devices.length === 0) {
+            logger.warn(`[daikin.ts] => No devices found for sending`);
+            return;
+        }
+        logger.debug(`[daikin.ts] => Sending ${devices.length} device(s) to MQTT`);
+        for (let dev of devices) {
+            const deviceId = dev.getId();
+            try {
+                await cache.set(`device_${deviceId}`, dev, 600000);
+                let gateway = getModels(dev);
+                if (gateway === undefined) {
+                    logger.warn(`[daikin.ts] => No gateway found for device ${deviceId}, unsupported model`);
+                    continue;
+                }
+                const gatewayJson = JSON.stringify(gateway);
+                await (0, mqtt_1.publishToMQTT)(deviceId, gatewayJson);
+                logger.debug(`[daikin.ts] => Device ${deviceId} published successfully to MQTT`);
+            }
+            catch (deviceError) {
+                logger.error(`[daikin.ts] => Error sending device ${deviceId}: ${deviceError instanceof Error ? deviceError.message : String(deviceError)}`);
+                if (deviceError instanceof Error && deviceError.stack) {
+                    logger.debug(`[daikin.ts] => Stack trace: ${deviceError.stack}`);
+                }
+            }
+        }
+        try {
+            await updateSystemBridge(null, devices);
+        }
+        catch (bridgeError) {
+            logger.error(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+        }
+    }
+    catch (error) {
+        logger.error(`[daikin.ts] => Critical error sending devices: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+        }
+        throw error;
     }
 }
 async function timeUpdate() {
-    logger.debug("[daikin.ts] => Refresh After Command => START");
-    let time = Math.floor((Date.now() / 1000) - 60);
-    logger.debug("[daikin.ts] => Timestamp Minimum : " + time);
-    let timerefresh = await cache.get('needRefresh');
-    logger.debug("[daikin.ts] => Timestamp Save : " + timerefresh);
-    if (timerefresh == undefined)
-        return;
-    if (typeof timerefresh !== "number") {
-        await cache.del('needRefresh');
-        return;
+    try {
+        logger.debug("[daikin.ts] => Checking refresh after command => START");
+        const time = Math.floor((Date.now() / 1000) - 60);
+        logger.debug(`[daikin.ts] => Minimum timestamp required: ${time} (${new Date(time * 1000).toISOString()})`);
+        const timerefresh = await cache.get('needRefresh');
+        if (timerefresh === undefined || timerefresh === null) {
+            logger.debug("[daikin.ts] => No refresh pending");
+            return;
+        }
+        if (typeof timerefresh !== "number") {
+            logger.warn(`[daikin.ts] => Invalid timestamp type in cache: ${typeof timerefresh}, removing`);
+            await cache.del('needRefresh');
+            return;
+        }
+        logger.debug(`[daikin.ts] => Cached timestamp: ${timerefresh} (${new Date(timerefresh * 1000).toISOString()})`);
+        if (timerefresh <= time) {
+            logger.info("[daikin.ts] => Refresh needed after command, updating devices");
+            await cache.del('needRefresh');
+            try {
+                await sendDevice(null, true);
+                logger.debug("[daikin.ts] => Refresh after command completed successfully");
+            }
+            catch (refreshError) {
+                logger.error(`[daikin.ts] => Error during refresh after command: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+                if (refreshError instanceof Error && refreshError.stack) {
+                    logger.debug(`[daikin.ts] => Stack trace: ${refreshError.stack}`);
+                }
+            }
+        }
+        else {
+            const remainingSeconds = timerefresh - time;
+            logger.debug(`[daikin.ts] => Refresh not yet needed, ${remainingSeconds} second(s) remaining`);
+        }
+        logger.debug("[daikin.ts] => Checking refresh after command => FINISH");
     }
-    if (timerefresh <= time) {
-        logger.debug("[daikin.ts] => CRON - Updates Daikin devices");
-        await cache.del('needRefresh');
-        await sendDevice(null, true);
+    catch (error) {
+        logger.error(`[daikin.ts] => Error in timeUpdate: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+        }
     }
-    logger.debug("[daikin.ts] => Refresh After Command => FINISH");
 }
 function getModels(devices) {
-    let value;
-    if (devices.getData('gateway', 'modelInfo') !== null)
-        value = devices.getData('gateway', 'modelInfo').value;
-    else if (devices.getData('0', 'modelInfo') !== null)
-        value = devices.getData('0', 'modelInfo').value;
-    switch (value) {
-        case 'BRP069C4x':
-            return new gateway_1.BRP069C4x(devices);
-        case 'BRP069A62':
-            return new gateway_1.BRP069A62(devices);
-        case 'BRP069A78':
-            return new gateway_1.BRP069A78(devices);
-        case 'BRP069B4x':
-            return new gateway_1.BRP069B4x(devices);
-        case 'BRP069A4x':
-            return new gateway_1.BRP069A4x(devices);
-        case 'BRP069A61':
-            return new gateway_1.BRP069A61(devices);
-        case 'BRP069C41':
-            return new gateway_1.BRP069C41(devices);
-        case 'BRP069C8x':
-            return new gateway_1.BRP069C8x(devices);
-        default:
-            (0, gateway_1.anonymise)(devices, value);
+    try {
+        if (!devices) {
+            logger.warn(`[daikin.ts] => Device null or undefined in getModels`);
             return undefined;
+        }
+        let value;
+        try {
+            const gatewayModelInfo = devices.getData('gateway', 'modelInfo');
+            if (gatewayModelInfo !== null && gatewayModelInfo !== undefined) {
+                value = gatewayModelInfo.value;
+            }
+            else {
+                const zeroModelInfo = devices.getData('0', 'modelInfo');
+                if (zeroModelInfo !== null && zeroModelInfo !== undefined) {
+                    value = zeroModelInfo.value;
+                }
+            }
+        }
+        catch (error) {
+            logger.warn(`[daikin.ts] => Error retrieving modelInfo: ${error instanceof Error ? error.message : String(error)}`);
+            return undefined;
+        }
+        if (!value) {
+            logger.warn(`[daikin.ts] => No modelInfo found for device ${devices.getId ? devices.getId() : 'unknown'}`);
+            (0, gateway_1.anonymise)(devices, value || 'unknown');
+            return undefined;
+        }
+        logger.debug(`[daikin.ts] => Model detected: ${value} for device ${devices.getId ? devices.getId() : 'unknown'}`);
+        switch (value) {
+            case 'BRP069C4x':
+                return new gateway_1.BRP069C4x(devices);
+            case 'BRP069A62':
+                return new gateway_1.BRP069A62(devices);
+            case 'BRP069A78':
+                return new gateway_1.BRP069A78(devices);
+            case 'BRP069B4x':
+                return new gateway_1.BRP069B4x(devices);
+            case 'BRP069A4x':
+                return new gateway_1.BRP069A4x(devices);
+            case 'BRP069A61':
+                return new gateway_1.BRP069A61(devices);
+            case 'BRP069C41':
+                return new gateway_1.BRP069C41(devices);
+            case 'BRP069C8x':
+                return new gateway_1.BRP069C8x(devices);
+            default:
+                logger.warn(`[daikin.ts] => Unsupported model: ${value}`);
+                (0, gateway_1.anonymise)(devices, value);
+                return undefined;
+        }
+    }
+    catch (error) {
+        logger.error(`[daikin.ts] => Critical error in getModels: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+        }
+        return undefined;
     }
 }
 async function generateConfig(devices) {
-    if (devices && devices.length) {
-        for (let device of devices) {
-            let module = getModels(device);
-            if (module)
-                await (0, converter_1.makeDefineFile)(module, device);
+    try {
+        if (!devices || devices.length === 0) {
+            logger.warn(`[daikin.ts] => No devices provided for configuration generation`);
+            return;
         }
+        logger.debug(`[daikin.ts] => Generating configuration for ${devices.length} device(s)`);
+        for (let device of devices) {
+            const deviceId = device.getId();
+            try {
+                let module = getModels(device);
+                if (module) {
+                    await (0, converter_1.makeDefineFile)(module, device);
+                    logger.debug(`[daikin.ts] => Configuration generated successfully for device ${deviceId}`);
+                }
+                else {
+                    logger.warn(`[daikin.ts] => No module found for device ${deviceId}, configuration not generated`);
+                }
+            }
+            catch (configError) {
+                logger.error(`[daikin.ts] => Error generating configuration for device ${deviceId}: ${configError instanceof Error ? configError.message : String(configError)}`);
+                if (configError instanceof Error && configError.stack) {
+                    logger.debug(`[daikin.ts] => Stack trace: ${configError.stack}`);
+                }
+            }
+        }
+        logger.info(`[daikin.ts] => Configuration generation completed for ${devices.length} device(s)`);
+    }
+    catch (error) {
+        logger.error(`[daikin.ts] => Critical error during configuration generation: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+        }
+        throw error;
     }
 }
 async function getDevices(force = false) {
-    const devices = await cache.get('devices');
-    if (devices == undefined || force) {
-        logger.debug("[daikin.ts] => Cache invalid ou recup forcé, recuperation information sur le cloud");
-        logger.debug('[daikin.ts] => Send Request to cloud : Refresh');
-        const freshDevices = await daikinClient.getCloudDevices();
-        await cache.set('devices', freshDevices, 600000);
-        if (devices && devices.length) {
-            for (const dev of devices) {
-                await cache.del(`device_${dev.getId()}`);
+    try {
+        const devices = await cache.get('devices');
+        if (devices === undefined || force) {
+            logger.info(`[daikin.ts] => ${force ? 'Forced retrieval' : 'Cache invalid'}, retrieving information from Daikin cloud`);
+            if (!global.daikinClient) {
+                logger.error(`[daikin.ts] => Daikin client is not initialized`);
+                throw new Error("Daikin client is not initialized");
+            }
+            try {
+                logger.debug('[daikin.ts] => Sending request to Daikin cloud to retrieve devices');
+                const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("./rateLimiter")));
+                const freshDevices = await rateLimiter.executeWithRetry(async () => await daikinClient.getCloudDevices(), 'getCloudDevices', {
+                    maxRetries: 3,
+                    baseDelay: 2000,
+                    maxDelay: 120000
+                });
+                if (!Array.isArray(freshDevices)) {
+                    logger.error(`[daikin.ts] => Daikin cloud response is not an array: ${typeof freshDevices}`);
+                    throw new Error("Invalid response from Daikin cloud");
+                }
+                logger.info(`[daikin.ts] => ${freshDevices.length} device(s) retrieved from cloud`);
+                await cache.set('devices', freshDevices, 600000);
+                if (devices && devices.length) {
+                    logger.debug(`[daikin.ts] => Invalidating cache for ${devices.length} previous device(s)`);
+                    for (const dev of devices) {
+                        await cache.del(`device_${dev.getId()}`);
+                    }
+                }
+                return freshDevices;
+            }
+            catch (cloudError) {
+                logger.error(`[daikin.ts] => Error retrieving devices from cloud: ${cloudError instanceof Error ? cloudError.message : String(cloudError)}`);
+                if (cloudError instanceof Error && cloudError.stack) {
+                    logger.debug(`[daikin.ts] => Stack trace: ${cloudError.stack}`);
+                }
+                if (devices && devices.length > 0 && !force) {
+                    logger.warn(`[daikin.ts] => Using cached devices due to cloud error`);
+                    return devices;
+                }
+                throw cloudError;
             }
         }
-        return freshDevices;
+        else {
+            logger.debug(`[daikin.ts] => Using cache (${devices.length} device(s))`);
+        }
+        return devices || [];
     }
-    else {
-        logger.debug("[daikin.ts] => Cache valide");
+    catch (error) {
+        logger.error(`[daikin.ts] => Critical error retrieving devices: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
+        }
+        throw error;
     }
-    return devices;
 }
 async function initializeSystemBridge(devices) {
     const systemBridge = new gateway_1.SystemBridge();

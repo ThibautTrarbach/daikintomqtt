@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.consumptionEnum = exports.converterEnum = exports.typeEnum = void 0;
 exports.convertDaikinDevice = convertDaikinDevice;
@@ -36,7 +69,7 @@ function convertDaikinDevice(device, gatewayClass) {
             if (value.multiple !== true) {
                 if (value.dataPointPath !== undefined) {
                     if (value.dataPoint == "consumptionData") {
-                        logger.debug("[BaseModules.ts] => Récupération consommation avec dataPointPath");
+                        logger.debug("[BaseModules.ts] => Retrieving consumption with dataPointPath");
                         logger.debug(value.dataPointPath);
                         let datavalue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath);
                         daikinValue = getConsumptionData(datavalue, value.consumptionT);
@@ -62,6 +95,10 @@ function convertDaikinDevice(device, gatewayClass) {
             }
         }
         catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            if (!errorMessage.includes("Cannot read properties of null") && !errorMessage.includes("reading 'value'")) {
+                logger.debug(`[BaseModules.ts] => Error retrieving value for ${key}: ${errorMessage}`);
+            }
             daikinValue = undefined;
         }
         gatewayClass[key] = daikinValue;
@@ -83,6 +120,10 @@ function createDeviceInfo(device, gatewayClass) {
                 }
             }
             catch (e) {
+                const errorMessage = e instanceof Error ? e.message : String(e);
+                if (!errorMessage.includes("Cannot read properties of null") && !errorMessage.includes("reading 'value'")) {
+                    logger.debug(`[BaseModules.ts] => Error retrieving device value for ${key1}/${key2}: ${errorMessage}`);
+                }
                 deviceValue = undefined;
             }
             gatewayClass[key1][key2] = deviceValue;
@@ -99,15 +140,15 @@ async function eventValue(device, gatewayClass, events) {
 }
 async function updateDaikinDevice(device, gatewayClass) {
     let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
-    Object.entries(data).forEach(entry => {
+    for (const entry of Object.entries(data)) {
         const [key, value] = entry;
         try {
             if (value.multiple !== true) {
                 if (value.dataPointPath !== undefined) {
-                    validateDataPath(device, value, value.dataPointPath, gatewayClass[key]);
+                    await validateDataPath(device, value, value.dataPointPath, gatewayClass[key]);
                 }
                 else {
-                    validateData(device, value, gatewayClass[key]);
+                    await validateData(device, value, gatewayClass[key]);
                 }
             }
             else if (value.multiple === true) {
@@ -117,69 +158,155 @@ async function updateDaikinDevice(device, gatewayClass) {
                 else
                     multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, null).value;
                 let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-                validateDataPath(device, value, dataPointPath, gatewayClass[key]);
+                await validateDataPath(device, value, dataPointPath, gatewayClass[key]);
             }
         }
         catch (e) {
-            logger.error("[BaseModules.ts] => ");
-            logger.error(e);
-            return;
+            logger.error(`[BaseModules.ts] => Error updating device ${device.getId()} for property ${key}: ${e instanceof Error ? e.message : String(e)}`);
+            if (e instanceof Error && e.stack) {
+                logger.debug(`[BaseModules.ts] => Stack trace: ${e.stack}`);
+            }
+            continue;
         }
-    });
+    }
 }
 async function validateData(device, def, value) {
-    let params = device.getData(def.managementPoint, def.dataPoint, null);
-    if (def.converter !== undefined)
-        value = convert(def.converter, value, 1);
-    let data = checkData(params, value);
-    if (!data.isOK)
-        return;
-    if (params.value == data.value)
-        return;
-    const deviceD = await cache.get(`device_${device.getId()}`);
-    if (!deviceD) {
-        logger.error(`[BaseModules.ts] => Device ${device.getId()} not found in cache`);
-        return;
+    try {
+        const deviceId = device.getId();
+        let params = device.getData(def.managementPoint, def.dataPoint, null);
+        if (!params) {
+            logger.warn(`[BaseModules.ts] => Parameters not found for ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
+            return;
+        }
+        if (def.converter !== undefined) {
+            value = convert(def.converter, value, 1);
+        }
+        let data = checkData(params, value);
+        if (!data.isOK) {
+            logger.debug(`[BaseModules.ts] => Validation failed for ${deviceId} - ${def.managementPoint}/${def.dataPoint}, value: ${value}`);
+            return;
+        }
+        if (params.value == data.value) {
+            logger.debug(`[BaseModules.ts] => Identical value for ${deviceId} - ${def.managementPoint}/${def.dataPoint}, no update needed`);
+            return;
+        }
+        const deviceD = await cache.get(`device_${deviceId}`);
+        if (!deviceD) {
+            logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
+            return;
+        }
+        logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
+        try {
+            const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
+            await rateLimiter.executeWithRetry(async () => {
+                await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
+                await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+            }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`, {
+                maxRetries: 3,
+                baseDelay: 1000,
+                maxDelay: 60000
+            });
+            logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
+        }
+        catch (setError) {
+            logger.error(`[BaseModules.ts] => Error updating cloud for ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);
+            if (setError instanceof Error && setError.stack) {
+                logger.debug(`[BaseModules.ts] => Stack trace: ${setError.stack}`);
+            }
+            throw setError;
+        }
     }
-    logger.debug('[BaseModules.ts] => Send Request to cloud : Action | ' + value);
-    await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
-    await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+    catch (error) {
+        logger.error(`[BaseModules.ts] => Error in validateData: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[BaseModules.ts] => Stack trace: ${error.stack}`);
+        }
+        throw error;
+    }
 }
 async function validateDataPath(device, def, dataPointPath, value) {
-    let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
-    if (def.converter !== undefined)
-        value = convert(def.converter, value, 1);
-    let data = checkData(params, value);
-    if (!data.isOK)
-        return;
-    if (params.value == data.value)
-        return;
-    const deviceD = await cache.get(`device_${device.getId()}`);
-    if (!deviceD) {
-        logger.error(`[BaseModules.ts] => Device ${device.getId()} not found in cache`);
-        return;
+    try {
+        const deviceId = device.getId();
+        let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
+        if (!params) {
+            logger.warn(`[BaseModules.ts] => Parameters not found for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
+            return;
+        }
+        if (def.converter !== undefined) {
+            value = convert(def.converter, value, 1);
+        }
+        let data = checkData(params, value);
+        if (!data.isOK) {
+            logger.debug(`[BaseModules.ts] => Validation failed for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}, value: ${value}`);
+            return;
+        }
+        if (params.value == data.value) {
+            logger.debug(`[BaseModules.ts] => Identical value for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}, no update needed`);
+            return;
+        }
+        const deviceD = await cache.get(`device_${deviceId}`);
+        if (!deviceD) {
+            logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
+            return;
+        }
+        logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
+        try {
+            const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
+            await rateLimiter.executeWithRetry(async () => {
+                await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
+                await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+            }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`, {
+                maxRetries: 3,
+                baseDelay: 1000,
+                maxDelay: 60000
+            });
+            logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
+        }
+        catch (setError) {
+            logger.error(`[BaseModules.ts] => Error updating cloud for ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);
+            if (setError instanceof Error && setError.stack) {
+                logger.debug(`[BaseModules.ts] => Stack trace: ${setError.stack}`);
+            }
+            throw setError;
+        }
     }
-    logger.debug('[BaseModules.ts] => Send Request to cloud : Action | ' + value);
-    await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
-    await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+    catch (error) {
+        logger.error(`[BaseModules.ts] => Error in validateDataPath: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[BaseModules.ts] => Stack trace: ${error.stack}`);
+        }
+        throw error;
+    }
 }
 function checkData(params, value) {
     let result = {
         isOK: false,
         value: value
     };
-    if (params == null)
+    if (params == null) {
+        logger.debug(`[BaseModules.ts] => Null parameters in checkData`);
         return result;
-    if (!params.settable)
+    }
+    if (!params.settable) {
+        logger.debug(`[BaseModules.ts] => Property not settable in checkData`);
         return result;
-    if (params.values && !params.values.includes(value))
+    }
+    if (params.values && !params.values.includes(value)) {
+        logger.debug(`[BaseModules.ts] => Value ${value} not in allowed values list: ${JSON.stringify(params.values)}`);
         return result;
-    if (value < params.minValue)
+    }
+    if (params.minValue !== undefined && value < params.minValue) {
+        logger.debug(`[BaseModules.ts] => Value ${value} below minimum ${params.minValue}, adjusting`);
         result.value = params.minValue;
-    if (params.maxValue < value)
+    }
+    if (params.maxValue !== undefined && params.maxValue < result.value) {
+        logger.debug(`[BaseModules.ts] => Value ${result.value} above maximum ${params.maxValue}, adjusting`);
         result.value = params.maxValue;
-    if (result.value === params.value)
+    }
+    if (result.value === params.value) {
+        logger.debug(`[BaseModules.ts] => Value identical to current value, no change needed`);
         return result;
+    }
     result.isOK = true;
     return result;
 }

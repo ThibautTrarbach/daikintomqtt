@@ -50,45 +50,85 @@ function scheduleNextPolling() {
     const timeUntilNext = getTimeUntilNextInterval();
     const isNight = isNightTime();
     const interval = getCurrentPollingInterval();
-    logger.debug(`[cron.ts] => Prochain polling dans ${Math.round(timeUntilNext / 1000)}s (${isNight ? 'nuit' : 'jour'} - intervalle: ${interval}min)`);
+    logger.debug(`[cron.ts] => Next polling in ${Math.round(timeUntilNext / 1000)}s (${isNight ? 'night' : 'day'} - interval: ${interval}min)`);
     pollingTimer = setTimeout(async () => {
-        logger.debug(`[cron.ts] => CRON - Daikin Polling = RUN (${isNightTime() ? 'nuit' : 'jour'})`);
-        await (0, daikin_1.sendDevice)(null, true);
-        logger.debug("[cron.ts] => CRON - Daikin Polling = FINISH");
-        scheduleNextPolling();
+        const currentIsNight = isNightTime();
+        logger.info(`[cron.ts] => CRON - Daikin Polling = START (${currentIsNight ? 'night' : 'day'})`);
+        try {
+            await (0, daikin_1.sendDevice)(null, true);
+            logger.info(`[cron.ts] => CRON - Daikin Polling = SUCCESS (${currentIsNight ? 'night' : 'day'})`);
+        }
+        catch (error) {
+            logger.error(`[cron.ts] => CRON - Error during Daikin polling: ${error instanceof Error ? error.message : String(error)}`);
+            if (error instanceof Error && error.stack) {
+                logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
+            }
+        }
+        finally {
+            scheduleNextPolling();
+        }
     }, timeUntilNext);
 }
 async function loadCron() {
-    if (!config.system.polling) {
-        config.system.polling = {
-            dayInterval: 10,
-            nightInterval: 20,
-            nightStart: 22,
-            nightEnd: 7
-        };
-        logger.warn("[cron.ts] => Configuration polling non trouvée, utilisation des valeurs par défaut");
+    try {
+        if (!config.system.polling) {
+            config.system.polling = {
+                dayInterval: 10,
+                nightInterval: 20,
+                nightStart: 22,
+                nightEnd: 7
+            };
+            logger.warn("[cron.ts] => Polling configuration not found, using default values");
+        }
+        const pollingConfig = config.system.polling;
+        const isNight = isNightTime();
+        const currentInterval = getCurrentPollingInterval();
+        const now = new Date();
+        const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        logger.info("[cron.ts] => Dynamic polling configuration:");
+        logger.info(`[cron.ts] =>   - Day interval: ${pollingConfig.dayInterval} minutes`);
+        logger.info(`[cron.ts] =>   - Night interval: ${pollingConfig.nightInterval} minutes`);
+        logger.info(`[cron.ts] =>   - Night period: ${pollingConfig.nightStart}h - ${pollingConfig.nightEnd}h`);
+        logger.info(`[cron.ts] =>   - Current time: ${currentTime} (${isNight ? 'night' : 'day'})`);
+        logger.info(`[cron.ts] =>   - Current interval: ${currentInterval} minutes`);
+        scheduleNextPolling();
+        logger.info("[cron.ts] => Dynamic polling system started");
+        node_cron_1.default.schedule('58 23 * * *', async function () {
+            logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = START");
+            try {
+                await (0, daikin_1.sendDevice)(null, true);
+                logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = SUCCESS");
+            }
+            catch (error) {
+                logger.error(`[cron.ts] => CRON - Error during forced refresh at 23:58: ${error instanceof Error ? error.message : String(error)}`);
+                if (error instanceof Error && error.stack) {
+                    logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
+                }
+            }
+        });
+        logger.debug("[cron.ts] => CRON task scheduled for daily refresh at 23:58");
+        node_cron_1.default.schedule('*/15 * * * * *', async function () {
+            logger.debug("[cron.ts] => CRON - Checking refresh after action = START");
+            try {
+                await (0, daikin_1.timeUpdate)();
+                logger.debug("[cron.ts] => CRON - Checking refresh after action = FINISH");
+            }
+            catch (error) {
+                logger.error(`[cron.ts] => CRON - Error checking refresh: ${error instanceof Error ? error.message : String(error)}`);
+                if (error instanceof Error && error.stack) {
+                    logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
+                }
+            }
+        });
+        logger.debug("[cron.ts] => CRON task scheduled for refresh check every 15 seconds");
+        logger.info("[cron.ts] => CRON system initialized successfully");
     }
-    const pollingConfig = config.system.polling;
-    const isNight = isNightTime();
-    const currentInterval = getCurrentPollingInterval();
-    const now = new Date();
-    const currentTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    logger.info("[cron.ts] => Configuration du polling dynamique :");
-    logger.info(`[cron.ts] =>   - Intervalle journée : ${pollingConfig.dayInterval} minutes`);
-    logger.info(`[cron.ts] =>   - Intervalle nuit : ${pollingConfig.nightInterval} minutes`);
-    logger.info(`[cron.ts] =>   - Période nuit : ${pollingConfig.nightStart}h - ${pollingConfig.nightEnd}h`);
-    logger.info(`[cron.ts] =>   - Heure actuelle : ${currentTime} (${isNight ? 'nuit' : 'jour'})`);
-    logger.info(`[cron.ts] =>   - Intervalle actuel : ${currentInterval} minutes`);
-    scheduleNextPolling();
-    node_cron_1.default.schedule('58 23 * * *', async function () {
-        logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = RUN");
-        await (0, daikin_1.sendDevice)(null, true);
-        logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = FINISH");
-    });
-    node_cron_1.default.schedule('*/15 * * * * *', async function () {
-        logger.debug("[cron.ts] => CRON - Refresh data after action = RUN");
-        await (0, daikin_1.timeUpdate)();
-        logger.debug("[cron.ts] => CRON - Refresh data after action = FINISH");
-    });
+    catch (error) {
+        logger.error(`[cron.ts] => Error initializing CRON system: ${error instanceof Error ? error.message : String(error)}`);
+        if (error instanceof Error && error.stack) {
+            logger.debug(`[cron.ts] => Stack trace: ${error.stack}`);
+        }
+        throw error;
+    }
 }
 //# sourceMappingURL=cron.js.map

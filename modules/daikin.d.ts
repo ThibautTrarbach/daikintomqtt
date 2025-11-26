@@ -6,7 +6,7 @@ declare function subscribeDevices(devices: DaikinCloudDevice[]): Promise<void>;
 declare function sendDevice(devices?: DaikinCloudDevice[] | null, cron?: boolean): Promise<void>;
 declare function timeUpdate(): Promise<void>;
 declare function generateConfig(devices: DaikinCloudDevice[]): Promise<void>;
-declare function getDevices(force?: boolean): Promise<any>;
+declare function getDevices(force?: boolean): Promise<DaikinCloudDevice[]>;
 declare function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDevice[] | null, authorizationInfo?: {
     authorizationUrl?: string;
     authorizationRequest?: boolean;
