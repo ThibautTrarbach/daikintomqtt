@@ -100,6 +100,34 @@ async function loadDaikinAPI() {
 		if (error instanceof Error && 'code' in error) {
 			logger.debug(`[daikin.ts] => Error code: ${(error as any).code}`);
 		}
+		
+		// Handle invalid_grant error (invalid token) - delete token and update system bridge
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		const errorString = String(error);
+		if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (error as any)?.error === "invalid_grant") {
+			try {
+				logger.error('[daikin.ts] => Invalid token detected (invalid_grant), deleting old token');
+				const tokenPath = resolve(datadir, 'daikin-controller-cloud-tokenset');
+				
+				if (fs.existsSync(tokenPath)) {
+					fs.unlinkSync(tokenPath);
+					logger.info(`[daikin.ts] => Token file deleted: ${tokenPath}`);
+				} else {
+					logger.warn(`[daikin.ts] => Token file does not exist: ${tokenPath}`);
+				}
+				
+				// Update system bridge to indicate token was deleted
+				await updateSystemBridge(null, [], {
+					authorizationRequest: true,
+					authorizationTimeout: false
+				});
+				
+				logger.info('[daikin.ts] => Token deleted. Please restart the application to trigger a new authorization request.');
+			} catch (e) {
+				logger.error(`[daikin.ts] => Error deleting token: ${e instanceof Error ? e.message : String(e)}`);
+				logger.error(`[daikin.ts] => Please manually delete the file: ${resolve(datadir, 'daikin-controller-cloud-tokenset')}`);
+			}
+		}
 	});
 
 	global.daikinClient = daikinClient;
