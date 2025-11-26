@@ -52,11 +52,17 @@ async function loadDaikinAPI() {
 			Afterwards you are redirected to Daikin to approve the access and then redirected back.`);
 
 		// Update system module with authorization information
-		await updateSystemBridge(null, null, {
-			authorizationUrl: url,
-			authorizationRequest: true,
-			authorizationTimeout: false
-		});
+		logger.debug(`[daikin.ts] => Updating system bridge with authorization URL: ${url}`);
+		try {
+			await updateSystemBridge(null, [], {
+				authorizationUrl: url,
+				authorizationRequest: true,
+				authorizationTimeout: false
+			});
+			logger.debug(`[daikin.ts] => System bridge updated with authorization URL`);
+		} catch (error) {
+			logger.error(`[daikin.ts] => Error updating system bridge with authorization URL: ${error instanceof Error ? error.message : String(error)}`);
+		}
 	});
 
 	daikinClient.on('rate_limit_status', async (rateLimitStatus) => {
@@ -100,6 +106,8 @@ async function loadDaikinAPI() {
 }
 
 async function startDaikinAPI() {
+	let devices: DaikinCloudDevice[] | null = null;
+	
 	try {
 		logger.info("[daikin.ts] => Starting Daikin API");
 		
@@ -107,33 +115,73 @@ async function startDaikinAPI() {
 		const {rateLimiter} = await import("./rateLimiter");
 		await rateLimiter.loadRateLimitFromCache();
 		
-		const devices = await getDevices();
-		if (!devices || devices.length === 0) {
-			logger.error("[daikin.ts] => No devices found, cannot start API");
-			return;
+		// Always initialize system bridge first, even if API is not connected
+		logger.info("[daikin.ts] => Initializing system bridge");
+		await initializeSystemBridge([]);
+		
+		// Check if token exists
+		const tokenPath = resolve(datadir, 'daikin-controller-cloud-tokenset');
+		const tokenExists = fs.existsSync(tokenPath);
+		
+		if (!tokenExists) {
+			logger.info("[daikin.ts] => No token found, making initial request to trigger authorization");
+			// Make a first request to trigger the authorization_request event
+			// This will cause the API to request authorization and emit the authorization_request event
+			try {
+				await getDevices();
+			} catch (authError) {
+				// Expected error when not authorized - the authorization_request event will be triggered
+				logger.debug(`[daikin.ts] => Initial request failed (expected if not authorized): ${authError instanceof Error ? authError.message : String(authError)}`);
+				// The authorization_request event will update the system bridge with the URL
+				return;
+			}
 		}
 		
-		logger.info(`[daikin.ts] => Found ${devices.length} device(s)`);
-		
-		logger.info("[daikin.ts] => Subscribing to MQTT actions");
-		await subscribeDevices(devices);
-		
-		logger.info("[daikin.ts] => Generating configuration files");
-		await generateConfig(devices);
-		
-		logger.info("[daikin.ts] => Sending initial data values");
-		await sendDevice(devices);
-		
-		logger.info("[daikin.ts] => Initializing system bridge");
-		await initializeSystemBridge(devices);
-		
-		logger.info("[daikin.ts] => Daikin API started successfully");
+		try {
+			devices = await getDevices();
+			if (!devices || devices.length === 0) {
+				logger.warn("[daikin.ts] => No devices found");
+				// Update system bridge with empty devices list
+				await updateSystemBridge(null, []);
+				return;
+			}
+			
+			logger.info(`[daikin.ts] => Found ${devices.length} device(s)`);
+			
+			logger.info("[daikin.ts] => Subscribing to MQTT actions");
+			await subscribeDevices(devices);
+			
+			logger.info("[daikin.ts] => Generating configuration files");
+			await generateConfig(devices);
+			
+			logger.info("[daikin.ts] => Sending initial data values");
+			await sendDevice(devices);
+			
+			// Update system bridge with devices
+			await updateSystemBridge(null, devices);
+			
+			logger.info("[daikin.ts] => Daikin API started successfully");
+		} catch (apiError) {
+			logger.error(`[daikin.ts] => Error during API operations: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
+			if (apiError instanceof Error && apiError.stack) {
+				logger.debug(`[daikin.ts] => Stack trace: ${apiError.stack}`);
+			}
+			// Update system bridge even on error
+			await updateSystemBridge(null, devices || []);
+			// Don't throw, allow system to continue with system bridge initialized
+		}
 	} catch (error) {
 		logger.error(`[daikin.ts] => Critical error during API startup: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
 			logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
 		}
-		throw error;
+		// Try to initialize system bridge even on critical error
+		try {
+			await initializeSystemBridge([]);
+		} catch (bridgeError) {
+			logger.error(`[daikin.ts] => Failed to initialize system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+		}
+		// Don't throw to allow system to continue
 	}
 }
 
@@ -562,22 +610,59 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 	}
 
 	// Update module information
+	// Only try to get devices if not provided and API is available, otherwise use empty array
 	if (devices === null || devices === undefined) {
-		devices = await getDevices();
+		try {
+			// Try to get from cache first without forcing API call
+			const cachedDevices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
+			if (cachedDevices && Array.isArray(cachedDevices) && cachedDevices.length > 0) {
+				devices = cachedDevices;
+			} else {
+				// If no cache and API client exists, try to get devices (but don't block)
+				if (global.daikinClient) {
+					try {
+						devices = await getDevices(false); // Use cache if available, don't force
+					} catch (getDevicesError) {
+						logger.debug(`[daikin.ts] => Could not retrieve devices for system bridge update: ${getDevicesError instanceof Error ? getDevicesError.message : String(getDevicesError)}`);
+						devices = [];
+					}
+				} else {
+					devices = [];
+				}
+			}
+		} catch (error) {
+			logger.debug(`[daikin.ts] => Error retrieving devices for system bridge: ${error instanceof Error ? error.message : String(error)}`);
+			devices = [];
+		}
 	}
 	
 	if (devices && devices.length) {
-		const modulesInfo = devices.map(dev => {
-			const modelInfo = dev.getData('gateway', 'modelInfo', null)?.value || dev.getData('0', 'modelInfo', null)?.value || 'Unknown';
-			return {
-				id: dev.getId(),
-				model: modelInfo,
-				name: dev.getData('climateControl', 'name', null)?.value || dev.getId()
-			};
-		});
-		
-		systemBridge.modulesCount = modulesInfo.length;
-		systemBridge.modulesList = JSON.stringify(modulesInfo);
+		try {
+			const modulesInfo = devices.map(dev => {
+				try {
+					const modelInfo = dev.getData('gateway', 'modelInfo', null)?.value || dev.getData('0', 'modelInfo', null)?.value || 'Unknown';
+					return {
+						id: dev.getId(),
+						model: modelInfo,
+						name: dev.getData('climateControl', 'name', null)?.value || dev.getId()
+					};
+				} catch (devError) {
+					logger.debug(`[daikin.ts] => Error getting device info: ${devError instanceof Error ? devError.message : String(devError)}`);
+					return {
+						id: dev.getId ? dev.getId() : 'unknown',
+						model: 'Unknown',
+						name: dev.getId ? dev.getId() : 'unknown'
+					};
+				}
+			});
+			
+			systemBridge.modulesCount = modulesInfo.length;
+			systemBridge.modulesList = JSON.stringify(modulesInfo);
+		} catch (mapError) {
+			logger.debug(`[daikin.ts] => Error mapping devices info: ${mapError instanceof Error ? mapError.message : String(mapError)}`);
+			systemBridge.modulesCount = 0;
+			systemBridge.modulesList = "[]";
+		}
 	} else {
 		systemBridge.modulesCount = 0;
 		systemBridge.modulesList = "[]";

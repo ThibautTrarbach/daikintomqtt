@@ -232,20 +232,33 @@ function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 			value: daikin.clientURL
 		});
 	} else {
-		// Validate URL format
+		const trimmedUrl = daikin.clientURL.trim();
+		let isValid = false;
+		
+		// Try to parse as full URL (with protocol)
 		try {
-			const url = new URL(daikin.clientURL);
-			if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-				errors.push({
-					field: 'daikin.clientURL',
-					message: 'URL must use http or https protocol',
-					value: daikin.clientURL
-				});
+			const url = new URL(trimmedUrl);
+			if (url.protocol === 'http:' || url.protocol === 'https:') {
+				isValid = true;
 			}
 		} catch (e) {
+			// If URL parsing fails, check if it's a valid IP address or hostname
+			// IP address regex (IPv4)
+			const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+			// Hostname regex (letters, numbers, dots, hyphens)
+			const hostnameRegex = /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$|^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$/;
+			// IPv6 regex (simplified)
+			const ipv6Regex = /^([0-9a-fA-F]{0,4}:){7}[0-9a-fA-F]{0,4}$|^::1$|^localhost$/;
+			
+			if (ipv4Regex.test(trimmedUrl) || hostnameRegex.test(trimmedUrl) || ipv6Regex.test(trimmedUrl)) {
+				isValid = true;
+			}
+		}
+		
+		if (!isValid) {
 			errors.push({
 				field: 'daikin.clientURL',
-				message: 'URL is not valid',
+				message: 'URL must be a valid IP address, hostname, or full URL (http:// or https://)',
 				value: daikin.clientURL
 			});
 		}
