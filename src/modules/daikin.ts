@@ -104,6 +104,12 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 		})
 	}
 
+	// Subscribe to refresh command topic
+	let refreshTopic = config.mqtt.topic + "/system/bridge/refresh/set"
+	mqttClient.subscribe(refreshTopic, function (err) {
+		if (!err) logger.info("[daikin.ts] => Subscribe to " + refreshTopic)
+	})
+
 	mqttClient.on('message', async function (topic, message) {
 		try {
 			logger.debug(`[daikin.ts] => Topic : ${topic} \n- Message : ${message.toString()}`)
@@ -123,12 +129,22 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 				return;
 			}
 
-			for (let dev of devices) {
-				if (!topicStr.includes(dev.getId())) continue;
-				let gateway = getModels(dev);
-				if (gateway !== undefined) {
-					await eventValue(dev, gateway, parsedMessage);
-				}
+		const topicString = topic.toString();
+		const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
+
+		// Handle refresh command
+		if (topicString === refreshTopicPath) {
+			logger.info("[daikin.ts] => Refresh command received, updating all devices")
+			await sendDevice(null, true) // Force refresh from cloud
+			return
+		}
+
+		const devices = await getDevices();
+		for (let dev of devices) {
+			if (!topicString.includes(dev.getId())) continue;
+			let gateway = getModels(dev);
+			if (gateway !== undefined) {
+				await eventValue(dev, gateway, JSON.parse(message.toString()))
 			}
 		} catch (error) {
 			logger.error(`[daikin.ts] => Error processing MQTT message: ${error}`);
