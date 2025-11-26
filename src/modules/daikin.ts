@@ -136,14 +136,7 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 			return
 		}
 
-			// Handle refresh command
-			if (topicString === refreshTopicPath) {
-				logger.info("[daikin.ts] => Refresh command received, updating all devices")
-				await sendDevice(null, true) // Force refresh from cloud
-				return
-			}
-
-			for (let dev of devices) {
+		for (let dev of devices) {
 				if (!topicString.includes(dev.getId())) continue;
 				let gateway = getModels(dev);
 				if (gateway !== undefined) {

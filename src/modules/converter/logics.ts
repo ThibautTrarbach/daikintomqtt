@@ -17,7 +17,7 @@ async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null
 	}
 
 	// Génération pour Home Assistant
-	if (config.homeassistant?.enabled) {
+	if (config.homeassistant?.enabled && device !== null) {
 		const discoveryPrefix = config.homeassistant.discoveryPrefix || "homeassistant";
 		const discoveryConfigs = generateHADiscovery(data, moduleClass, device);
 		
