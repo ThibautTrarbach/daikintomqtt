@@ -59,6 +59,11 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 				daikinValue = convert(value.converter, daikinValue, 0)
 			}
 		} catch (e) {
+			// Ne logger que si ce n'est pas une erreur "propriété non disponible" (normale pour certains devices)
+			const errorMessage = e instanceof Error ? e.message : String(e);
+			if (!errorMessage.includes("Cannot read properties of null") && !errorMessage.includes("reading 'value'")) {
+				logger.debug(`[BaseModules.ts] => Erreur lors de la récupération de la valeur pour ${key}: ${errorMessage}`);
+			}
 			daikinValue = undefined;
 		}
 
@@ -82,6 +87,11 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 					deviceValue = device.getData(value2.managementPoint, value2.dataPoint).value
 				}
 			} catch (e) {
+				// Ne logger que si ce n'est pas une erreur "propriété non disponible" (normale pour certains devices)
+				const errorMessage = e instanceof Error ? e.message : String(e);
+				if (!errorMessage.includes("Cannot read properties of null") && !errorMessage.includes("reading 'value'")) {
+					logger.debug(`[BaseModules.ts] => Erreur lors de la récupération de la valeur device pour ${key1}/${key2}: ${errorMessage}`);
+				}
 				deviceValue = undefined;
 			}
 			// @ts-ignore
@@ -104,15 +114,16 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 
 async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways) {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
-	Object.entries(data).forEach(entry => {
+	
+	for (const entry of Object.entries(data)) {
 		const [key, value] = entry;
 
 		try {
 			if (value.multiple !== true) {
 				if (value.dataPointPath !== undefined) {
-					validateDataPath(device, value, value.dataPointPath, gatewayClass[key])
+					await validateDataPath(device, value, value.dataPointPath, gatewayClass[key])
 				} else {
-					validateData(device, value, gatewayClass[key])
+					await validateData(device, value, gatewayClass[key])
 				}
 			} else if (value.multiple === true) {
 				let multipleValue: any;
@@ -120,52 +131,125 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, null).value
 
 				let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-				validateDataPath(device, value, dataPointPath, gatewayClass[key])
+				await validateDataPath(device, value, dataPointPath, gatewayClass[key])
 			}
 		} catch (e) {
-			logger.error("[BaseModules.ts] => ")
-			logger.error(e)
-			return
+			logger.error(`[BaseModules.ts] => Erreur lors de la mise à jour du device ${device.getId()} pour la propriété ${key}: ${e instanceof Error ? e.message : String(e)}`);
+			if (e instanceof Error && e.stack) {
+				logger.debug(`[BaseModules.ts] => Stack trace: ${e.stack}`);
+			}
+			// Continuer avec les autres propriétés même en cas d'erreur
+			continue;
 		}
-	})
+	}
 }
 
 async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetadata, value: any) {
-	let params = device.getData(def.managementPoint, def.dataPoint, null);
-	if (def.converter !== undefined) value = convert(def.converter, value, 1)
-	let data = checkData(params, value)
-	if (!data.isOK) return;
+	try {
+		const deviceId = device.getId();
+		let params = device.getData(def.managementPoint, def.dataPoint, null);
+		
+		if (!params) {
+			logger.warn(`[BaseModules.ts] => Paramètres non trouvés pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
+			return;
+		}
 
-	if (params.value == data.value) return;
-	const deviceD = await cache.get(`device_${device.getId()}`) as DaikinCloudDevice | undefined;
-	
-	if (!deviceD) {
-		logger.error(`[BaseModules.ts] => Device ${device.getId()} not found in cache`);
-		return;
+		if (def.converter !== undefined) {
+			value = convert(def.converter, value, 1);
+		}
+		
+		let data = checkData(params, value);
+		if (!data.isOK) {
+			logger.debug(`[BaseModules.ts] => Validation échouée pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}, valeur: ${value}`);
+			return;
+		}
+
+		if (params.value == data.value) {
+			logger.debug(`[BaseModules.ts] => Valeur identique pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}, pas de mise à jour nécessaire`);
+			return;
+		}
+
+		const deviceD = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
+		
+		if (!deviceD) {
+			logger.error(`[BaseModules.ts] => Device ${deviceId} non trouvé dans le cache`);
+			return;
+		}
+
+		logger.info(`[BaseModules.ts] => Envoi de la requête au cloud pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
+		
+		try {
+			await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
+			await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+			logger.debug(`[BaseModules.ts] => Mise à jour réussie pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
+		} catch (setError) {
+			logger.error(`[BaseModules.ts] => Erreur lors de la mise à jour du cloud pour ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);
+			if (setError instanceof Error && setError.stack) {
+				logger.debug(`[BaseModules.ts] => Stack trace: ${setError.stack}`);
+			}
+			throw setError;
+		}
+	} catch (error) {
+		logger.error(`[BaseModules.ts] => Erreur dans validateData: ${error instanceof Error ? error.message : String(error)}`);
+		if (error instanceof Error && error.stack) {
+			logger.debug(`[BaseModules.ts] => Stack trace: ${error.stack}`);
+		}
+		throw error;
 	}
-
-	logger.debug('[BaseModules.ts] => Send Request to cloud : Action | '+ value)
-	await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
-	await cache.set('needRefresh', Math.floor(Date.now() / 1000))
 }
 
 async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMetadata, dataPointPath: string, value: any) {
-	let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
-	if (def.converter !== undefined) value = convert(def.converter, value, 1)
-	let data = checkData(params, value)
-	if (!data.isOK) return;
+	try {
+		const deviceId = device.getId();
+		let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
+		
+		if (!params) {
+			logger.warn(`[BaseModules.ts] => Paramètres non trouvés pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
+			return;
+		}
 
-	if (params.value == data.value) return;
-	const deviceD = await cache.get(`device_${device.getId()}`) as DaikinCloudDevice | undefined;
-	
-	if (!deviceD) {
-		logger.error(`[BaseModules.ts] => Device ${device.getId()} not found in cache`);
-		return;
+		if (def.converter !== undefined) {
+			value = convert(def.converter, value, 1);
+		}
+		
+		let data = checkData(params, value);
+		if (!data.isOK) {
+			logger.debug(`[BaseModules.ts] => Validation échouée pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}, valeur: ${value}`);
+			return;
+		}
+
+		if (params.value == data.value) {
+			logger.debug(`[BaseModules.ts] => Valeur identique pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}, pas de mise à jour nécessaire`);
+			return;
+		}
+
+		const deviceD = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
+		
+		if (!deviceD) {
+			logger.error(`[BaseModules.ts] => Device ${deviceId} non trouvé dans le cache`);
+			return;
+		}
+
+		logger.info(`[BaseModules.ts] => Envoi de la requête au cloud pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
+		
+		try {
+			await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
+			await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+			logger.debug(`[BaseModules.ts] => Mise à jour réussie pour ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
+		} catch (setError) {
+			logger.error(`[BaseModules.ts] => Erreur lors de la mise à jour du cloud pour ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);
+			if (setError instanceof Error && setError.stack) {
+				logger.debug(`[BaseModules.ts] => Stack trace: ${setError.stack}`);
+			}
+			throw setError;
+		}
+	} catch (error) {
+		logger.error(`[BaseModules.ts] => Erreur dans validateDataPath: ${error instanceof Error ? error.message : String(error)}`);
+		if (error instanceof Error && error.stack) {
+			logger.debug(`[BaseModules.ts] => Stack trace: ${error.stack}`);
+		}
+		throw error;
 	}
-
-	logger.debug('[BaseModules.ts] => Send Request to cloud : Action | '+ value)
-	await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value)
-	await cache.set('needRefresh', Math.floor(Date.now() / 1000))
 }
 
 function checkData(params: any, value: any) {
@@ -174,13 +258,35 @@ function checkData(params: any, value: any) {
 		value: value
 	}
 
-	if (params == null) return result;
+	if (params == null) {
+		logger.debug(`[BaseModules.ts] => Paramètres null dans checkData`);
+		return result;
+	}
 
-	if (!params.settable) return result;
-	if (params.values && !params.values.includes(value)) return result;
-	if (value < params.minValue) result.value = params.minValue;
-	if (params.maxValue < value) result.value = params.maxValue;
-	if (result.value === params.value) return result;
+	if (!params.settable) {
+		logger.debug(`[BaseModules.ts] => Propriété non settable dans checkData`);
+		return result;
+	}
+
+	if (params.values && !params.values.includes(value)) {
+		logger.debug(`[BaseModules.ts] => Valeur ${value} non dans la liste des valeurs autorisées: ${JSON.stringify(params.values)}`);
+		return result;
+	}
+
+	if (params.minValue !== undefined && value < params.minValue) {
+		logger.debug(`[BaseModules.ts] => Valeur ${value} inférieure au minimum ${params.minValue}, ajustement`);
+		result.value = params.minValue;
+	}
+
+	if (params.maxValue !== undefined && params.maxValue < result.value) {
+		logger.debug(`[BaseModules.ts] => Valeur ${result.value} supérieure au maximum ${params.maxValue}, ajustement`);
+		result.value = params.maxValue;
+	}
+
+	if (result.value === params.value) {
+		logger.debug(`[BaseModules.ts] => Valeur identique à la valeur actuelle, pas de changement nécessaire`);
+		return result;
+	}
 
 	result.isOK = true;
 	return result;

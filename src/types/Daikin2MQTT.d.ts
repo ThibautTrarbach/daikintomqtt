@@ -26,7 +26,7 @@ export interface ConfigHomeAssistant {
 }
 
 export interface ConfigDaikin {
-	modeProxy: boolean
+	modeProxy?: boolean // Optionnel, non utilisé actuellement
 	clientSecret: string
 	clientID: string
 	clientURL: string
