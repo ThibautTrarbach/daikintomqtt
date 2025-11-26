@@ -126,9 +126,7 @@ async function loadCron() {
 		await sendDevice(null, true);
 		logger.info("[cron.ts] => CRON - Refresh forcé à 23h58 pour les stats électriques = FINISH");
 	});
-	
-	// Garder le cron pour le refresh après action (toutes les 30 secondes)
-	cron.schedule('*/30 * * * * *', async function () {
+	cron.schedule('*/15 * * * * *', async function () {
 		logger.debug("[cron.ts] => CRON - Refresh data after action = RUN")
 		await timeUpdate()
 		logger.debug("[cron.ts] => CRON - Refresh data after action = FINISH")

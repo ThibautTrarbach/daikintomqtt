@@ -2,14 +2,14 @@ import {ModulesDescriptionMetadata} from "../../types";
 import {typeEnum} from "../gateway";
 import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
-function generateCMD(data: object, modules: object, device: DaikinCloudDevice) {
+function generateCMD(data: object, modules: object, device: DaikinCloudDevice | null) {
 	let cmd: any[] = [];
 	Object.entries(data).forEach(entry => {
 		try {
 			let [key, value] = entry;
 
 			if (modules[key] !== undefined && modules[key] !== null) {
-				if (value.type == typeEnum.numeric && value.minMaxValue !== undefined) {
+				if (value.type == typeEnum.numeric && value.minMaxValue !== undefined && device !== null) {
 					let minmax = getMinMaxValue(value, device)
 					value.minValue = minmax.min
 					value.maxValue = minmax.max

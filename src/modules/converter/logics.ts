@@ -4,7 +4,7 @@ import {generateHADiscovery} from "./homeassistant";
 import {publishToMQTT} from "../mqtt";
 import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
-async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice) {
+async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null) {
 	// @ts-ignore
 	let id = moduleClass._device.id;
 	let data = Reflect.getMetadata(PROPERTY_METADATA_CMD, moduleClass);
@@ -12,7 +12,8 @@ async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice) {
 	// Génération pour Jeedom
 	if (config.system.jeedom) {
 		let cmd = generateCMD(data, moduleClass, device)
-		await publishToMQTT('system/jeedom/' + id, JSON.stringify(cmd))
+		await publishToMQTT('jeedom/' + id, JSON.stringify(cmd))
+
 	}
 
 	// Génération pour Home Assistant

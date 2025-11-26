@@ -2,7 +2,7 @@ import {
 	loadDaikinAPI,
 	loadGlobalConfig,
 	loadLogger,
-	loadMQTTClient, publishConfig,
+	loadMQTTClient,
 	startDaikinAPI,
 } from "./modules";
 import {loadCron} from "./modules/cron";
@@ -43,8 +43,10 @@ import { setTimeout } from "timers/promises";
 			process.exit(1)
 		}
 	} else if (error == 'Error: Authorization time out') {
-		logger.error('====> Authorization time out, please restart DaikinToMQTT and retry')
-		await publishConfig('authorization_timeout', true);
+		console.log('====> Authorization time out, please restart DaikinToMQTT and retry')
+		// Mettre à jour le module système avec le timeout
+		const {updateSystemBridge} = await import("./modules/daikin");
+		await updateSystemBridge(null, null, {authorizationTimeout: true});
 		await setTimeout(5000)
 		process.exit(1)
 	} else {
