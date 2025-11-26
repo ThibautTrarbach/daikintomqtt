@@ -2,7 +2,7 @@ name: Build - Alpha
 on:
     push:
         branches:
-            - Alpha
+            - alpha
 jobs:
   build-and-push:
         runs-on: ubuntu-latest
@@ -22,7 +22,7 @@ jobs:
           - name: Copy yarn.lock to build folder
             run: cp yarn.lock dist/yarn.lock
 
-          - name: Push compiled code to release-beta Branch
+          - name: Push compiled code to release-alpha Branch
             uses: s0/git-publish-subdir-action@v2.6.0
             env:
               REPO: self
