@@ -85,7 +85,7 @@ function scheduleNextPolling() {
 		const currentIsNight = isNightTime();
 		logger.info(`[cron.ts] => CRON - Daikin Polling = START (${currentIsNight ? 'night' : 'day'})`);
 		try {
-			await sendDevice(null, true);
+			await sendDevice(null, true, "cron_polling");
 			logger.info(`[cron.ts] => CRON - Daikin Polling = SUCCESS (${currentIsNight ? 'night' : 'day'})`);
 		} catch (error) {
 			logger.error(`[cron.ts] => CRON - Error during Daikin polling: ${error instanceof Error ? error.message : String(error)}`);
@@ -134,7 +134,7 @@ async function loadCron() {
 		cron.schedule('58 23 * * *', async function () {
 			logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = START");
 			try {
-				await sendDevice(null, true);
+				await sendDevice(null, true, "cron_forced_23h58_stats");
 				logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = SUCCESS");
 			} catch (error) {
 				logger.error(`[cron.ts] => CRON - Error during forced refresh at 23:58: ${error instanceof Error ? error.message : String(error)}`);

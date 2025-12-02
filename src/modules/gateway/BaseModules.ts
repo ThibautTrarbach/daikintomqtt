@@ -176,7 +176,7 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			return;
 		}
 
-			logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
+			logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_no_dataPointPath) for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
 		
 		try {
 			// Use rate limiter to handle automatic retries
@@ -245,7 +245,7 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 			return;
 		}
 
-			logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
+			logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_with_dataPointPath='${dataPointPath}') for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
 		
 		try {
 			// Use rate limiter to handle automatic retries
