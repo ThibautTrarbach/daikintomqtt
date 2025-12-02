@@ -176,7 +176,7 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			return;
 		}
 
-		logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
+			logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
 		
 		try {
 			// Use rate limiter to handle automatic retries
@@ -184,7 +184,10 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			await rateLimiter.executeWithRetry(
 				async () => {
 					await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
-					await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+					const ts = Math.floor(Date.now() / 1000);
+					logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (no dataPointPath) to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
+					await cache.set('needRefresh', ts);
+					logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (no dataPointPath)");
 				},
 				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`,
 				{
@@ -242,7 +245,7 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 			return;
 		}
 
-		logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
+			logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
 		
 		try {
 			// Use rate limiter to handle automatic retries
@@ -250,7 +253,10 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 			await rateLimiter.executeWithRetry(
 				async () => {
 					await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
-					await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+					const ts = Math.floor(Date.now() / 1000);
+					logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (with dataPointPath='${dataPointPath}') to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
+					await cache.set('needRefresh', ts);
+					logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (with dataPointPath)");
 				},
 				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`,
 				{

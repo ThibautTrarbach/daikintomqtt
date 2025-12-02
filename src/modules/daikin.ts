@@ -366,8 +366,10 @@ async function timeUpdate() {
 	try {
 		logger.debug("[daikin.ts] => Checking refresh after command => START");
 		
-		// Minimum timestamp (60 seconds ago)
-		const time = Math.floor((Date.now() / 1000) - 60);
+		// Minimum timestamp (30 secondes avant maintenant)
+		const now = Math.floor(Date.now() / 1000);
+		const time = now - 30;
+		logger.debug(`[daikin.ts] => Current timestamp: ${now} (${new Date(now * 1000).toISOString()})`);
 		logger.debug(`[daikin.ts] => Minimum timestamp required: ${time} (${new Date(time * 1000).toISOString()})`);
 		
 		const timerefresh = await cache.get('needRefresh');
