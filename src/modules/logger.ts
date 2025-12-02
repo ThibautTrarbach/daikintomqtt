@@ -46,7 +46,7 @@ function loadLogger() {
 	// Always add console in development, or if config is not yet loaded
 	// Config will be updated after loading in config.ts
 	const shouldAddConsole = process.env.NODE_ENV !== 'production' || 
-	                         (typeof global.config !== 'undefined' && global.config?.system?.jeedom);
+	                         (typeof global.config !== 'undefined' && global.config?.integration?.jeedom);
 
 	if (shouldAddConsole) {
 		logger.add(new winston.transports.Console({
