@@ -158,7 +158,7 @@ async function startDaikinAPI() {
         if (!tokenExists) {
             logger.info("[daikin.ts] => No token found, making initial request to trigger authorization");
             try {
-                await getDevices();
+                await getDevices(false, "authorization_initial_request");
             }
             catch (authError) {
                 logger.debug(`[daikin.ts] => Initial request failed (expected if not authorized): ${authError instanceof Error ? authError.message : String(authError)}`);
@@ -166,7 +166,7 @@ async function startDaikinAPI() {
             }
         }
         try {
-            devices = await getDevices();
+            devices = await getDevices(false, "startup_devices_load");
             if (!devices || devices.length === 0) {
                 logger.warn("[daikin.ts] => No devices found");
                 await updateSystemBridge(null, []);
@@ -178,7 +178,7 @@ async function startDaikinAPI() {
             logger.info("[daikin.ts] => Generating configuration files");
             await generateConfig(devices);
             logger.info("[daikin.ts] => Sending initial data values");
-            await sendDevice(devices);
+            await sendDevice(devices, false, "startup_initial_send");
             await updateSystemBridge(null, devices);
             logger.info("[daikin.ts] => Daikin API started successfully");
         }
@@ -234,7 +234,7 @@ async function subscribeDevices(devices) {
                 if (data.refreshAllDevices !== undefined || data._refreshAllDevices !== undefined) {
                     logger.info(`[daikin.ts] => Refresh all devices command received from system bridge`);
                     try {
-                        await sendDevice(null, true);
+                        await sendDevice(null, true, "system_bridge_refresh_all");
                         await updateSystemBridge();
                         logger.info(`[daikin.ts] => Refresh of all devices completed successfully`);
                     }
@@ -286,11 +286,11 @@ async function subscribeDevices(devices) {
         }
     });
 }
-async function sendDevice(devices = null, cron = false) {
+async function sendDevice(devices = null, cron = false, reason = "unspecified") {
     try {
         if (devices == null) {
-            logger.debug(`[daikin.ts] => Retrieving devices${cron ? ' (forced from cloud)' : ' (from cache if available)'}`);
-            devices = await getDevices(cron);
+            logger.debug(`[daikin.ts] => Retrieving devices${cron ? ' (forced from cloud)' : ' (from cache if available)'} for sendDevice (reason: ${reason})`);
+            devices = await getDevices(cron, reason);
         }
         if (!devices || devices.length === 0) {
             logger.warn(`[daikin.ts] => No devices found for sending`);
@@ -300,7 +300,7 @@ async function sendDevice(devices = null, cron = false) {
         for (let dev of devices) {
             const deviceId = dev.getId();
             try {
-                await cache.set(`device_${deviceId}`, dev, 600000);
+                await cache.set(`device_${deviceId}`, dev, 10800000);
                 let gateway = getModels(dev);
                 if (gateway === undefined) {
                     logger.warn(`[daikin.ts] => No gateway found for device ${deviceId}, unsupported model`);
@@ -335,7 +335,9 @@ async function sendDevice(devices = null, cron = false) {
 async function timeUpdate() {
     try {
         logger.debug("[daikin.ts] => Checking refresh after command => START");
-        const time = Math.floor((Date.now() / 1000) - 60);
+        const now = Math.floor(Date.now() / 1000);
+        const time = now - 30;
+        logger.debug(`[daikin.ts] => Current timestamp: ${now} (${new Date(now * 1000).toISOString()})`);
         logger.debug(`[daikin.ts] => Minimum timestamp required: ${time} (${new Date(time * 1000).toISOString()})`);
         const timerefresh = await cache.get('needRefresh');
         if (timerefresh === undefined || timerefresh === null) {
@@ -352,7 +354,7 @@ async function timeUpdate() {
             logger.info("[daikin.ts] => Refresh needed after command, updating devices");
             await cache.del('needRefresh');
             try {
-                await sendDevice(null, true);
+                await sendDevice(null, true, "post_action_refresh");
                 logger.debug("[daikin.ts] => Refresh after command completed successfully");
             }
             catch (refreshError) {
@@ -471,29 +473,42 @@ async function generateConfig(devices) {
         throw error;
     }
 }
-async function getDevices(force = false) {
+async function getDevices(force = false, reason = "unspecified") {
     try {
         const devices = await cache.get('devices');
         if (devices === undefined || force) {
-            logger.info(`[daikin.ts] => ${force ? 'Forced retrieval' : 'Cache invalid'}, retrieving information from Daikin cloud`);
+            logger.info(`[daikin.ts] => API CALL - getDevices (reason: ${reason}) - ${force ? 'forced retrieval' : 'cache invalid or empty'}, retrieving information from Daikin cloud`);
             if (!global.daikinClient) {
                 logger.error(`[daikin.ts] => Daikin client is not initialized`);
                 throw new Error("Daikin client is not initialized");
             }
             try {
-                logger.debug('[daikin.ts] => Sending request to Daikin cloud to retrieve devices');
+                logger.debug(`[daikin.ts] => API CALL - getDevices (reason: ${reason}) - sending request to Daikin cloud to retrieve devices`);
                 const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("./rateLimiter")));
-                const freshDevices = await rateLimiter.executeWithRetry(async () => await daikinClient.getCloudDevices(), 'getCloudDevices', {
-                    maxRetries: 3,
-                    baseDelay: 2000,
-                    maxDelay: 120000
-                });
+                const refreshReasons = [
+                    "cron_polling",
+                    "cron_forced_23h58_stats",
+                    "system_bridge_refresh_all",
+                    "post_action_refresh",
+                    "system_bridge_auto_update"
+                ];
+                const isRefreshReason = refreshReasons.includes(reason);
+                const freshDevices = await rateLimiter.executeWithRetry(async () => await daikinClient.getCloudDevices(), `getCloudDevices-${reason}`, isRefreshReason
+                    ? {
+                        maxRetries: 2,
+                        refreshMode: true
+                    }
+                    : {
+                        maxRetries: 3,
+                        baseDelay: 2000,
+                        maxDelay: 120000
+                    });
                 if (!Array.isArray(freshDevices)) {
                     logger.error(`[daikin.ts] => Daikin cloud response is not an array: ${typeof freshDevices}`);
                     throw new Error("Invalid response from Daikin cloud");
                 }
                 logger.info(`[daikin.ts] => ${freshDevices.length} device(s) retrieved from cloud`);
-                await cache.set('devices', freshDevices, 600000);
+                await cache.set('devices', freshDevices, 10800000);
                 if (devices && devices.length) {
                     logger.debug(`[daikin.ts] => Invalidating cache for ${devices.length} previous device(s)`);
                     for (const dev of devices) {
@@ -627,7 +642,7 @@ async function updateSystemBridge(rateLimitStatus, devices, authorizationInfo, e
             else {
                 if (global.daikinClient) {
                     try {
-                        devices = await getDevices(false);
+                        devices = await getDevices(false, "system_bridge_auto_update");
                     }
                     catch (getDevicesError) {
                         logger.debug(`[daikin.ts] => Could not retrieve devices for system bridge update: ${getDevicesError instanceof Error ? getDevicesError.message : String(getDevicesError)}`);

@@ -19,6 +19,9 @@ interface RetryConfig {
     baseDelay?: number;
     maxDelay?: number;
     backoffMultiplier?: number;
+    maxTotalDurationMs?: number;
+    skipWaitWhenRateLimited?: boolean;
+    refreshMode?: boolean;
 }
 declare class RateLimiter {
     private rateLimitInfo;
@@ -30,6 +33,7 @@ declare class RateLimiter {
     canMakeRequest(): boolean;
     getWaitTime(): number;
     isRateLimitError(error: any): boolean;
+    private isConnectivityError;
     executeWithRetry<T>(operation: () => Promise<T>, operationId: string, config?: RetryConfig): Promise<T>;
     queueOperation(operation: () => Promise<any>, operationId: string, priority?: number, config?: RetryConfig): Promise<void>;
     private processQueue;

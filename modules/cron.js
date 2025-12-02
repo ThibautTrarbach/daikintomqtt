@@ -55,7 +55,7 @@ function scheduleNextPolling() {
         const currentIsNight = isNightTime();
         logger.info(`[cron.ts] => CRON - Daikin Polling = START (${currentIsNight ? 'night' : 'day'})`);
         try {
-            await (0, daikin_1.sendDevice)(null, true);
+            await (0, daikin_1.sendDevice)(null, true, "cron_polling");
             logger.info(`[cron.ts] => CRON - Daikin Polling = SUCCESS (${currentIsNight ? 'night' : 'day'})`);
         }
         catch (error) {
@@ -96,7 +96,7 @@ async function loadCron() {
         node_cron_1.default.schedule('58 23 * * *', async function () {
             logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = START");
             try {
-                await (0, daikin_1.sendDevice)(null, true);
+                await (0, daikin_1.sendDevice)(null, true, "cron_forced_23h58_stats");
                 logger.info("[cron.ts] => CRON - Forced refresh at 23:58 for electrical stats = SUCCESS");
             }
             catch (error) {

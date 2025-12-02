@@ -195,12 +195,15 @@ async function validateData(device, def, value) {
             logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
             return;
         }
-        logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
+        logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_no_dataPointPath) for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
         try {
             const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
             await rateLimiter.executeWithRetry(async () => {
                 await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
-                await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+                const ts = Math.floor(Date.now() / 1000);
+                logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (no dataPointPath) to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
+                await cache.set('needRefresh', ts);
+                logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (no dataPointPath)");
             }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`, {
                 maxRetries: 3,
                 baseDelay: 1000,
@@ -249,12 +252,15 @@ async function validateDataPath(device, def, dataPointPath, value) {
             logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
             return;
         }
-        logger.info(`[BaseModules.ts] => Sending request to cloud for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
+        logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_with_dataPointPath='${dataPointPath}') for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
         try {
             const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
             await rateLimiter.executeWithRetry(async () => {
                 await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
-                await cache.set('needRefresh', Math.floor(Date.now() / 1000));
+                const ts = Math.floor(Date.now() / 1000);
+                logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (with dataPointPath='${dataPointPath}') to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
+                await cache.set('needRefresh', ts);
+                logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (with dataPointPath)");
             }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`, {
                 maxRetries: 3,
                 baseDelay: 1000,

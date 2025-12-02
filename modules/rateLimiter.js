@@ -9,7 +9,10 @@ class RateLimiter {
         maxRetries: 5,
         baseDelay: 1000,
         maxDelay: 60000,
-        backoffMultiplier: 2
+        backoffMultiplier: 2,
+        maxTotalDurationMs: 60 * 60 * 1000,
+        skipWaitWhenRateLimited: false,
+        refreshMode: false
     };
     updateRateLimit(rateLimitStatus) {
         this.rateLimitInfo = {
@@ -92,13 +95,47 @@ class RateLimiter {
         return rateLimitPatterns.some(pattern => errorMessage.toLowerCase().includes(pattern) ||
             errorString.includes(pattern));
     }
+    isConnectivityError(error) {
+        if (!error)
+            return false;
+        const err = error;
+        const code = (err.code || '').toString().toUpperCase();
+        const message = (err.message || String(error)).toLowerCase();
+        const connectivityCodes = [
+            'ECONNRESET',
+            'ECONNREFUSED',
+            'ETIMEDOUT',
+            'ENETUNREACH',
+            'EHOSTUNREACH',
+            'EAI_AGAIN'
+        ];
+        if (connectivityCodes.includes(code)) {
+            return true;
+        }
+        const connectivityPatterns = [
+            'network error',
+            'network unreachable',
+            'connect timeout',
+            'timeout',
+            'socket hang up',
+            'connection refused',
+            'failed to fetch',
+            'dns',
+        ];
+        return connectivityPatterns.some(pattern => message.includes(pattern));
+    }
     async executeWithRetry(operation, operationId, config = {}) {
         const finalConfig = { ...this.defaultConfig, ...config };
+        const startTime = Date.now();
         let lastError;
         let attempt = 0;
         while (attempt <= finalConfig.maxRetries) {
             try {
                 if (!this.canMakeRequest()) {
+                    if (finalConfig.skipWaitWhenRateLimited) {
+                        logger.warn(`[rateLimiter.ts] => Rate limit reached for ${operationId} and skipWaitWhenRateLimited is true, aborting without retry`);
+                        throw new Error(`Rate limit reached for ${operationId}`);
+                    }
                     const waitTime = this.getWaitTime();
                     if (waitTime > 0) {
                         logger.info(`[rateLimiter.ts] => Rate limit reached for ${operationId}, waiting ${Math.round(waitTime / 1000)}s`);
@@ -115,9 +152,40 @@ class RateLimiter {
             }
             catch (error) {
                 lastError = error instanceof Error ? error : new Error(String(error));
+                const elapsed = Date.now() - startTime;
+                if (elapsed > finalConfig.maxTotalDurationMs) {
+                    logger.error(`[rateLimiter.ts] => Maximum total duration (${Math.round(finalConfig.maxTotalDurationMs / 1000)}s) exceeded for ${operationId}, aborting`);
+                    break;
+                }
                 attempt++;
+                if (finalConfig.refreshMode && this.isConnectivityError(error)) {
+                    logger.warn(`[rateLimiter.ts] => Connectivity error detected for refresh operation ${operationId} (attempt ${attempt}/${finalConfig.maxRetries + 1})`);
+                    if (attempt > finalConfig.maxRetries) {
+                        logger.error(`[rateLimiter.ts] => Maximum number of attempts reached for refresh operation ${operationId}`);
+                        break;
+                    }
+                    const delay = 60000;
+                    logger.info(`[rateLimiter.ts] => Waiting ${Math.round(delay / 1000)}s before retry for refresh operation ${operationId} (connectivity issue)`);
+                    await this.wait(delay);
+                    continue;
+                }
                 if (this.isRateLimitError(error)) {
                     logger.warn(`[rateLimiter.ts] => Rate limit detected for ${operationId} (attempt ${attempt}/${finalConfig.maxRetries + 1})`);
+                    if (finalConfig.refreshMode) {
+                        const info = this.rateLimitInfo;
+                        if (info && info.remainingDay <= 0) {
+                            logger.error(`[rateLimiter.ts] => Daily rate limit reached for refresh operation ${operationId}, aborting without further retries`);
+                            break;
+                        }
+                        if (attempt > finalConfig.maxRetries) {
+                            logger.error(`[rateLimiter.ts] => Maximum number of attempts reached for refresh operation ${operationId}`);
+                            break;
+                        }
+                        const delay = 60000;
+                        logger.info(`[rateLimiter.ts] => Waiting ${Math.round(delay / 1000)}s before retry for refresh operation ${operationId} (minute rate limit or unknown)`);
+                        await this.wait(delay);
+                        continue;
+                    }
                     if (attempt > finalConfig.maxRetries) {
                         logger.error(`[rateLimiter.ts] => Maximum number of attempts reached for ${operationId}`);
                         break;
