@@ -1,6 +1,7 @@
 import {PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../decorator";
 import {Gateways, ModulePropertyMetadata} from "../../types";
 import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {publishToMQTT} from "../mqtt";
 
 const typeEnum = Object.freeze({
 	numeric: 0,
@@ -109,7 +110,38 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 		gatewayClass[key] = value
 	})
 
-	await updateDaikinDevice(device, gatewayClass)
+	await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
+
+	// Gestion post-action en fonction du mode de rafraîchissement configuré
+	try {
+		const mode = config.system?.actionRefreshMode ?? 1;
+		const now = Math.floor(Date.now() / 1000);
+		const deviceId = (device as DaikinCloudDevice).getId();
+
+		// Modes 2 et 3 : mise à jour optimiste immédiate (cache + MQTT)
+		if (mode === 2 || mode === 3) {
+			try {
+				await cache.set(`device_${deviceId}`, device, 10800000);
+				const payload = JSON.stringify(gatewayClass);
+				await publishToMQTT(deviceId, payload);
+				logger.debug(`[BaseModules.ts] => Post-action optimistic update published for device ${deviceId} (mode=${mode})`);
+			} catch (e) {
+				logger.error(`[BaseModules.ts] => Error during optimistic post-action update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
+			}
+		}
+
+		// Modes 1 et 3 : planifier un rafraîchissement complet différé via timeUpdate
+		if (mode === 1 || mode === 3) {
+			await cache.set('needRefresh', now);
+			logger.debug(`[BaseModules.ts] => Post-action refresh scheduled (mode=${mode}) at ${new Date(now * 1000).toISOString()}`);
+		} else {
+			// Mode 2 : on s'assure qu'aucun ancien refresh différé ne reste en attente
+			await cache.del('needRefresh');
+			logger.debug("[BaseModules.ts] => Post-action refresh disabled (mode=2), any pending refresh cleared");
+		}
+	} catch (postActionError) {
+		logger.error(`[BaseModules.ts] => Error handling post-action behavior: ${postActionError instanceof Error ? postActionError.message : String(postActionError)}`);
+	}
 }
 
 async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways) {
@@ -184,10 +216,6 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			await rateLimiter.executeWithRetry(
 				async () => {
 					await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
-					const ts = Math.floor(Date.now() / 1000);
-					logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (no dataPointPath) to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
-					await cache.set('needRefresh', ts);
-					logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (no dataPointPath)");
 				},
 				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`,
 				{
@@ -253,10 +281,6 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 			await rateLimiter.executeWithRetry(
 				async () => {
 					await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
-					const ts = Math.floor(Date.now() / 1000);
-					logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (with dataPointPath='${dataPointPath}') to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
-					await cache.set('needRefresh', ts);
-					logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (with dataPointPath)");
 				},
 				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`,
 				{

@@ -1,6 +1,11 @@
 system:
   logLevel: 'info' # Indicates the level of log that the system must use
   jeedom: false # Activate the integration for the Jeedom home automation system
+  # Mode de rafraîchissement après action :
+  # 1 = rafraîchissement complet différé (45s) après l'action
+  # 2 = mise à jour optimiste (cache + MQTT) sans appel cloud après action
+  # 3 = hybride (optimiste immédiat + rafraîchissement complet 120s après la dernière action)
+  actionRefreshMode: 1
   polling:
     dayInterval: 10 # Refresh interval in minutes during the day
     nightInterval: 20 # Refresh interval in minutes during the night

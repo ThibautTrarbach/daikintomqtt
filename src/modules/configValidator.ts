@@ -104,6 +104,23 @@ function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 		errors.push(...validatePollingConfig(system.polling));
 	}
 
+	// Validate actionRefreshMode if present
+	if (system.actionRefreshMode !== undefined) {
+		if (typeof system.actionRefreshMode !== 'number' || !Number.isInteger(system.actionRefreshMode)) {
+			errors.push({
+				field: 'system.actionRefreshMode',
+				message: 'Action refresh mode must be an integer (1, 2 or 3)',
+				value: system.actionRefreshMode
+			});
+		} else if (![1, 2, 3].includes(system.actionRefreshMode)) {
+			errors.push({
+				field: 'system.actionRefreshMode',
+				message: 'Action refresh mode must be 1, 2 or 3',
+				value: system.actionRefreshMode
+			});
+		}
+	}
+
 	return errors;
 }
 

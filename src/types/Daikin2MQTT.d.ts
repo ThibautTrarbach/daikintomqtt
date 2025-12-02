@@ -11,6 +11,13 @@ export interface ConfigSystem {
 	logLevel: string
 	jeedom: boolean
 	polling?: ConfigPolling
+	/**
+	 * Mode de rafraîchissement après action :
+	 * 1 = rafraîchissement complet différé (45s) après l'action
+	 * 2 = mise à jour optimiste (cache + MQTT) sans appel cloud après action
+	 * 3 = hybride (optimiste immédiat + rafraîchissement complet 120s après la dernière action)
+	 */
+	actionRefreshMode?: number
 }
 
 export interface ConfigPolling {
