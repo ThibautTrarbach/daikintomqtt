@@ -422,6 +422,104 @@ export class BRP069A78 implements ClassModule{
 	})
 	private _domesticHotWaterTemperatureTank?: number;
 
+	@modulesDaikinAcces({
+		managementPoint: "climateControlMainZone",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.heatingDay,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: 'Main Zone - Heating Consumption Day',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _heatingConsumptionDMain?: number;
+	@modulesDaikinAcces({
+		managementPoint: "climateControlMainZone",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.heatingWeek,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: 'Main Zone - Heating Consumption Week',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _heatingConsumptionWMain?: number;
+	@modulesDaikinAcces({
+		managementPoint: "climateControlMainZone",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.heatingMonth,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: 'Main Zone - Heating Consumption Month',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _heatingConsumptionMMain?: number;
+
+	@modulesDaikinAcces({
+		managementPoint: "climateControlMainZone",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.coolingDay,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: 'Main Zone - Cooling Consumption Day',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _coolingConsumptionDMain?: number;
+	@modulesDaikinAcces({
+		managementPoint: "climateControlMainZone",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.coolingWeek,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: 'Main Zone - Cooling Consumption Week',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _coolingConsumptionWMain?: number;
+	@modulesDaikinAcces({
+		managementPoint: "climateControlMainZone",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.coolingMonth,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: 'Main Zone - Cooling Consumption Month',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _coolingConsumptionMMain?: number;
+
 	/** Getter and Setter **/
 	set controlModeMain(value: string) {
 		this._controlModeMain = value;

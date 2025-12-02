@@ -402,6 +402,104 @@ export class BRP069A62 implements ClassModule{
 	})
 	private _setpointMode2?: boolean;
 
+	@modulesDaikinAcces({
+		managementPoint: "2",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.heatingDay,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: '2 - Heating Consumption Day',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _heatingConsumptionD2?: number;
+	@modulesDaikinAcces({
+		managementPoint: "2",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.heatingWeek,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: '2 - Heating Consumption Week',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _heatingConsumptionW2?: number;
+	@modulesDaikinAcces({
+		managementPoint: "2",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.heatingMonth,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: '2 - Heating Consumption Month',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _heatingConsumptionM2?: number;
+
+	@modulesDaikinAcces({
+		managementPoint: "2",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.coolingDay,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: '2 - Cooling Consumption Day',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _coolingConsumptionD2?: number;
+	@modulesDaikinAcces({
+		managementPoint: "2",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.coolingWeek,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: '2 - Cooling Consumption Week',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _coolingConsumptionW2?: number;
+	@modulesDaikinAcces({
+		managementPoint: "2",
+		dataPoint: "consumptionData",
+		dataPointPath: "/electrical",
+		consumptionT: consumptionEnum.coolingMonth,
+		converter: converterEnum.consumption
+	})
+	@modulesDataDescription({
+		name: '2 - Cooling Consumption Month',
+		settable: false,
+		type: typeEnum.numeric,
+		minValue: 0,
+		maxValue: 3000,
+		unite: 'kWh'
+	})
+	private _coolingConsumptionM2?: number;
+
 	/** Getter and Setter **/
 	set isHolidayModeActive1(value: boolean) {
 		this._isHolidayModeActive1 = value;

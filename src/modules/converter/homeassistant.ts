@@ -269,6 +269,7 @@ function generateSensorDiscovery(
 
 	// Mapping based on name and unit
 	const propertyName = metadata.name.toLowerCase();
+	let isEnergy = false;
 	if (propertyName.includes("temperature")) {
 		deviceClass = "temperature";
 		unitOfMeasurement = unitOfMeasurement || "°C";
@@ -278,6 +279,7 @@ function generateSensorDiscovery(
 	} else if (propertyName.includes("consumption") || propertyName.includes("energy")) {
 		deviceClass = "energy";
 		unitOfMeasurement = unitOfMeasurement || "kWh";
+		isEnergy = true;
 	}
 
 	const valuePath = propertyKey.replace(/^_/, "");
@@ -312,6 +314,12 @@ function generateSensorDiscovery(
 	}
 	if (unitOfMeasurement) {
 		haConfig.unit_of_measurement = unitOfMeasurement;
+	}
+
+	// For energy / consumption values, mark as a monotonically increasing total
+	// so that Home Assistant can use them directly in the Energy dashboard.
+	if (isEnergy) {
+		(haConfig as any).state_class = "total_increasing";
 	}
 
 	return haConfig;
