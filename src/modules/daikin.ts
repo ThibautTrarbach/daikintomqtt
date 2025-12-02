@@ -326,8 +326,8 @@ async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: bool
 			const deviceId = dev.getId();
 			try {
 				// Use cache.set() instead of direct indexing
-				// TTL of 10 minutes to match the device list cache
-				await cache.set(`device_${deviceId}`, dev, 600000);
+				// TTL of 3 hours to match the device list cache
+				await cache.set(`device_${deviceId}`, dev, 10800000);
 				
 				let gateway = getModels(dev);
 				if (gateway === undefined) {
@@ -532,14 +532,37 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				
 				// Use rate limiter to handle automatic retries
 				const {rateLimiter} = await import("./rateLimiter");
+				
+				// Les raisons "refresh" ont un comportement spécial :
+				// - 3 essais maximum espacés de 60s
+				// - retry uniquement en cas de problème de contact ou de rate limit minute
+				// - aucun retry si rate limit daily atteinte
+				const refreshReasons = [
+					"cron_polling",
+					"cron_forced_23h58_stats",
+					"system_bridge_refresh_all",
+					"post_action_refresh",
+					"system_bridge_auto_update"
+				];
+				const isRefreshReason = refreshReasons.includes(reason);
+				
 				const freshDevices = await rateLimiter.executeWithRetry(
 					async () => await daikinClient.getCloudDevices(),
-					'getCloudDevices',
-					{
-						maxRetries: 3,
-						baseDelay: 2000, // 2 seconds base
-						maxDelay: 120000 // 2 minutes maximum
-					}
+					`getCloudDevices-${reason}`,
+					isRefreshReason
+						? {
+							// Mode refresh : 3 essais (0 + 2 retries) toutes les 60s,
+							// seulement pour erreurs de contact / rate limit minute (géré dans rateLimiter.refreshMode)
+							maxRetries: 2,
+							refreshMode: true
+						}
+						: {
+							// Appels "structurants" (startup, auth, etc.) : on garde des retries raisonnables,
+							// mais bornés en durée totale par le rateLimiter (1h maxTotalDurationMs).
+							maxRetries: 3,
+							baseDelay: 2000, // 2 seconds base
+							maxDelay: 120000 // 2 minutes maximum
+						}
 				);
 				
 				if (!Array.isArray(freshDevices)) {
@@ -549,8 +572,8 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				
 				logger.info(`[daikin.ts] => ${freshDevices.length} device(s) retrieved from cloud`);
 				
-				// Cache with TTL of 10 minutes (600000 milliseconds = 600 seconds)
-				await cache.set('devices', freshDevices, 600000);
+				// Cache with TTL of 3 hours (10800000 milliseconds)
+				await cache.set('devices', freshDevices, 10800000);
 				
 				// Invalidate individual device caches to ensure consistency
 				if (devices && devices.length) {

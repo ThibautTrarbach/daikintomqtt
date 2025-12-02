@@ -179,7 +179,7 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_no_dataPointPath) for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
 		
 		try {
-			// Use rate limiter to handle automatic retries
+			// Use rate limiter to handle automatic retries (action valable max 1h via rateLimiter)
 			const {rateLimiter} = await import("../rateLimiter");
 			await rateLimiter.executeWithRetry(
 				async () => {
@@ -248,7 +248,7 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 			logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_with_dataPointPath='${dataPointPath}') for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
 		
 		try {
-			// Use rate limiter to handle automatic retries
+			// Use rate limiter to handle automatic retries (action valable max 1h via rateLimiter)
 			const {rateLimiter} = await import("../rateLimiter");
 			await rateLimiter.executeWithRetry(
 				async () => {
