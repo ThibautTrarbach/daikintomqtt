@@ -9,3 +9,5 @@ tokenset.json
 /log
 /config/daikin-controller-cloud-tokenset
 /dist
+
+tsconfig.tsbuildinfo
