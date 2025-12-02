@@ -13,11 +13,15 @@ export interface ConfigSystem {
 	polling?: ConfigPolling
 	/**
 	 * Mode de rafraîchissement après action :
-	 * 1 = rafraîchissement complet différé (45s) après l'action
+	 * 1 = rafraîchissement complet différé (actionRefreshDelaySeconds) après l'action
 	 * 2 = mise à jour optimiste (cache + MQTT) sans appel cloud après action
-	 * 3 = hybride (optimiste immédiat + rafraîchissement complet 120s après la dernière action)
+	 * 3 = hybride (optimiste immédiat + rafraîchissement complet actionRefreshDelaySeconds après la dernière action)
 	 */
 	actionRefreshMode?: number
+	/**
+	 * Délai en secondes avant le rafraîchissement complet en modes 1 et 3
+	 */
+	actionRefreshDelaySeconds?: number
 }
 
 export interface ConfigPolling {
@@ -114,5 +118,6 @@ export type Gateways =
 	BRP069C41 |
 	BRP069A61 |
 	BRP069C8x
+
 
 

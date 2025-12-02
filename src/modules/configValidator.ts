@@ -121,6 +121,23 @@ function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 		}
 	}
 
+	// Validate actionRefreshDelaySeconds if present
+	if (system.actionRefreshDelaySeconds !== undefined) {
+		if (typeof system.actionRefreshDelaySeconds !== 'number') {
+			errors.push({
+				field: 'system.actionRefreshDelaySeconds',
+				message: 'actionRefreshDelaySeconds must be a number (seconds)',
+				value: system.actionRefreshDelaySeconds
+			});
+		} else if (system.actionRefreshDelaySeconds <= 0) {
+			errors.push({
+				field: 'system.actionRefreshDelaySeconds',
+				message: 'actionRefreshDelaySeconds must be greater than 0 seconds',
+				value: system.actionRefreshDelaySeconds
+			});
+		}
+	}
+
 	return errors;
 }
 

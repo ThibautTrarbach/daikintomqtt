@@ -125,6 +125,13 @@ async function loadCron() {
 		logger.info(`[cron.ts] =>   - Night period: ${pollingConfig.nightStart}h - ${pollingConfig.nightEnd}h`);
 		logger.info(`[cron.ts] =>   - Current time: ${currentTime} (${isNight ? 'night' : 'day'})`);
 		logger.info(`[cron.ts] =>   - Current interval: ${currentInterval} minutes`);
+
+		// Log post-action refresh configuration
+		const refreshMode = config.system?.actionRefreshMode ?? 1;
+		const refreshDelay = config.system?.actionRefreshDelaySeconds ?? 45;
+		logger.info("[cron.ts] => Post-action refresh configuration:");
+		logger.info(`[cron.ts] =>   - Action refresh mode: ${refreshMode}`);
+		logger.info(`[cron.ts] =>   - Action refresh delay: ${refreshDelay}s (used for modes 1 and 3)`);
 		
 		// Start dynamic polling
 		scheduleNextPolling();

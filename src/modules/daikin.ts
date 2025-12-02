@@ -386,8 +386,9 @@ async function timeUpdate() {
 			return;
 		}
 
-		// Délai en secondes selon le mode
-		const delaySeconds = mode === 3 ? 120 : 45;
+		// Délai en secondes selon le mode, configurable dans system.actionRefreshDelaySeconds
+		const defaultDelay = 45;
+		const delaySeconds = config.system?.actionRefreshDelaySeconds ?? defaultDelay;
 
 		const now = Math.floor(Date.now() / 1000);
 		logger.debug(`[daikin.ts] => Current timestamp: ${now} (${new Date(now * 1000).toISOString()}) - mode=${mode}, delay=${delaySeconds}s`);
