@@ -2,7 +2,6 @@ import "reflect-metadata";
 import {modulesDataDescription} from "../decorator";
 import {typeEnum} from "./BaseModules";
 import {ClassModule, DevicesInformation} from "../../types";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 
 export class SystemBridge implements ClassModule {
 	private _device: DevicesInformation = {
@@ -57,7 +56,7 @@ export class SystemBridge implements ClassModule {
 	})
 	private _rateRemainingDay?: number;
 
-	// Informations sur les modules
+	// Module information
 	@modulesDataDescription({
 		name: 'Modules Count',
 		settable: false,
@@ -97,7 +96,7 @@ export class SystemBridge implements ClassModule {
 	})
 	private _refreshAllDevices?: boolean;
 
-	// Informations d'autorisation
+	// Authorization information
 	@modulesDataDescription({
 		name: 'Authorization URL',
 		settable: false,

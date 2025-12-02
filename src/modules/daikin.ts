@@ -533,7 +533,7 @@ function getModels(devices: any) {
 
 		if (!value) {
 			logger.warn(`[daikin.ts] => No modelInfo found for device ${devices.getId ? devices.getId() : 'unknown'}`);
-			anonymise(devices, value || 'unknown');
+			anonymise(devices, 'unknown');
 			return undefined;
 		}
 

@@ -1,4 +1,4 @@
-import {Daikin2MQTT, ConfigSystem, ConfigDaikin, ConfigMQTT, ConfigPolling, ConfigIntegration, ConfigHomeAssistant} from "../types";
+import {ConfigSystem, ConfigDaikin, ConfigMQTT, ConfigPolling, ConfigIntegration, ConfigHomeAssistant} from "../types";
 
 export interface ValidationError {
 	field: string;
