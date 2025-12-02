@@ -109,6 +109,7 @@ import { setTimeout } from "timers/promises";
 			log.error(`[main.ts] => Error updating system bridge: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
 		}
 		
+		log.error('[main.ts] => Please restart DaikinToMQTT and try again.');
 		await setTimeout(5000);
 		process.exit(1);
 	} 

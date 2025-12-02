@@ -108,7 +108,35 @@ async function loadDaikinAPI() {
 		// Handle invalid_grant error (invalid token) - delete token and exit
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		const errorString = String(error);
-		if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (error as any)?.error === "invalid_grant") {
+		
+		// Handle authorization timeout - exit daemon immediately
+		if (errorMessage.includes("Authorization time out") || 
+		    errorMessage.includes("authorization timeout") ||
+		    errorString.includes("Authorization time out") ||
+		    errorString.includes("authorization timeout")) {
+			try {
+				logger.error('[daikin.ts] => Authorization timeout detected. Shutting down daemon.');
+				
+				// Update system bridge to indicate timeout
+				try {
+					await updateSystemBridge(null, null, {
+						authorizationTimeout: true
+					});
+					logger.info('[daikin.ts] => System bridge updated with timeout state');
+				} catch (bridgeError) {
+					logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+				}
+				
+				logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
+			} catch (e) {
+				logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
+			}
+			
+			// Exit the daemon immediately
+			process.exit(1);
+		}
+		// Handle invalid_grant error (invalid token) - delete token and exit
+		else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (error as any)?.error === "invalid_grant") {
 			try {
 				logger.error('[daikin.ts] => Invalid token detected (invalid_grant), deleting old token and shutting down');
 				const tokenPath = resolve(datadir, 'daikin-controller-cloud-tokenset');
@@ -662,8 +690,34 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				const errorMessage = cloudError instanceof Error ? cloudError.message : String(cloudError);
 				const errorString = String(cloudError);
 				
+				// Handle authorization timeout - exit daemon immediately
+				if (errorMessage.includes("Authorization time out") || 
+				    errorMessage.includes("authorization timeout") ||
+				    errorString.includes("Authorization time out") ||
+				    errorString.includes("authorization timeout")) {
+					try {
+						logger.error('[daikin.ts] => Authorization timeout detected in getDevices. Shutting down daemon.');
+						
+						// Update system bridge to indicate timeout
+						try {
+							await updateSystemBridge(null, null, {
+								authorizationTimeout: true
+							});
+							logger.info('[daikin.ts] => System bridge updated with timeout state');
+						} catch (bridgeError) {
+							logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+						}
+						
+						logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
+					} catch (e) {
+						logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
+					}
+					
+					// Exit the daemon immediately
+					process.exit(1);
+				}
 				// Handle invalid_grant error (invalid token) - delete token and exit
-				if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (cloudError as any)?.error === "invalid_grant") {
+				else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (cloudError as any)?.error === "invalid_grant") {
 					try {
 						logger.error('[daikin.ts] => Invalid token detected (invalid_grant) in getDevices, deleting old token and shutting down');
 						const tokenPath = resolve(datadir, 'daikin-controller-cloud-tokenset');
