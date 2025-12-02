@@ -1,6 +1,5 @@
 system:
   logLevel: 'info' # Indicates the level of log that the system must use
-  jeedom: false # Activate the integration for the Jeedom home automation system
   # Post-action refresh mode:
   # 1 = full refresh delayed by actionRefreshDelaySeconds after the action
   # 2 = optimistic update (cache + MQTT) without cloud refresh after the action
@@ -13,9 +12,11 @@ system:
     nightInterval: 20 # Refresh interval in minutes during the night
     nightStart: 22 # Night period start hour (0-23)
     nightEnd: 7 # Night period end hour (0-23)
-homeassistant:
-  enabled: false # Activate the integration for Home Assistant via MQTT Discovery
-  discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)
+integration:
+  jeedom: false # Activate the integration for the Jeedom home automation system
+  homeassistant:
+    enabled: false # Activate the integration for Home Assistant via MQTT Discovery
+    discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)
 daikin:
   clientID: null # Client ID allowing connection to the Daikin Onecta Cloud
   clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud

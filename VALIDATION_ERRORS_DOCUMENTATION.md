@@ -108,24 +108,6 @@ system:
 
 ---
 
-#### `system.jeedom: La valeur doit être un booléen (true/false)`
-
-**Cause** : La valeur n'est pas un booléen.
-
-**Exemple** :
-```yaml
-system:
-  logLevel: 'info'
-  jeedom: "true"  # ❌ Chaîne de caractères au lieu de booléen
-```
-
-**Solution** :
-```yaml
-system:
-  logLevel: 'info'
-  jeedom: true  # ✅ Booléen (sans guillemets)
-```
-
 ---
 
 ### 3. Section `system.polling`
@@ -754,54 +736,77 @@ mqtt:
 
 ---
 
-### 6. Section `homeassistant` (optionnelle)
+### 6. Section `integration` (optionnelle)
 
-#### `homeassistant.enabled: La valeur enabled doit être un booléen (true/false)`
+#### `integration.jeedom: La valeur doit être un booléen (true/false)`
+
+**Cause** : La valeur n'est pas un booléen.
+
+**Exemple** :
+```yaml
+integration:
+  jeedom: "true"  # ❌ Chaîne de caractères au lieu de booléen
+```
+
+**Solution** :
+```yaml
+integration:
+  jeedom: true  # ✅ Booléen (sans guillemets)
+```
+
+---
+
+#### `integration.homeassistant.enabled: La valeur enabled doit être un booléen (true/false)`
 
 **Cause** : La valeur n'est pas un booléen.
 
 **Solution** :
 ```yaml
-homeassistant:
-  enabled: true  # ✅ Booléen
+integration:
+  homeassistant:
+    enabled: true  # ✅ Booléen
 ```
 
 ---
 
-#### `homeassistant.discoveryPrefix: Le préfixe de découverte doit être une chaîne non vide`
+#### `integration.homeassistant.discoveryPrefix: Le préfixe de découverte doit être une chaîne non vide`
 
 **Cause** : Le `discoveryPrefix` est vide ou contient seulement des espaces.
 
 **Exemple** :
 ```yaml
-homeassistant:
-  discoveryPrefix: ""  # ❌ Vide
+integration:
+  homeassistant:
+    discoveryPrefix: ""  # ❌ Vide
 ```
 
 **Solution** :
 ```yaml
-homeassistant:
-  discoveryPrefix: "homeassistant"  # ✅ Chaîne non vide
+integration:
+  homeassistant:
+    discoveryPrefix: "homeassistant"  # ✅ Chaîne non vide
 ```
 
 ---
 
-#### `homeassistant.discoveryPrefix: Le préfixe de découverte ne peut contenir que des lettres, chiffres, tirets et underscores`
+#### `integration.homeassistant.discoveryPrefix: Le préfixe de découverte ne peut contenir que des lettres, chiffres, tirets et underscores`
 
 **Cause** : Le préfixe contient des caractères interdits.
 
 **Exemple** :
 ```yaml
-homeassistant:
-  discoveryPrefix: "home-assistant!"  # ❌ Contient !
+integration:
+  homeassistant:
+    discoveryPrefix: "home-assistant!"  # ❌ Contient !
 ```
 
 **Solution** :
 ```yaml
-homeassistant:
-  discoveryPrefix: "homeassistant"   # ✅ Seulement lettres, chiffres, - et _
-  # ou
-  discoveryPrefix: "home_assistant"  # ✅ Avec underscore
+integration:
+  homeassistant:
+    discoveryPrefix: "homeassistant"   # ✅ Seulement lettres, chiffres, - et _
+    # ou
+    discoveryPrefix: "home_assistant"  # ✅ Avec underscore
 ```
 
 ---
@@ -821,12 +826,17 @@ homeassistant:
 ```yaml
 system:
   logLevel: 'info'
-  jeedom: false
   polling:
     dayInterval: 10
     nightInterval: 20
     nightStart: 22
     nightEnd: 7
+
+integration:
+  jeedom: false
+  homeassistant:
+    enabled: false
+    discoveryPrefix: "homeassistant"
 
 daikin:
   clientID: "votre_client_id"
@@ -843,10 +853,6 @@ mqtt:
   connectTimeout: 4000
   reconnectPeriod: 1000
   topic: "Daikin"
-
-homeassistant:
-  enabled: false
-  discoveryPrefix: "homeassistant"
 ```
 
 ## 📝 Notes Importantes

@@ -22,7 +22,7 @@ async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null
 		}
 		
 		// Generation for Jeedom
-		if (config.system.jeedom) {
+		if (config.integration?.jeedom) {
 			try {
 				logger.debug(`[logics.ts] => Generating Jeedom configuration for device ${id}`);
 				let cmd = generateCMD(data, moduleClass, device);
@@ -37,9 +37,9 @@ async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null
 		}
 
 		// Generation for Home Assistant
-		if (config.homeassistant?.enabled && device !== null) {
+		if (config.integration?.homeassistant?.enabled && device !== null) {
 			try {
-				const discoveryPrefix = config.homeassistant.discoveryPrefix || "homeassistant";
+				const discoveryPrefix = config.integration.homeassistant.discoveryPrefix || "homeassistant";
 				logger.debug(`[logics.ts] => Generating Home Assistant configuration for device ${id} (prefix: ${discoveryPrefix})`);
 				const discoveryConfigs = generateHADiscovery(data, moduleClass, device);
 				

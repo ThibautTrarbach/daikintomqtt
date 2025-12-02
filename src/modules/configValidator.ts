@@ -1,4 +1,4 @@
-import {Daikin2MQTT, ConfigSystem, ConfigDaikin, ConfigMQTT, ConfigPolling, ConfigHomeAssistant} from "../types";
+import {Daikin2MQTT, ConfigSystem, ConfigDaikin, ConfigMQTT, ConfigPolling, ConfigIntegration, ConfigHomeAssistant} from "../types";
 
 export interface ValidationError {
 	field: string;
@@ -58,9 +58,9 @@ export function validateConfig(config: any): void {
 		errors.push(...validateMQTTConfig(config.mqtt));
 	}
 
-	// Optional validation of homeassistant section
-	if (config.homeassistant) {
-		errors.push(...validateHomeAssistantConfig(config.homeassistant));
+	// Optional validation of integration section
+	if (config.integration) {
+		errors.push(...validateIntegrationConfig(config.integration));
 	}
 
 	if (errors.length > 0) {
@@ -87,15 +87,6 @@ function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 			field: 'system.logLevel',
 			message: `Log level must be one of: ${validLogLevels.join(', ')}`,
 			value: system.logLevel
-		});
-	}
-
-	// Validate jeedom (must be a boolean)
-	if (typeof system.jeedom !== 'boolean') {
-		errors.push({
-			field: 'system.jeedom',
-			message: 'Value must be a boolean (true/false)',
-			value: system.jeedom
 		});
 	}
 
@@ -460,6 +451,31 @@ function validateMQTTConfig(mqtt: ConfigMQTT): ValidationError[] {
 }
 
 /**
+ * Validates integration configuration
+ */
+function validateIntegrationConfig(integration: ConfigIntegration): ValidationError[] {
+	const errors: ValidationError[] = [];
+
+	// Validate jeedom if present (must be a boolean)
+	if (integration.jeedom !== undefined) {
+		if (typeof integration.jeedom !== 'boolean') {
+			errors.push({
+				field: 'integration.jeedom',
+				message: 'Value must be a boolean (true/false)',
+				value: integration.jeedom
+			});
+		}
+	}
+
+	// Validate homeassistant section if present
+	if (integration.homeassistant) {
+		errors.push(...validateHomeAssistantConfig(integration.homeassistant));
+	}
+
+	return errors;
+}
+
+/**
  * Validates Home Assistant configuration
  */
 function validateHomeAssistantConfig(homeassistant: ConfigHomeAssistant): ValidationError[] {
@@ -468,7 +484,7 @@ function validateHomeAssistantConfig(homeassistant: ConfigHomeAssistant): Valida
 	// Validate enabled
 	if (typeof homeassistant.enabled !== 'boolean') {
 		errors.push({
-			field: 'homeassistant.enabled',
+			field: 'integration.homeassistant.enabled',
 			message: 'Enabled value must be a boolean (true/false)',
 			value: homeassistant.enabled
 		});
@@ -478,7 +494,7 @@ function validateHomeAssistantConfig(homeassistant: ConfigHomeAssistant): Valida
 	if (homeassistant.discoveryPrefix !== undefined) {
 		if (typeof homeassistant.discoveryPrefix !== 'string' || homeassistant.discoveryPrefix.trim().length === 0) {
 			errors.push({
-				field: 'homeassistant.discoveryPrefix',
+				field: 'integration.homeassistant.discoveryPrefix',
 				message: 'Discovery prefix must be a non-empty string',
 				value: homeassistant.discoveryPrefix
 			});
@@ -486,7 +502,7 @@ function validateHomeAssistantConfig(homeassistant: ConfigHomeAssistant): Valida
 			const prefixRegex = /^[a-zA-Z0-9_-]+$/;
 			if (!prefixRegex.test(homeassistant.discoveryPrefix)) {
 				errors.push({
-					field: 'homeassistant.discoveryPrefix',
+					field: 'integration.homeassistant.discoveryPrefix',
 					message: 'Discovery prefix can only contain letters, numbers, dashes and underscores',
 					value: homeassistant.discoveryPrefix
 				});
@@ -501,6 +517,7 @@ export {
 	validateSystemConfig,
 	validateDaikinConfig,
 	validateMQTTConfig,
+	validateIntegrationConfig,
 	validateHomeAssistantConfig,
 	validatePollingConfig
 };

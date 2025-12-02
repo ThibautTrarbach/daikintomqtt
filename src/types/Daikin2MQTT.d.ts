@@ -4,12 +4,11 @@ export interface Daikin2MQTT {
 	system: ConfigSystem
 	daikin: ConfigDaikin
 	mqtt: ConfigMQTT
-	homeassistant?: ConfigHomeAssistant
+	integration?: ConfigIntegration
 }
 
 export interface ConfigSystem {
 	logLevel: string
-	jeedom: boolean
 	polling?: ConfigPolling
 	/**
 	 * Post-action refresh mode:
@@ -29,6 +28,11 @@ export interface ConfigPolling {
 	nightInterval: number // Polling interval in minutes during the night
 	nightStart: number // Night period start hour (0-23)
 	nightEnd: number // Night period end hour (0-23)
+}
+
+export interface ConfigIntegration {
+	jeedom?: boolean
+	homeassistant?: ConfigHomeAssistant
 }
 
 export interface ConfigHomeAssistant {

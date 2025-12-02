@@ -48,7 +48,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 	const modelInfo = (modules as any)._device?.modelInfo || "Daikin";
 	const firmwareVersion = (modules as any)._device?.firmwareVersion || "";
 
-	const discoveryPrefix = global.config.homeassistant?.discoveryPrefix || "homeassistant";
+	const discoveryPrefix = global.config.integration?.homeassistant?.discoveryPrefix || "homeassistant";
 	const baseTopic = global.config.mqtt.topic;
 	const stateTopic = `${baseTopic}/${deviceId}`;
 	const commandTopic = `${baseTopic}/${deviceId}/set`;

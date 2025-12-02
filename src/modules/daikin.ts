@@ -861,7 +861,7 @@ async function publishSystemBridge(systemBridge: SystemBridge) {
 	// Publish complete object like other devices (includes device)
 	await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
 	
-	if (config.system.jeedom) {
+	if (config.integration?.jeedom) {
 		await makeDefineFile(systemBridge, null);
 	}
 }

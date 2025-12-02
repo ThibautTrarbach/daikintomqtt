@@ -47,11 +47,12 @@ By default Daikin2MQTT expects its configuration in the `config` directory locat
 
 - `system`
   - `logLevel`: log level (`error`, `warn`, `info`, `debug`, ...)
-  - `jeedom`: enable/disable Jeedom integration
   - `actionRefreshMode` / `actionRefreshDelaySeconds` and `polling.*`: control how and how often data is refreshed
-- `homeassistant`
-  - `enabled`: if `true`, Home Assistant MQTT discovery will be used
-  - `discoveryPrefix`: MQTT discovery prefix (default `homeassistant`)
+- `integration`
+  - `jeedom`: enable/disable Jeedom integration
+  - `homeassistant`
+    - `enabled`: if `true`, Home Assistant MQTT discovery will be used
+    - `discoveryPrefix`: MQTT discovery prefix (default `homeassistant`)
 - `daikin`
   - `clientID` and `clientSecret`: from your Daikin Developer Portal application
   - `clientURL`: external URL used as Redirect URL in the Daikin Developer Portal (must match the one configured there)
@@ -106,8 +107,8 @@ You can change the data directory (configuration, tokens, generated files) by se
 ### MQTT & Integrations
 
 - MQTT: Daikin2MQTT publishes the state of your Daikin devices and subscribes to topics for commands under the base topic defined in `mqtt.topic` (default `daikinToMQTT`).
-- Home Assistant: when `homeassistant.enabled` is `true`, MQTT Discovery configuration is generated automatically and published on startup.
-- Jeedom: when `system.jeedom` is `true`, the payload format is adapted for the Jeedom integration.
+- Home Assistant: when `integration.homeassistant.enabled` is `true`, MQTT Discovery configuration is generated automatically and published on startup.
+- Jeedom: when `integration.jeedom` is `true`, the payload format is adapted for the Jeedom integration.
 
 ## Supported devices
 
