@@ -126,7 +126,7 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 		gatewayClass[key] = value
 	})
 
-	await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
+	const updateSuccess = await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
 
 	// Handle post-action behavior based on the configured refresh mode
 	try {
@@ -134,8 +134,8 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 		const now = Math.floor(Date.now() / 1000);
 		const deviceId = (device as DaikinCloudDevice).getId();
 
-		// Modes 2 and 3: immediate optimistic update (cache + MQTT)
-		if (mode === 2 || mode === 3) {
+		// Modes 2 and 3: immediate optimistic update (cache + MQTT) - ONLY if all API updates succeeded
+		if ((mode === 2 || mode === 3) && updateSuccess) {
 			try {
 				await cache.set(`device_${deviceId}`, device, 10800000);
 				const payload = JSON.stringify(gatewayClass);
@@ -144,6 +144,8 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 			} catch (e) {
 				logger.error(`[BaseModules.ts] => Error during optimistic post-action update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
 			}
+		} else if ((mode === 2 || mode === 3) && !updateSuccess) {
+			logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because API update failed`);
 		}
 
 		// Modes 1 and 3: schedule a delayed full refresh via timeUpdate
@@ -163,19 +165,41 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 /**
  * Iterates over all mapped properties and pushes updated values
  * from the gateway instance back to the Daikin cloud device.
+ * Returns true if at least one update was made successfully, false if no updates were made or any update failed.
+ * 
+ * Note: operationMode is processed before onOffMode to ensure proper API ordering.
  */
-async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways) {
+async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways): Promise<boolean> {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
+	let allSucceeded = true;
+	let atLeastOneUpdate = false; // Track if at least one API call was made
 	
-	for (const entry of Object.entries(data)) {
+	// Separate entries into operationMode, onOffMode, and others
+	const entries = Object.entries(data);
+	const operationModeEntry = entries.find(([key, value]) => value.dataPoint === "operationMode" && !value.dataPointPath);
+	const onOffModeEntry = entries.find(([key, value]) => value.dataPoint === "onOffMode" && !value.dataPointPath);
+	const otherEntries = entries.filter(([key, value]) => {
+		const isOperationMode = value.dataPoint === "operationMode" && !value.dataPointPath;
+		const isOnOffMode = value.dataPoint === "onOffMode" && !value.dataPointPath;
+		return !isOperationMode && !isOnOffMode;
+	});
+	
+	// Process in order: operationMode first, then onOffMode, then others
+	const orderedEntries: Array<[string, any]> = [];
+	if (operationModeEntry) orderedEntries.push(operationModeEntry);
+	if (onOffModeEntry) orderedEntries.push(onOffModeEntry);
+	orderedEntries.push(...otherEntries);
+	
+	for (const entry of orderedEntries) {
 		const [key, value] = entry;
 
 		try {
+			let updateMade = false;
 			if (value.multiple !== true) {
 				if (value.dataPointPath !== undefined) {
-					await validateDataPath(device, value, value.dataPointPath, gatewayClass[key])
+					updateMade = await validateDataPath(device, value, value.dataPointPath, gatewayClass[key])
 				} else {
-					await validateData(device, value, gatewayClass[key])
+					updateMade = await validateData(device, value, gatewayClass[key])
 				}
 			} else if (value.multiple === true) {
 				let multipleValue: any;
@@ -183,63 +207,124 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, null).value
 
 				let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-				await validateDataPath(device, value, dataPointPath, gatewayClass[key])
+				updateMade = await validateDataPath(device, value, dataPointPath, gatewayClass[key])
+			}
+			
+			if (updateMade) {
+				atLeastOneUpdate = true;
 			}
 		} catch (e) {
 			logger.error(`[BaseModules.ts] => Error updating device ${device.getId()} for property ${key}: ${e instanceof Error ? e.message : String(e)}`);
 			if (e instanceof Error && e.stack) {
 				logger.debug(`[BaseModules.ts] => Stack trace: ${e.stack}`);
 			}
+			allSucceeded = false;
 			// Continue with other properties even on error
 			continue;
 		}
 	}
+	
+	// Return true only if at least one update was made AND all updates succeeded
+	return atLeastOneUpdate && allSucceeded;
 }
 
 /**
  * Validates and sends a single value to the cloud for a simple datapoint
  * (without dataPointPath), using rate-limited retries.
+ * Returns true if an API call was made, false if skipped (identical value or validation failed).
  */
-async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetadata, value: any) {
+async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetadata, value: any): Promise<boolean> {
 	try {
 		const deviceId = device.getId();
-		let params = device.getData(def.managementPoint, def.dataPoint, null);
+		
+		// Get device from cache to ensure we have the latest state
+		const deviceD = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
+		
+		if (!deviceD) {
+			logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
+			return false;
+		}
+		
+		// Use deviceD (from cache) to get params, as it has the latest state after previous updates
+		let params = deviceD.getData(def.managementPoint, def.dataPoint, undefined);
 		
 		if (!params) {
 			logger.warn(`[BaseModules.ts] => Parameters not found for ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
-			return;
+			return false;
 		}
 
 		if (def.converter !== undefined) {
 			value = convert(def.converter, value, 1);
 		}
 		
+		// Check if value is identical BEFORE validation (to avoid unnecessary API calls)
+		// Use loose comparison to handle type differences (string vs number, etc.)
+		if (String(params.value) === String(value)) {
+			logger.debug(`[BaseModules.ts] => Value identical to current value for ${deviceId} - ${def.managementPoint}/${def.dataPoint} (${params.value} === ${value}), skipping API call`);
+			return false;
+		}
+		
 		let data = checkData(params, value);
 		if (!data.isOK) {
 			logger.debug(`[BaseModules.ts] => Validation failed for ${deviceId} - ${def.managementPoint}/${def.dataPoint}, value: ${value}`);
-			return;
+			return false;
 		}
 
-		if (params.value == data.value) {
-			logger.debug(`[BaseModules.ts] => Identical value for ${deviceId} - ${def.managementPoint}/${def.dataPoint}, no update needed`);
-			return;
+		// Double check after validation (in case checkData adjusted the value)
+		if (String(params.value) === String(data.value)) {
+			logger.debug(`[BaseModules.ts] => Value identical to current value after validation for ${deviceId} - ${def.managementPoint}/${def.dataPoint} (${params.value} === ${data.value}), skipping API call`);
+			return false;
 		}
 
-		const deviceD = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
-		
-		if (!deviceD) {
-			logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
-			return;
+		// Special check: if setting onOffMode to "on", ensure operationMode is valid and settable
+		// AND explicitly set operationMode first (even if unchanged) as API may require it
+		if (def.dataPoint === "onOffMode" && data.value === "on") {
+			logger.debug(`[BaseModules.ts] => Pre-activation check: Verifying and setting operationMode before setting onOffMode to "on" for ${deviceId}`);
+			const operationModeParams = deviceD.getData(def.managementPoint, "operationMode", null);
+			if (!operationModeParams) {
+				logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode parameters not found`);
+				return false;
+			}
+			
+			logger.debug(`[BaseModules.ts] => Pre-activation check - operationMode params: settable=${operationModeParams.settable}, value="${operationModeParams.value}", values=${operationModeParams.values ? JSON.stringify(operationModeParams.values) : 'N/A'}`);
+			
+			// Check if operationMode is settable
+			if (!operationModeParams.settable) {
+				logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode is not settable`);
+				return false;
+			}
+			
+			// Check if operationMode has a valid value
+			if (!operationModeParams.value) {
+				logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode is not set`);
+				return false;
+			}
+			
+			// Check if current operationMode value is in the allowed values list
+			if (operationModeParams.values && !operationModeParams.values.includes(operationModeParams.value)) {
+				logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: current operationMode "${operationModeParams.value}" is not in allowed values ${JSON.stringify(operationModeParams.values)}`);
+				return false;
+			}
+			
+			// Note: We don't pre-set operationMode if it's already the current value
+			// because the API rejects identical values with 422 error.
+			// The API should accept onOffMode activation if operationMode is already set correctly.
+			logger.debug(`[BaseModules.ts] => operationMode is already set to "${operationModeParams.value}", no need to pre-set it`);
+			
+			logger.debug(`[BaseModules.ts] => Pre-activation check PASSED: operationMode is valid, allowing onOffMode activation`);
 		}
 
 		logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_no_dataPointPath) for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
+		logger.debug(`[BaseModules.ts] => API CALL DETAILS - managementPoint: "${def.managementPoint}", dataPoint: "${def.dataPoint}", dataPointPath: null, value: "${data.value}" (type: ${typeof data.value})`);
+		logger.debug(`[BaseModules.ts] => API CALL DETAILS - Current params value: "${params.value}", settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
 		
 		try {
 			// Use rate limiter to handle automatic retries (max total duration enforced by RateLimiter)
 			const {rateLimiter} = await import("../rateLimiter");
 			await rateLimiter.executeWithRetry(
 				async () => {
-					await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
+					logger.debug(`[BaseModules.ts] => Executing setData: deviceD.setData("${def.managementPoint}", "${def.dataPoint}", undefined, ${JSON.stringify(data.value)}, {updateLocalData: true})`);
+					await deviceD.setData(def.managementPoint, def.dataPoint, undefined, data.value, {updateLocalData: true});
 				},
 				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`,
 				{
@@ -248,7 +333,10 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 					maxDelay: 60000
 				}
 			);
-			logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
+			// Update cache with the device that has local data updated
+			await cache.set(`device_${deviceId}`, deviceD, 10800000);
+			logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint} and cache updated`);
+			return true; // API call was made successfully
 		} catch (setError) {
 			logger.error(`[BaseModules.ts] => Error updating cloud for ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);
 			if (setError instanceof Error && setError.stack) {
@@ -268,47 +356,62 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 /**
  * Validates and sends a single value to the cloud for a datapoint
  * with a specific dataPointPath, using rate-limited retries.
+ * Returns true if an API call was made, false if skipped (identical value or validation failed).
  */
-async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMetadata, dataPointPath: string, value: any) {
+async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMetadata, dataPointPath: string, value: any): Promise<boolean> {
 	try {
 		const deviceId = device.getId();
-		let params = device.getData(def.managementPoint, def.dataPoint, dataPointPath);
+		
+		// Get device from cache to ensure we have the latest state
+		const deviceD = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
+		
+		if (!deviceD) {
+			logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
+			return false;
+		}
+		
+		// Use deviceD (from cache) to get params, as it has the latest state after previous updates
+		let params = deviceD.getData(def.managementPoint, def.dataPoint, dataPointPath);
 		
 		if (!params) {
 			logger.warn(`[BaseModules.ts] => Parameters not found for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
-			return;
+			return false;
 		}
 
 		if (def.converter !== undefined) {
 			value = convert(def.converter, value, 1);
 		}
 		
+		// Check if value is identical BEFORE validation (to avoid unnecessary API calls)
+		// Use loose comparison to handle type differences (string vs number, etc.)
+		if (String(params.value) === String(value)) {
+			logger.debug(`[BaseModules.ts] => Value identical to current value for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath} (${params.value} === ${value}), skipping API call`);
+			return false;
+		}
+		
 		let data = checkData(params, value);
 		if (!data.isOK) {
 			logger.debug(`[BaseModules.ts] => Validation failed for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}, value: ${value}`);
-			return;
+			return false;
 		}
 
-		if (params.value == data.value) {
-			logger.debug(`[BaseModules.ts] => Identical value for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}, no update needed`);
-			return;
-		}
-
-		const deviceD = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
-		
-		if (!deviceD) {
-			logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
-			return;
+		// Double check after validation (in case checkData adjusted the value)
+		if (String(params.value) === String(data.value)) {
+			logger.debug(`[BaseModules.ts] => Value identical to current value after validation for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath} (${params.value} === ${data.value}), skipping API call`);
+			return false;
 		}
 
 		logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_with_dataPointPath='${dataPointPath}') for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
+		logger.debug(`[BaseModules.ts] => API CALL DETAILS - managementPoint: "${def.managementPoint}", dataPoint: "${def.dataPoint}", dataPointPath: "${dataPointPath}", value: "${data.value}" (type: ${typeof data.value})`);
+		logger.debug(`[BaseModules.ts] => API CALL DETAILS - Current params value: "${params.value}", settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
 		
 		try {
 			// Use rate limiter to handle automatic retries (action valable max 1h via rateLimiter)
 			const {rateLimiter} = await import("../rateLimiter");
 			await rateLimiter.executeWithRetry(
 				async () => {
-					await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
+					logger.debug(`[BaseModules.ts] => Executing setData: deviceD.setData("${def.managementPoint}", "${def.dataPoint}", "${dataPointPath}", ${JSON.stringify(data.value)}, {updateLocalData: true})`);
+					await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value, {updateLocalData: true});
 				},
 				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`,
 				{
@@ -317,7 +420,10 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 					maxDelay: 60000
 				}
 			);
-			logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
+			// Update cache with the device that has local data updated
+			await cache.set(`device_${deviceId}`, deviceD, 10800000);
+			logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath} and cache updated`);
+			return true; // API call was made successfully
 		} catch (setError) {
 			logger.error(`[BaseModules.ts] => Error updating cloud for ${deviceId}: ${setError instanceof Error ? setError.message : String(setError)}`);
 			if (setError instanceof Error && setError.stack) {

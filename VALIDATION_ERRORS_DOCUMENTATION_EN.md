@@ -874,3 +874,4 @@ If you encounter errors not documented here:
 3. Compare with `config/settings-default.yml`
 4. Open an issue on GitHub with complete error logs
 
+
