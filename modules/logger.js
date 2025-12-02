@@ -46,7 +46,7 @@ function loadLogger() {
         ],
     });
     const shouldAddConsole = process.env.NODE_ENV !== 'production' ||
-        (typeof global.config !== 'undefined' && global.config?.system?.jeedom);
+        (typeof global.config !== 'undefined' && global.config?.integration?.jeedom);
     if (shouldAddConsole) {
         logger.add(new winston_1.default.transports.Console({
             format: combine(timestamp({

@@ -17,7 +17,7 @@ async function makeDefineFile(moduleClass, device) {
             logger.warn(`[logics.ts] => No metadata found for device ${id}`);
             return;
         }
-        if (config.system.jeedom) {
+        if (config.integration?.jeedom) {
             try {
                 logger.debug(`[logics.ts] => Generating Jeedom configuration for device ${id}`);
                 let cmd = (0, jeedom_1.generateCMD)(data, moduleClass, device);
@@ -31,9 +31,9 @@ async function makeDefineFile(moduleClass, device) {
                 }
             }
         }
-        if (config.homeassistant?.enabled && device !== null) {
+        if (config.integration?.homeassistant?.enabled && device !== null) {
             try {
-                const discoveryPrefix = config.homeassistant.discoveryPrefix || "homeassistant";
+                const discoveryPrefix = config.integration.homeassistant.discoveryPrefix || "homeassistant";
                 logger.debug(`[logics.ts] => Generating Home Assistant configuration for device ${id} (prefix: ${discoveryPrefix})`);
                 const discoveryConfigs = (0, homeassistant_1.generateHADiscovery)(data, moduleClass, device);
                 for (const [componentType, configs] of Object.entries(discoveryConfigs)) {

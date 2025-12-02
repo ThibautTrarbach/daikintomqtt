@@ -5,6 +5,7 @@ exports.validateConfig = validateConfig;
 exports.validateSystemConfig = validateSystemConfig;
 exports.validateDaikinConfig = validateDaikinConfig;
 exports.validateMQTTConfig = validateMQTTConfig;
+exports.validateIntegrationConfig = validateIntegrationConfig;
 exports.validateHomeAssistantConfig = validateHomeAssistantConfig;
 exports.validatePollingConfig = validatePollingConfig;
 class ConfigValidationError extends Error {
@@ -52,8 +53,8 @@ function validateConfig(config) {
     else {
         errors.push(...validateMQTTConfig(config.mqtt));
     }
-    if (config.homeassistant) {
-        errors.push(...validateHomeAssistantConfig(config.homeassistant));
+    if (config.integration) {
+        errors.push(...validateIntegrationConfig(config.integration));
     }
     if (errors.length > 0) {
         throw new ConfigValidationError(errors);
@@ -74,13 +75,6 @@ function validateSystemConfig(system) {
             field: 'system.logLevel',
             message: `Log level must be one of: ${validLogLevels.join(', ')}`,
             value: system.logLevel
-        });
-    }
-    if (typeof system.jeedom !== 'boolean') {
-        errors.push({
-            field: 'system.jeedom',
-            message: 'Value must be a boolean (true/false)',
-            value: system.jeedom
         });
     }
     if (system.polling) {
@@ -403,11 +397,27 @@ function validateMQTTConfig(mqtt) {
     }
     return errors;
 }
+function validateIntegrationConfig(integration) {
+    const errors = [];
+    if (integration.jeedom !== undefined) {
+        if (typeof integration.jeedom !== 'boolean') {
+            errors.push({
+                field: 'integration.jeedom',
+                message: 'Value must be a boolean (true/false)',
+                value: integration.jeedom
+            });
+        }
+    }
+    if (integration.homeassistant) {
+        errors.push(...validateHomeAssistantConfig(integration.homeassistant));
+    }
+    return errors;
+}
 function validateHomeAssistantConfig(homeassistant) {
     const errors = [];
     if (typeof homeassistant.enabled !== 'boolean') {
         errors.push({
-            field: 'homeassistant.enabled',
+            field: 'integration.homeassistant.enabled',
             message: 'Enabled value must be a boolean (true/false)',
             value: homeassistant.enabled
         });
@@ -415,7 +425,7 @@ function validateHomeAssistantConfig(homeassistant) {
     if (homeassistant.discoveryPrefix !== undefined) {
         if (typeof homeassistant.discoveryPrefix !== 'string' || homeassistant.discoveryPrefix.trim().length === 0) {
             errors.push({
-                field: 'homeassistant.discoveryPrefix',
+                field: 'integration.homeassistant.discoveryPrefix',
                 message: 'Discovery prefix must be a non-empty string',
                 value: homeassistant.discoveryPrefix
             });
@@ -424,7 +434,7 @@ function validateHomeAssistantConfig(homeassistant) {
             const prefixRegex = /^[a-zA-Z0-9_-]+$/;
             if (!prefixRegex.test(homeassistant.discoveryPrefix)) {
                 errors.push({
-                    field: 'homeassistant.discoveryPrefix',
+                    field: 'integration.homeassistant.discoveryPrefix',
                     message: 'Discovery prefix can only contain letters, numbers, dashes and underscores',
                     value: homeassistant.discoveryPrefix
                 });

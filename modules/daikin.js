@@ -114,7 +114,29 @@ async function loadDaikinAPI() {
         }
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorString = String(error);
-        if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || error?.error === "invalid_grant") {
+        if (errorMessage.includes("Authorization time out") ||
+            errorMessage.includes("authorization timeout") ||
+            errorString.includes("Authorization time out") ||
+            errorString.includes("authorization timeout")) {
+            try {
+                logger.error('[daikin.ts] => Authorization timeout detected. Shutting down daemon.');
+                try {
+                    await updateSystemBridge(null, null, {
+                        authorizationTimeout: true
+                    });
+                    logger.info('[daikin.ts] => System bridge updated with timeout state');
+                }
+                catch (bridgeError) {
+                    logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+                }
+                logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
+            }
+            catch (e) {
+                logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
+            }
+            process.exit(1);
+        }
+        else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || error?.error === "invalid_grant") {
             try {
                 logger.error('[daikin.ts] => Invalid token detected (invalid_grant), deleting old token and shutting down');
                 const tokenPath = (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset');
@@ -547,7 +569,29 @@ async function getDevices(force = false, reason = "unspecified") {
             catch (cloudError) {
                 const errorMessage = cloudError instanceof Error ? cloudError.message : String(cloudError);
                 const errorString = String(cloudError);
-                if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || cloudError?.error === "invalid_grant") {
+                if (errorMessage.includes("Authorization time out") ||
+                    errorMessage.includes("authorization timeout") ||
+                    errorString.includes("Authorization time out") ||
+                    errorString.includes("authorization timeout")) {
+                    try {
+                        logger.error('[daikin.ts] => Authorization timeout detected in getDevices. Shutting down daemon.');
+                        try {
+                            await updateSystemBridge(null, null, {
+                                authorizationTimeout: true
+                            });
+                            logger.info('[daikin.ts] => System bridge updated with timeout state');
+                        }
+                        catch (bridgeError) {
+                            logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+                        }
+                        logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
+                    }
+                    catch (e) {
+                        logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
+                    }
+                    process.exit(1);
+                }
+                else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || cloudError?.error === "invalid_grant") {
                     try {
                         logger.error('[daikin.ts] => Invalid token detected (invalid_grant) in getDevices, deleting old token and shutting down');
                         const tokenPath = (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset');
@@ -726,7 +770,7 @@ async function updateSystemBridge(rateLimitStatus, devices, authorizationInfo, e
 }
 async function publishSystemBridge(systemBridge) {
     await (0, mqtt_1.publishToMQTT)(instanceId_1.INSTANCE_ID, JSON.stringify(systemBridge));
-    if (config.system.jeedom) {
+    if (config.integration?.jeedom) {
         await (0, converter_1.makeDefineFile)(systemBridge, null);
     }
 }

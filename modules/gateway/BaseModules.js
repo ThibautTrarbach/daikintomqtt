@@ -375,17 +375,17 @@ function convertConsumption(values) {
 function getConsumptionData(values, consumptionT) {
     switch (consumptionT) {
         case consumptionEnum.heatingDay:
-            return values.heating.d;
+            return values.heating.d.slice(12);
         case consumptionEnum.heatingWeek:
-            return values.heating.w;
+            return values.heating.w.slice(7);
         case consumptionEnum.heatingMonth:
-            return values.heating.m;
+            return values.heating.m.slice(12);
         case consumptionEnum.coolingDay:
-            return values.cooling.d;
+            return values.cooling.d.slice(12);
         case consumptionEnum.coolingWeek:
-            return values.cooling.w;
+            return values.cooling.w.slice(7);
         case consumptionEnum.coolingMonth:
-            return values.cooling.m;
+            return values.cooling.m.slice(12);
     }
 }
 //# sourceMappingURL=BaseModules.js.map

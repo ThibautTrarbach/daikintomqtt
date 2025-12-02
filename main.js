@@ -116,6 +116,7 @@ const promises_1 = require("timers/promises");
         catch (updateError) {
             log.error(`[main.ts] => Error updating system bridge: ${updateError instanceof Error ? updateError.message : String(updateError)}`);
         }
+        log.error('[main.ts] => Please restart DaikinToMQTT and try again.');
         await (0, promises_1.setTimeout)(5000);
         process.exit(1);
     }

@@ -1,4 +1,4 @@
-import { ConfigSystem, ConfigDaikin, ConfigMQTT, ConfigPolling, ConfigHomeAssistant } from "../types";
+import { ConfigSystem, ConfigDaikin, ConfigMQTT, ConfigPolling, ConfigIntegration, ConfigHomeAssistant } from "../types";
 export interface ValidationError {
     field: string;
     message: string;
@@ -13,5 +13,6 @@ declare function validateSystemConfig(system: ConfigSystem): ValidationError[];
 declare function validatePollingConfig(polling: ConfigPolling): ValidationError[];
 declare function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[];
 declare function validateMQTTConfig(mqtt: ConfigMQTT): ValidationError[];
+declare function validateIntegrationConfig(integration: ConfigIntegration): ValidationError[];
 declare function validateHomeAssistantConfig(homeassistant: ConfigHomeAssistant): ValidationError[];
-export { validateSystemConfig, validateDaikinConfig, validateMQTTConfig, validateHomeAssistantConfig, validatePollingConfig };
+export { validateSystemConfig, validateDaikinConfig, validateMQTTConfig, validateIntegrationConfig, validateHomeAssistantConfig, validatePollingConfig };
