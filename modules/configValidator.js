@@ -86,6 +86,38 @@ function validateSystemConfig(system) {
     if (system.polling) {
         errors.push(...validatePollingConfig(system.polling));
     }
+    if (system.actionRefreshMode !== undefined) {
+        if (typeof system.actionRefreshMode !== 'number' || !Number.isInteger(system.actionRefreshMode)) {
+            errors.push({
+                field: 'system.actionRefreshMode',
+                message: 'Action refresh mode must be an integer (1, 2 or 3)',
+                value: system.actionRefreshMode
+            });
+        }
+        else if (![1, 2, 3].includes(system.actionRefreshMode)) {
+            errors.push({
+                field: 'system.actionRefreshMode',
+                message: 'Action refresh mode must be 1, 2 or 3',
+                value: system.actionRefreshMode
+            });
+        }
+    }
+    if (system.actionRefreshDelaySeconds !== undefined) {
+        if (typeof system.actionRefreshDelaySeconds !== 'number') {
+            errors.push({
+                field: 'system.actionRefreshDelaySeconds',
+                message: 'actionRefreshDelaySeconds must be a number (seconds)',
+                value: system.actionRefreshDelaySeconds
+            });
+        }
+        else if (system.actionRefreshDelaySeconds <= 0) {
+            errors.push({
+                field: 'system.actionRefreshDelaySeconds',
+                message: 'actionRefreshDelaySeconds must be greater than 0 seconds',
+                value: system.actionRefreshDelaySeconds
+            });
+        }
+    }
     return errors;
 }
 function validatePollingConfig(polling) {

@@ -37,6 +37,7 @@ exports.consumptionEnum = exports.converterEnum = exports.typeEnum = void 0;
 exports.convertDaikinDevice = convertDaikinDevice;
 exports.eventValue = eventValue;
 const decorator_1 = require("../decorator");
+const mqtt_1 = require("../mqtt");
 const typeEnum = Object.freeze({
     numeric: 0,
     string: 1,
@@ -137,6 +138,33 @@ async function eventValue(device, gatewayClass, events) {
         gatewayClass[key] = value;
     });
     await updateDaikinDevice(device, gatewayClass);
+    try {
+        const mode = config.system?.actionRefreshMode ?? 1;
+        const now = Math.floor(Date.now() / 1000);
+        const deviceId = device.getId();
+        if (mode === 2 || mode === 3) {
+            try {
+                await cache.set(`device_${deviceId}`, device, 10800000);
+                const payload = JSON.stringify(gatewayClass);
+                await (0, mqtt_1.publishToMQTT)(deviceId, payload);
+                logger.debug(`[BaseModules.ts] => Post-action optimistic update published for device ${deviceId} (mode=${mode})`);
+            }
+            catch (e) {
+                logger.error(`[BaseModules.ts] => Error during optimistic post-action update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
+            }
+        }
+        if (mode === 1 || mode === 3) {
+            await cache.set('needRefresh', now);
+            logger.debug(`[BaseModules.ts] => Post-action refresh scheduled (mode=${mode}) at ${new Date(now * 1000).toISOString()}`);
+        }
+        else {
+            await cache.del('needRefresh');
+            logger.debug("[BaseModules.ts] => Post-action refresh disabled (mode=2), any pending refresh cleared");
+        }
+    }
+    catch (postActionError) {
+        logger.error(`[BaseModules.ts] => Error handling post-action behavior: ${postActionError instanceof Error ? postActionError.message : String(postActionError)}`);
+    }
 }
 async function updateDaikinDevice(device, gatewayClass) {
     let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
@@ -200,10 +228,6 @@ async function validateData(device, def, value) {
             const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
             await rateLimiter.executeWithRetry(async () => {
                 await deviceD.setData(def.managementPoint, def.dataPoint, null, data.value);
-                const ts = Math.floor(Date.now() / 1000);
-                logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (no dataPointPath) to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
-                await cache.set('needRefresh', ts);
-                logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (no dataPointPath)");
             }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`, {
                 maxRetries: 3,
                 baseDelay: 1000,
@@ -257,10 +281,6 @@ async function validateDataPath(device, def, dataPointPath, value) {
             const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
             await rateLimiter.executeWithRetry(async () => {
                 await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value);
-                const ts = Math.floor(Date.now() / 1000);
-                logger.debug(`[BaseModules.ts] => Setting needRefresh in cache (with dataPointPath='${dataPointPath}') to timestamp ${ts} (${new Date(ts * 1000).toISOString()}) for device ${deviceId}`);
-                await cache.set('needRefresh', ts);
-                logger.debug("[BaseModules.ts] => needRefresh successfully stored in cache (with dataPointPath)");
             }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`, {
                 maxRetries: 3,
                 baseDelay: 1000,

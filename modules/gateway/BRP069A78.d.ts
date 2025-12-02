@@ -30,6 +30,12 @@ export declare class BRP069A78 implements ClassModule {
     private _tankTemperatureTank?;
     private _setpointModeTank?;
     private _domesticHotWaterTemperatureTank?;
+    private _heatingConsumptionDMain?;
+    private _heatingConsumptionWMain?;
+    private _heatingConsumptionMMain?;
+    private _coolingConsumptionDMain?;
+    private _coolingConsumptionWMain?;
+    private _coolingConsumptionMMain?;
     set controlModeMain(value: string);
     set errorCodeMain(value: string);
     set isHolidayModeActiveMain(value: boolean);

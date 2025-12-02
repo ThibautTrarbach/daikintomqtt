@@ -318,6 +318,17 @@ async function sendDevice(devices = null, cron = false, reason = "unspecified") 
             }
         }
         try {
+            const periodicReasons = ["cron_polling", "cron_forced_23h58_stats", "system_bridge_refresh_all"];
+            if (periodicReasons.includes(reason)) {
+                const ts = Math.floor(Date.now() / 1000);
+                await cache.set('lastPeriodicRefreshTs', ts);
+                logger.debug(`[daikin.ts] => Recorded periodic refresh at ${new Date(ts * 1000).toISOString()} (reason=${reason})`);
+            }
+        }
+        catch (periodicError) {
+            logger.error(`[daikin.ts] => Error recording periodic refresh timestamp: ${periodicError instanceof Error ? periodicError.message : String(periodicError)}`);
+        }
+        try {
             await updateSystemBridge(null, devices);
         }
         catch (bridgeError) {
@@ -335,22 +346,38 @@ async function sendDevice(devices = null, cron = false, reason = "unspecified") 
 async function timeUpdate() {
     try {
         logger.debug("[daikin.ts] => Checking refresh after command => START");
+        const mode = config.system?.actionRefreshMode ?? 1;
+        if (mode === 2) {
+            logger.debug("[daikin.ts] => Post-action refresh disabled (mode=2), skipping timeUpdate");
+            return;
+        }
+        const defaultDelay = 45;
+        const delaySeconds = config.system?.actionRefreshDelaySeconds ?? defaultDelay;
         const now = Math.floor(Date.now() / 1000);
-        const time = now - 30;
-        logger.debug(`[daikin.ts] => Current timestamp: ${now} (${new Date(now * 1000).toISOString()})`);
-        logger.debug(`[daikin.ts] => Minimum timestamp required: ${time} (${new Date(time * 1000).toISOString()})`);
-        const timerefresh = await cache.get('needRefresh');
-        if (timerefresh === undefined || timerefresh === null) {
+        logger.debug(`[daikin.ts] => Current timestamp: ${now} (${new Date(now * 1000).toISOString()}) - mode=${mode}, delay=${delaySeconds}s`);
+        const lastActionTs = await cache.get('needRefresh');
+        if (lastActionTs === undefined || lastActionTs === null) {
             logger.debug("[daikin.ts] => No refresh pending");
             return;
         }
-        if (typeof timerefresh !== "number") {
-            logger.warn(`[daikin.ts] => Invalid timestamp type in cache: ${typeof timerefresh}, removing`);
+        if (typeof lastActionTs !== "number") {
+            logger.warn(`[daikin.ts] => Invalid timestamp type in cache: ${typeof lastActionTs}, removing`);
             await cache.del('needRefresh');
             return;
         }
-        logger.debug(`[daikin.ts] => Cached timestamp: ${timerefresh} (${new Date(timerefresh * 1000).toISOString()})`);
-        if (timerefresh <= time) {
+        logger.debug(`[daikin.ts] => Cached last action timestamp: ${lastActionTs} (${new Date(lastActionTs * 1000).toISOString()})`);
+        const lastPeriodicRefreshTs = await cache.get('lastPeriodicRefreshTs');
+        if (typeof lastPeriodicRefreshTs === "number") {
+            logger.debug(`[daikin.ts] => Last periodic refresh timestamp: ${lastPeriodicRefreshTs} (${new Date(lastPeriodicRefreshTs * 1000).toISOString()})`);
+            if (lastPeriodicRefreshTs >= lastActionTs) {
+                logger.info("[daikin.ts] => Skipping post-action refresh because a periodic refresh occurred after the last action");
+                await cache.del('needRefresh');
+                return;
+            }
+        }
+        const elapsed = now - lastActionTs;
+        logger.debug(`[daikin.ts] => Elapsed time since last action: ${elapsed}s`);
+        if (elapsed >= delaySeconds) {
             logger.info("[daikin.ts] => Refresh needed after command, updating devices");
             await cache.del('needRefresh');
             try {
@@ -365,7 +392,7 @@ async function timeUpdate() {
             }
         }
         else {
-            const remainingSeconds = timerefresh - time;
+            const remainingSeconds = delaySeconds - elapsed;
             logger.debug(`[daikin.ts] => Refresh not yet needed, ${remainingSeconds} second(s) remaining`);
         }
         logger.debug("[daikin.ts] => Checking refresh after command => FINISH");

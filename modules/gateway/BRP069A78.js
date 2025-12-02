@@ -51,6 +51,12 @@ class BRP069A78 {
     _tankTemperatureTank;
     _setpointModeTank;
     _domesticHotWaterTemperatureTank;
+    _heatingConsumptionDMain;
+    _heatingConsumptionWMain;
+    _heatingConsumptionMMain;
+    _coolingConsumptionDMain;
+    _coolingConsumptionWMain;
+    _coolingConsumptionMMain;
     set controlModeMain(value) {
         this._controlModeMain = value;
     }
@@ -612,4 +618,112 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069A78.prototype, "_domesticHotWaterTemperatureTank", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControlMainZone",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.heatingDay,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Main Zone - Heating Consumption Day',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A78.prototype, "_heatingConsumptionDMain", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControlMainZone",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.heatingWeek,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Main Zone - Heating Consumption Week',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A78.prototype, "_heatingConsumptionWMain", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControlMainZone",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.heatingMonth,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Main Zone - Heating Consumption Month',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A78.prototype, "_heatingConsumptionMMain", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControlMainZone",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.coolingDay,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Main Zone - Cooling Consumption Day',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A78.prototype, "_coolingConsumptionDMain", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControlMainZone",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.coolingWeek,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Main Zone - Cooling Consumption Week',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A78.prototype, "_coolingConsumptionWMain", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControlMainZone",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.coolingMonth,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Main Zone - Cooling Consumption Month',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A78.prototype, "_coolingConsumptionMMain", void 0);
 //# sourceMappingURL=BRP069A78.js.map

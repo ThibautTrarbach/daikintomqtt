@@ -144,6 +144,7 @@ function generateSensorDiscovery(device, gatewayClass, propertyKey, metadata, de
     let deviceClass;
     let unitOfMeasurement = metadata.unite;
     const propertyName = metadata.name.toLowerCase();
+    let isEnergy = false;
     if (propertyName.includes("temperature")) {
         deviceClass = "temperature";
         unitOfMeasurement = unitOfMeasurement || "°C";
@@ -155,6 +156,7 @@ function generateSensorDiscovery(device, gatewayClass, propertyKey, metadata, de
     else if (propertyName.includes("consumption") || propertyName.includes("energy")) {
         deviceClass = "energy";
         unitOfMeasurement = unitOfMeasurement || "kWh";
+        isEnergy = true;
     }
     const valuePath = propertyKey.replace(/^_/, "");
     const haConfig = {
@@ -186,6 +188,9 @@ function generateSensorDiscovery(device, gatewayClass, propertyKey, metadata, de
     }
     if (unitOfMeasurement) {
         haConfig.unit_of_measurement = unitOfMeasurement;
+    }
+    if (isEnergy) {
+        haConfig.state_class = "total_increasing";
     }
     return haConfig;
 }

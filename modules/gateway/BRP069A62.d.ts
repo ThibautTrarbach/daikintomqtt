@@ -28,6 +28,12 @@ export declare class BRP069A62 implements ClassModule {
     private _tankTemperature2?;
     private _temperatureControl?;
     private _setpointMode2?;
+    private _heatingConsumptionD2?;
+    private _heatingConsumptionW2?;
+    private _heatingConsumptionM2?;
+    private _coolingConsumptionD2?;
+    private _coolingConsumptionW2?;
+    private _coolingConsumptionM2?;
     set isHolidayModeActive1(value: boolean);
     set isInErrorState1(value: boolean);
     set isInWarningState1(value: boolean);

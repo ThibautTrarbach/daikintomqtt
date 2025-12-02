@@ -49,6 +49,12 @@ class BRP069A62 {
     _tankTemperature2;
     _temperatureControl;
     _setpointMode2;
+    _heatingConsumptionD2;
+    _heatingConsumptionW2;
+    _heatingConsumptionM2;
+    _coolingConsumptionD2;
+    _coolingConsumptionW2;
+    _coolingConsumptionM2;
     set isHolidayModeActive1(value) {
         this._isHolidayModeActive1 = value;
     }
@@ -580,4 +586,112 @@ __decorate([
     }),
     __metadata("design:type", Boolean)
 ], BRP069A62.prototype, "_setpointMode2", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "2",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.heatingDay,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: '2 - Heating Consumption Day',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A62.prototype, "_heatingConsumptionD2", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "2",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.heatingWeek,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: '2 - Heating Consumption Week',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A62.prototype, "_heatingConsumptionW2", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "2",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.heatingMonth,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: '2 - Heating Consumption Month',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A62.prototype, "_heatingConsumptionM2", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "2",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.coolingDay,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: '2 - Cooling Consumption Day',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A62.prototype, "_coolingConsumptionD2", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "2",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.coolingWeek,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: '2 - Cooling Consumption Week',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A62.prototype, "_coolingConsumptionW2", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "2",
+        dataPoint: "consumptionData",
+        dataPointPath: "/electrical",
+        consumptionT: BaseModules_1.consumptionEnum.coolingMonth,
+        converter: BaseModules_1.converterEnum.consumption
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: '2 - Cooling Consumption Month',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minValue: 0,
+        maxValue: 3000,
+        unite: 'kWh'
+    }),
+    __metadata("design:type", Number)
+], BRP069A62.prototype, "_coolingConsumptionM2", void 0);
 //# sourceMappingURL=BRP069A62.js.map
