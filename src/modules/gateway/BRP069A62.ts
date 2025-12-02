@@ -1,6 +1,6 @@
 import {ClassModule, DevicesInformation} from "../../types";
 import {modulesDaikinAcces, modulesDaikinDevice, modulesDataDescription} from "../decorator";
-import {convertDaikinDevice, converterEnum, typeEnum} from "./BaseModules";
+import {consumptionEnum, convertDaikinDevice, converterEnum, typeEnum} from "./BaseModules";
 
 export class BRP069A62 implements ClassModule{
 	@modulesDaikinDevice({
