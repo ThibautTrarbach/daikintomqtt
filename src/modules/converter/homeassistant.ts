@@ -40,7 +40,6 @@ interface HomeAssistantDiscoveryConfig {
 
 /**
  * Generates Home Assistant discovery configuration for a device
- * Similar to generateCMD for Jeedom
  */
 function generateHADiscovery(data: object, modules: object, device: DaikinCloudDevice) {
 	const deviceId = (modules as any)._device?.id || device.getId();
