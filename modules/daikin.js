@@ -451,7 +451,7 @@ function getModels(devices) {
         }
         if (!value) {
             logger.warn(`[daikin.ts] => No modelInfo found for device ${devices.getId ? devices.getId() : 'unknown'}`);
-            (0, gateway_1.anonymise)(devices, value || 'unknown');
+            (0, gateway_1.anonymise)(devices, 'unknown');
             return undefined;
         }
         logger.debug(`[daikin.ts] => Model detected: ${value} for device ${devices.getId ? devices.getId() : 'unknown'}`);

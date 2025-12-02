@@ -15,7 +15,6 @@ function generateHADiscovery(data, modules, device) {
     const serialNumber = modules._device?.serialNumber || deviceId;
     const modelInfo = modules._device?.modelInfo || "Daikin";
     const firmwareVersion = modules._device?.firmwareVersion || "";
-    const discoveryPrefix = global.config.integration?.homeassistant?.discoveryPrefix || "homeassistant";
     const baseTopic = global.config.mqtt.topic;
     const stateTopic = `${baseTopic}/${deviceId}`;
     const commandTopic = `${baseTopic}/${deviceId}/set`;
