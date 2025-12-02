@@ -12,23 +12,23 @@ export interface ConfigSystem {
 	jeedom: boolean
 	polling?: ConfigPolling
 	/**
-	 * Mode de rafraîchissement après action :
-	 * 1 = rafraîchissement complet différé (actionRefreshDelaySeconds) après l'action
-	 * 2 = mise à jour optimiste (cache + MQTT) sans appel cloud après action
-	 * 3 = hybride (optimiste immédiat + rafraîchissement complet actionRefreshDelaySeconds après la dernière action)
+	 * Post-action refresh mode:
+	 * 1 = full refresh delayed by actionRefreshDelaySeconds after the action
+	 * 2 = optimistic update (cache + MQTT) without cloud refresh after the action
+	 * 3 = hybrid (optimistic update + full refresh actionRefreshDelaySeconds after the last action)
 	 */
 	actionRefreshMode?: number
 	/**
-	 * Délai en secondes avant le rafraîchissement complet en modes 1 et 3
+	 * Delay in seconds before full refresh in modes 1 and 3
 	 */
 	actionRefreshDelaySeconds?: number
 }
 
 export interface ConfigPolling {
-	dayInterval: number // Intervalle en minutes pour le polling en journée
-	nightInterval: number // Intervalle en minutes pour le polling la nuit
-	nightStart: number // Heure de début de la période nuit (0-23)
-	nightEnd: number // Heure de fin de la période nuit (0-23)
+	dayInterval: number // Polling interval in minutes during the day
+	nightInterval: number // Polling interval in minutes during the night
+	nightStart: number // Night period start hour (0-23)
+	nightEnd: number // Night period end hour (0-23)
 }
 
 export interface ConfigHomeAssistant {
@@ -37,7 +37,7 @@ export interface ConfigHomeAssistant {
 }
 
 export interface ConfigDaikin {
-	modeProxy?: boolean // Optionnel, non utilisé actuellement
+	modeProxy?: boolean // Optional, not used currently
 	clientSecret: string
 	clientID: string
 	clientURL: string

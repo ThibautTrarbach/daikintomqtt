@@ -39,7 +39,7 @@ class RateLimiter {
 		baseDelay: 1000, // 1 second
 		maxDelay: 60000, // 60 seconds
 		backoffMultiplier: 2,
-		// By défaut, une action reste valable 1 heure maximum
+		// By default, an action is valid for at most 1 hour
 		maxTotalDurationMs: 60 * 60 * 1000,
 		skipWaitWhenRateLimited: false,
 		refreshMode: false

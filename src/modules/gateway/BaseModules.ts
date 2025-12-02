@@ -3,12 +3,14 @@ import {Gateways, ModulePropertyMetadata} from "../../types";
 import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 import {publishToMQTT} from "../mqtt";
 
+// Generic type information for module properties
 const typeEnum = Object.freeze({
 	numeric: 0,
 	string: 1,
 	binary: 2,
 });
 
+// Converters used to translate between Daikin values and internal representation
 const converterEnum = Object.freeze({
 	numeric: 0,
 	string: 1,
@@ -16,6 +18,7 @@ const converterEnum = Object.freeze({
 	consumption: 3
 });
 
+// Indices used to select specific energy consumption periods
 const consumptionEnum = Object.freeze({
 	heatingDay: 0,
 	heatingWeek: 1,
@@ -25,6 +28,10 @@ const consumptionEnum = Object.freeze({
 	coolingMonth: 5
 });
 
+/**
+ * Populates a gateway class instance with values from a DaikinCloudDevice
+ * using metadata declared via decorators.
+ */
 function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	createDeviceInfo(device, gatewayClass)
@@ -73,6 +80,10 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 	})
 }
 
+/**
+ * Populates gatewayClass._device with identification information from the device
+ * (model, serial, firmware, error state, etc.).
+ */
 function createDeviceInfo(device: any, gatewayClass: Gateways) {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass);
 	Object.entries(data).forEach(entry1 => {
@@ -103,6 +114,11 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 	})
 }
 
+/**
+ * Applies incoming MQTT event values to the gateway instance,
+ * pushes the changes to the cloud, then handles post-action behavior
+ * (optimistic update and/or delayed refresh) based on configuration.
+ */
 async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 	Object.entries(events).forEach(entry => {
 		const [key, value] = entry;
@@ -112,13 +128,13 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 
 	await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
 
-	// Gestion post-action en fonction du mode de rafraîchissement configuré
+	// Handle post-action behavior based on the configured refresh mode
 	try {
 		const mode = config.system?.actionRefreshMode ?? 1;
 		const now = Math.floor(Date.now() / 1000);
 		const deviceId = (device as DaikinCloudDevice).getId();
 
-		// Modes 2 et 3 : mise à jour optimiste immédiate (cache + MQTT)
+		// Modes 2 and 3: immediate optimistic update (cache + MQTT)
 		if (mode === 2 || mode === 3) {
 			try {
 				await cache.set(`device_${deviceId}`, device, 10800000);
@@ -130,12 +146,12 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 			}
 		}
 
-		// Modes 1 et 3 : planifier un rafraîchissement complet différé via timeUpdate
+		// Modes 1 and 3: schedule a delayed full refresh via timeUpdate
 		if (mode === 1 || mode === 3) {
 			await cache.set('needRefresh', now);
 			logger.debug(`[BaseModules.ts] => Post-action refresh scheduled (mode=${mode}) at ${new Date(now * 1000).toISOString()}`);
 		} else {
-			// Mode 2 : on s'assure qu'aucun ancien refresh différé ne reste en attente
+			// Mode 2: ensure there is no pending delayed refresh
 			await cache.del('needRefresh');
 			logger.debug("[BaseModules.ts] => Post-action refresh disabled (mode=2), any pending refresh cleared");
 		}
@@ -144,6 +160,10 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 	}
 }
 
+/**
+ * Iterates over all mapped properties and pushes updated values
+ * from the gateway instance back to the Daikin cloud device.
+ */
 async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways) {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	
@@ -176,6 +196,10 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 	}
 }
 
+/**
+ * Validates and sends a single value to the cloud for a simple datapoint
+ * (without dataPointPath), using rate-limited retries.
+ */
 async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetadata, value: any) {
 	try {
 		const deviceId = device.getId();
@@ -208,10 +232,10 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			return;
 		}
 
-			logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_no_dataPointPath) for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
+		logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_no_dataPointPath) for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
 		
 		try {
-			// Use rate limiter to handle automatic retries (action valable max 1h via rateLimiter)
+			// Use rate limiter to handle automatic retries (max total duration enforced by RateLimiter)
 			const {rateLimiter} = await import("../rateLimiter");
 			await rateLimiter.executeWithRetry(
 				async () => {
@@ -241,6 +265,10 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 	}
 }
 
+/**
+ * Validates and sends a single value to the cloud for a datapoint
+ * with a specific dataPointPath, using rate-limited retries.
+ */
 async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMetadata, dataPointPath: string, value: any) {
 	try {
 		const deviceId = device.getId();
@@ -273,7 +301,7 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 			return;
 		}
 
-			logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_with_dataPointPath='${dataPointPath}') for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
+		logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_with_dataPointPath='${dataPointPath}') for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}: ${data.value}`);
 		
 		try {
 			// Use rate limiter to handle automatic retries (action valable max 1h via rateLimiter)
@@ -306,6 +334,10 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 	}
 }
 
+/**
+ * Validates a candidate value against the constraints of a Daikin datapoint
+ * (settable flag, allowed values, min/max) and adjusts it if needed.
+ */
 function checkData(params: any, value: any) {
 	let result = {
 		isOK: false,
@@ -346,6 +378,10 @@ function checkData(params: any, value: any) {
 	return result;
 }
 
+/**
+ * Generic conversion helper used by decorators to translate values
+ * between internal representation and Daikin API representation.
+ */
 function convert(converter: number, value: any, to: number) {
 	switch (converter) {
 		case converterEnum.binary:
@@ -360,6 +396,7 @@ function convert(converter: number, value: any, to: number) {
 	}
 }
 
+// Converts "on"/"off" into boolean
 function convertBinary0(value: string) {
 	switch (value) {
 		case 'on':
@@ -369,6 +406,7 @@ function convertBinary0(value: string) {
 	}
 }
 
+// Converts boolean into "on"/"off"
 function convertBinary1(value: boolean) {
 	switch (value) {
 		case true:
@@ -378,11 +416,18 @@ function convertBinary1(value: boolean) {
 	}
 }
 
+/**
+ * Aggregates an array of consumption samples and rounds the result.
+ */
 function convertConsumption(values: Array<number>) {
 	let consumption =parseFloat(String(values.reduce((acc, currentValue) => acc + currentValue, 0)));
 	return Math.round((consumption + Number.EPSILON) * 100) / 100
 }
 
+/**
+ * Extracts a specific consumption bucket (day/week/month, heating/cooling)
+ * from the raw Daikin consumption object.
+ */
 function getConsumptionData(values : any, consumptionT: number) {
 	switch (consumptionT) {
 		case consumptionEnum.heatingDay:

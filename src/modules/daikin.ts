@@ -18,6 +18,10 @@ import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
 import fs from "fs";
 import {INSTANCE_ID} from "./instanceId";
 
+/**
+ * Initializes the Daikin Cloud client (OIDC) and registers core event handlers
+ * for authorization, rate limiting, token updates and errors.
+ */
 async function loadDaikinAPI() {
 	if (!config.daikin.clientID || !config.daikin.clientSecret) {
 		logger.error('[daikin.ts] => Please set the clientID and clientSecret in the settings files');
@@ -140,6 +144,13 @@ async function loadDaikinAPI() {
 	global.daikinClient = daikinClient;
 }
 
+/**
+ * Starts the Daikin integration:
+ *  - loads rate limit info
+ *  - initializes the system bridge
+ *  - triggers authorization if no token is present
+ *  - loads devices, subscribes to MQTT, generates configs and publishes initial state.
+ */
 async function startDaikinAPI() {
 	let devices: DaikinCloudDevice[] | null = null;
 	
@@ -220,6 +231,10 @@ async function startDaikinAPI() {
 	}
 }
 
+/**
+ * Subscribes to MQTT topics for each Daikin device and for the system bridge,
+ * and routes incoming MQTT messages to the appropriate handlers.
+ */
 async function subscribeDevices(devices: DaikinCloudDevice[]) {
 	for (let dev of devices) {
 		let subscribeTopic = config.mqtt.topic + "/" + dev.getId() + "/set"
@@ -308,6 +323,11 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 	})
 }
 
+/**
+ * Publishes the full state of all devices to MQTT.
+ * If devices are not provided, they are retrieved via getDevices (cache or cloud).
+ * Also records periodic refresh timestamps and updates the system bridge.
+ */
 async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: boolean = false, reason: string = "unspecified") {
 	try {
 		if (devices == null) {
@@ -347,7 +367,7 @@ async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: bool
 			}
 		}
 		
-		// Marquer le dernier rafraîchissement périodique (pour éviter un refresh post-action inutile)
+		// Mark last periodic refresh (to avoid an unnecessary post-action refresh)
 		try {
 			const periodicReasons = ["cron_polling", "cron_forced_23h58_stats", "system_bridge_refresh_all"];
 			if (periodicReasons.includes(reason)) {
@@ -374,19 +394,25 @@ async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: bool
 	}
 }
 
+/**
+ * Periodically checks whether a post-action refresh is required based on:
+ *  - configured actionRefreshMode and delay
+ *  - timestamp of the last action
+ *  - timestamp of the last periodic refresh (to avoid duplicate refreshes).
+ */
 async function timeUpdate() {
 	try {
 		logger.debug("[daikin.ts] => Checking refresh after command => START");
 
 		const mode = config.system?.actionRefreshMode ?? 1;
 
-		// Mode 2 : pas de refresh post-action, uniquement mise à jour optimiste
+		// Mode 2: no post-action refresh, only optimistic updates
 		if (mode === 2) {
 			logger.debug("[daikin.ts] => Post-action refresh disabled (mode=2), skipping timeUpdate");
 			return;
 		}
 
-		// Délai en secondes selon le mode, configurable dans system.actionRefreshDelaySeconds
+		// Delay in seconds depending on the mode, configurable via system.actionRefreshDelaySeconds
 		const defaultDelay = 45;
 		const delaySeconds = config.system?.actionRefreshDelaySeconds ?? defaultDelay;
 
@@ -408,7 +434,7 @@ async function timeUpdate() {
 		
 		logger.debug(`[daikin.ts] => Cached last action timestamp: ${lastActionTs} (${new Date(lastActionTs * 1000).toISOString()})`);
 
-		// Si un refresh périodique a eu lieu après la dernière action, on annule le refresh post-action
+		// If a periodic refresh happened after the last action, skip the post-action refresh
 		const lastPeriodicRefreshTs = await cache.get('lastPeriodicRefreshTs');
 		if (typeof lastPeriodicRefreshTs === "number") {
 			logger.debug(`[daikin.ts] => Last periodic refresh timestamp: ${lastPeriodicRefreshTs} (${new Date(lastPeriodicRefreshTs * 1000).toISOString()})`);
@@ -449,6 +475,10 @@ async function timeUpdate() {
 	}
 }
 
+/**
+ * Detects the gateway model for a given Daikin device and instantiates
+ * the corresponding gateway class, or returns undefined if unsupported.
+ */
 function getModels(devices: any) {
 	try {
 		if (!devices) {
@@ -512,6 +542,10 @@ function getModels(devices: any) {
 	}
 }
 
+/**
+ * Generates integration configuration files (e.g. Jeedom / Home Assistant)
+ * for the provided list of devices.
+ */
 async function generateConfig(devices: DaikinCloudDevice[]) {
 	try {
 		if (!devices || devices.length === 0) {
@@ -550,6 +584,11 @@ async function generateConfig(devices: DaikinCloudDevice[]) {
 	}
 }
 
+/**
+ * Returns the list of Daikin cloud devices, using the cache when possible.
+ * When force=true or the cache is missing, it calls the Daikin cloud API
+ * and updates the cache, with rate-limit aware retry logic.
+ */
 async function getDevices(force: boolean = false, reason: string = "unspecified"): Promise<DaikinCloudDevice[]> {
 	try {
 		const devices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
@@ -568,10 +607,10 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				// Use rate limiter to handle automatic retries
 				const {rateLimiter} = await import("./rateLimiter");
 				
-				// Les raisons "refresh" ont un comportement spécial :
-				// - 3 essais maximum espacés de 60s
-				// - retry uniquement en cas de problème de contact ou de rate limit minute
-				// - aucun retry si rate limit daily atteinte
+				// "Refresh" reasons have a special behavior:
+				// - 3 attempts maximum spaced by 60s
+				// - retry only on connectivity issues or minute rate limit
+				// - no retry when daily rate limit is reached
 				const refreshReasons = [
 					"cron_polling",
 					"cron_forced_23h58_stats",
@@ -586,14 +625,14 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 					`getCloudDevices-${reason}`,
 					isRefreshReason
 						? {
-							// Mode refresh : 3 essais (0 + 2 retries) toutes les 60s,
-							// seulement pour erreurs de contact / rate limit minute (géré dans rateLimiter.refreshMode)
+							// Refresh mode: 3 attempts (0 + 2 retries), every 60s,
+							// only for connectivity errors / minute rate limit (handled in rateLimiter.refreshMode)
 							maxRetries: 2,
 							refreshMode: true
 						}
 						: {
-							// Appels "structurants" (startup, auth, etc.) : on garde des retries raisonnables,
-							// mais bornés en durée totale par le rateLimiter (1h maxTotalDurationMs).
+							// Structural calls (startup, auth, etc.): keep reasonable retries,
+							// but limited in total duration by rateLimiter (1h maxTotalDurationMs).
 							maxRetries: 3,
 							baseDelay: 2000, // 2 seconds base
 							maxDelay: 120000 // 2 minutes maximum
@@ -681,6 +720,10 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 	}
 }
 
+/**
+ * Creates and publishes the initial SystemBridge object with the current instance id
+ * and the list of devices (if available).
+ */
 async function initializeSystemBridge(devices: DaikinCloudDevice[]) {
 	const systemBridge = new SystemBridge();
 	systemBridge.device.id = INSTANCE_ID;
@@ -688,6 +731,12 @@ async function initializeSystemBridge(devices: DaikinCloudDevice[]) {
 	await updateSystemBridge(null, devices, undefined, systemBridge);
 }
 
+/**
+ * Updates and publishes the SystemBridge object using:
+ *  - latest rate limit information
+ *  - current devices (from argument, cache or cloud)
+ *  - authorization state (URL, request flag, timeout flag).
+ */
 async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDevice[] | null, authorizationInfo?: {authorizationUrl?: string, authorizationRequest?: boolean, authorizationTimeout?: boolean}, existingBridge?: SystemBridge) {
 	const systemBridge = existingBridge || new SystemBridge();
 	
@@ -817,6 +866,10 @@ async function publishSystemBridge(systemBridge: SystemBridge) {
 	}
 }
 
+/**
+ * Returns the list of unsupported module JSON definitions found in the
+ * generated configuration directory, with best-effort extraction of model info.
+ */
 function getUnsupportedModules(): Array<{fileName: string, model?: string}> {
 	const configFolder = resolve(datadir, '/newConfig');
 	const unsupportedModules: Array<{fileName: string, model?: string}> = [];

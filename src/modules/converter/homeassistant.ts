@@ -39,8 +39,8 @@ interface HomeAssistantDiscoveryConfig {
 }
 
 /**
- * Génère la configuration de découverte Home Assistant pour un device
- * Similaire à generateCMD pour Jeedom
+ * Generates Home Assistant discovery configuration for a device
+ * Similar to generateCMD for Jeedom
  */
 function generateHADiscovery(data: object, modules: object, device: DaikinCloudDevice) {
 	const deviceId = (modules as any)._device?.id || device.getId();
@@ -56,7 +56,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 
 	const discoveryConfigs: { [componentType: string]: { [objectId: string]: HomeAssistantDiscoveryConfig } } = {};
 
-	// 1. Générer la configuration du composant climate
+	// 1. Generate discovery configuration for the climate component
 	const climateConfig = generateClimateDiscovery(
 		device,
 		modules as Gateways,
@@ -71,13 +71,13 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 	);
 	discoveryConfigs["climate"] = { [deviceId]: climateConfig };
 
-	// 2. Générer les configurations des sensors et switches
+	// 2. Generate discovery configuration for sensors and switches
 	Object.entries(data).forEach(entry => {
 		try {
 			let [key, value] = entry;
 			const propertyMetadata = value as ModulesDescriptionMetadata;
 
-			// Ignorer les propriétés déjà gérées par climate
+			// Ignore properties already handled by the climate component
 			if (key === "_operationMode" || 
 				key === "_onOffMode" || 
 				key === "_temperatureControl" ||
@@ -94,9 +94,9 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 				return;
 			}
 
-			// Générer la configuration selon le type
+			// Generate discovery configuration depending on the type
 			if (propertyMetadata.type === typeEnum.numeric && !propertyMetadata.settable) {
-				// Sensor numérique
+				// Numeric sensor
 				const sensorConfig = generateSensorDiscovery(
 					device,
 					modules as Gateways,
@@ -118,7 +118,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 					discoveryConfigs["sensor"][`${deviceId}_${objectId}`] = sensorConfig;
 				}
 			} else if (propertyMetadata.type === typeEnum.binary) {
-				// Binary sensor ou switch
+				// Binary sensor or switch
 				const switchConfig = generateSwitchDiscovery(
 					device,
 					modules as Gateways,
@@ -151,7 +151,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 }
 
 /**
- * Génère la configuration de découverte pour un composant climate Home Assistant
+ * Generates Home Assistant discovery configuration for a climate component
  */
 function generateClimateDiscovery(
 	device: DaikinCloudDevice,
@@ -165,7 +165,7 @@ function generateClimateDiscovery(
 	commandTopic: string,
 	metadata: any
 ): HomeAssistantDiscoveryConfig {
-	// Déterminer les modes disponibles
+	// Determine available modes
 	let operationModeMeta: ModulesDescriptionMetadata | undefined;
 	let hvacModes = ["off", "heat", "cool", "auto", "fan_only", "dry"];
 
@@ -249,7 +249,7 @@ function generateClimateDiscovery(
 }
 
 /**
- * Génère la configuration de découverte pour un sensor Home Assistant
+ * Generates Home Assistant discovery configuration for a sensor
  */
 function generateSensorDiscovery(
 	device: DaikinCloudDevice,
@@ -264,11 +264,11 @@ function generateSensorDiscovery(
 	stateTopic: string,
 	baseTopic: string
 ): HomeAssistantDiscoveryConfig | null {
-	// Déterminer le device_class et l'unité
+	// Determine device_class and unit
 	let deviceClass: string | undefined;
 	let unitOfMeasurement: string | undefined = metadata.unite;
 
-	// Mapping basé sur le nom et l'unité
+	// Mapping based on name and unit
 	const propertyName = metadata.name.toLowerCase();
 	if (propertyName.includes("temperature")) {
 		deviceClass = "temperature";
@@ -319,7 +319,7 @@ function generateSensorDiscovery(
 }
 
 /**
- * Génère la configuration de découverte pour un switch/binary_sensor Home Assistant
+ * Generates Home Assistant discovery configuration for a switch/binary_sensor
  */
 function generateSwitchDiscovery(
 	device: DaikinCloudDevice,

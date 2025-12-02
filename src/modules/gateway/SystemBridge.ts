@@ -73,7 +73,7 @@ export class SystemBridge implements ClassModule {
 	})
 	private _modulesList?: string;
 
-	// Modules non gérés
+	// Unsupported modules
 	@modulesDataDescription({
 		name: 'Unsupported Modules Count',
 		settable: false,
@@ -120,7 +120,7 @@ export class SystemBridge implements ClassModule {
 	private _authorizationTimeout?: boolean;
 
 	constructor() {
-		// Initialisation par défaut
+		// Default initialization
 		this._rateLimitMinute = 0;
 		this._rateRemainingMinute = 0;
 		this._rateLimitDay = 0;
@@ -135,7 +135,7 @@ export class SystemBridge implements ClassModule {
 		this._authorizationTimeout = false;
 	}
 
-	// Getters pour accéder aux propriétés
+	// Getters to access properties
 	get rateLimitMinute(): number | undefined {
 		return this._rateLimitMinute;
 	}
