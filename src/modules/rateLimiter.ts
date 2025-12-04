@@ -320,8 +320,28 @@ class RateLimiter {
 					continue;
 				}
 
-				// If it's not a rate limiting error, propagate the error
-				logger.error(`[rateLimiter.ts] => Error not related to rate limit for ${operationId}: ${lastError.message}`);
+				// Check if it's a connectivity error (timeout, network issues, etc.)
+				if (this.isConnectivityError(error)) {
+					logger.warn(`[rateLimiter.ts] => Connectivity error detected for ${operationId} (attempt ${attempt}/${finalConfig.maxRetries + 1}): ${lastError.message}`);
+					
+					if (attempt > finalConfig.maxRetries) {
+						logger.error(`[rateLimiter.ts] => Maximum number of attempts reached for ${operationId} (connectivity issue)`);
+						break;
+					}
+					
+					// Calculate delay with exponential backoff for connectivity errors
+					const delay = Math.min(
+						finalConfig.baseDelay * Math.pow(finalConfig.backoffMultiplier, attempt - 1),
+						finalConfig.maxDelay
+					);
+					
+					logger.info(`[rateLimiter.ts] => Waiting ${Math.round(delay / 1000)}s before retry for ${operationId} (connectivity issue)`);
+					await this.wait(delay);
+					continue;
+				}
+				
+				// If it's not a rate limiting or connectivity error, propagate the error
+				logger.error(`[rateLimiter.ts] => Error not related to rate limit or connectivity for ${operationId}: ${lastError.message}`);
 				throw lastError;
 			}
 		}
