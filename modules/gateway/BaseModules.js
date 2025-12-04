@@ -137,12 +137,12 @@ async function eventValue(device, gatewayClass, events) {
         const [key, value] = entry;
         gatewayClass[key] = value;
     });
-    const updateSuccess = await updateDaikinDevice(device, gatewayClass);
+    const updateResult = await updateDaikinDevice(device, gatewayClass);
     try {
         const mode = config.system?.actionRefreshMode ?? 1;
         const now = Math.floor(Date.now() / 1000);
         const deviceId = device.getId();
-        if ((mode === 2 || mode === 3) && updateSuccess) {
+        if ((mode === 2 || mode === 3) && updateResult.success) {
             try {
                 await cache.set(`device_${deviceId}`, device, 10800000);
                 const payload = JSON.stringify(gatewayClass);
@@ -153,8 +153,13 @@ async function eventValue(device, gatewayClass, events) {
                 logger.error(`[BaseModules.ts] => Error during optimistic post-action update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
             }
         }
-        else if ((mode === 2 || mode === 3) && !updateSuccess) {
-            logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because API update failed`);
+        else if ((mode === 2 || mode === 3) && !updateResult.success) {
+            if (updateResult.hasErrors) {
+                logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because API update failed`);
+            }
+            else if (!updateResult.hasUpdates) {
+                logger.debug(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because no updates were necessary`);
+            }
         }
         if (mode === 1 || mode === 3) {
             await cache.set('needRefresh', now);
@@ -221,7 +226,11 @@ async function updateDaikinDevice(device, gatewayClass) {
             continue;
         }
     }
-    return atLeastOneUpdate && allSucceeded;
+    return {
+        success: atLeastOneUpdate && allSucceeded,
+        hasUpdates: atLeastOneUpdate,
+        hasErrors: !allSucceeded
+    };
 }
 async function validateData(device, def, value) {
     try {
