@@ -873,5 +873,3 @@ If you encounter errors not documented here:
 2. Verify that you are using the latest version
 3. Compare with `config/settings-default.yml`
 4. Open an issue on GitHub with complete error logs
-
-

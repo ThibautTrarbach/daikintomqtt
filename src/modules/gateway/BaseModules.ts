@@ -126,7 +126,7 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 		gatewayClass[key] = value
 	})
 
-	const updateSuccess = await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
+	const updateResult = await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
 
 	// Handle post-action behavior based on the configured refresh mode
 	try {
@@ -135,7 +135,7 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 		const deviceId = (device as DaikinCloudDevice).getId();
 
 		// Modes 2 and 3: immediate optimistic update (cache + MQTT) - ONLY if all API updates succeeded
-		if ((mode === 2 || mode === 3) && updateSuccess) {
+		if ((mode === 2 || mode === 3) && updateResult.success) {
 			try {
 				await cache.set(`device_${deviceId}`, device, 10800000);
 				const payload = JSON.stringify(gatewayClass);
@@ -144,8 +144,13 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 			} catch (e) {
 				logger.error(`[BaseModules.ts] => Error during optimistic post-action update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
 			}
-		} else if ((mode === 2 || mode === 3) && !updateSuccess) {
-			logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because API update failed`);
+		} else if ((mode === 2 || mode === 3) && !updateResult.success) {
+			if (updateResult.hasErrors) {
+				logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because API update failed`);
+			} else if (!updateResult.hasUpdates) {
+				// No updates were necessary (all values identical), so no need for optimistic update
+				logger.debug(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because no updates were necessary`);
+			}
 		}
 
 		// Modes 1 and 3: schedule a delayed full refresh via timeUpdate
@@ -163,13 +168,22 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 }
 
 /**
+ * Result of updateDaikinDevice operation
+ */
+interface UpdateResult {
+	success: boolean; // true if at least one update was made successfully
+	hasUpdates: boolean; // true if at least one update was attempted
+	hasErrors: boolean; // true if any update failed
+}
+
+/**
  * Iterates over all mapped properties and pushes updated values
  * from the gateway instance back to the Daikin cloud device.
- * Returns true if at least one update was made successfully, false if no updates were made or any update failed.
+ * Returns an UpdateResult object indicating the outcome.
  * 
  * Note: operationMode is processed before onOffMode to ensure proper API ordering.
  */
-async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways): Promise<boolean> {
+async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways): Promise<UpdateResult> {
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	let allSucceeded = true;
 	let atLeastOneUpdate = false; // Track if at least one API call was made
@@ -224,8 +238,12 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 		}
 	}
 	
-	// Return true only if at least one update was made AND all updates succeeded
-	return atLeastOneUpdate && allSucceeded;
+	// Return result object with detailed information
+	return {
+		success: atLeastOneUpdate && allSucceeded,
+		hasUpdates: atLeastOneUpdate,
+		hasErrors: !allSucceeded
+	};
 }
 
 /**
