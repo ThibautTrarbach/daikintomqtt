@@ -12,3 +12,4 @@ async function makeDefineFile(moduleClass, device) {
         await (0, mqtt_1.publishToMQTT)('system/jeedom/' + id, JSON.stringify(cmd));
     }
 }
+//# sourceMappingURL=logics.js.map

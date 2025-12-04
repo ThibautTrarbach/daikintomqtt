@@ -18,3 +18,4 @@ async function loadGlobalConfig() {
         throw new Error("Not load config files");
     }
 }
+//# sourceMappingURL=config.js.map

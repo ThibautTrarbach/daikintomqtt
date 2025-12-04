@@ -8,25 +8,23 @@ const cron_1 = require("./modules/cron");
 const cache_manager_1 = require("cache-manager");
 const node_path_1 = require("node:path");
 const fs_1 = __importDefault(require("fs"));
+const promises_1 = require("timers/promises");
 (async () => {
-    global.cache = (0, cache_manager_1.createCache)((0, cache_manager_1.memoryStore)({
-        max: 100,
-        ttl: 10 * 60 * 1000,
-    }));
+    global.cache = (0, cache_manager_1.createCache)();
     global.datadir = process.env.STORE_DIR || process.cwd() + "/config";
     global.logger = (0, modules_1.loadLogger)();
-    console.info("Starting DaikinToMQTT");
-    logger.info("=> Load configuration");
+    console.info("[main.ts] => Starting DaikinToMQTT");
+    logger.info("[main.ts] => Load configuration");
     await (0, modules_1.loadGlobalConfig)();
-    logger.info("=> Connect to MQTT");
+    logger.info("[main.ts] => Connect to MQTT");
     await (0, modules_1.loadMQTTClient)();
-    logger.info("=> Connect to Daikin");
+    logger.info("[main.ts] => Connect to Daikin");
     await (0, modules_1.loadDaikinAPI)();
-    logger.info("DaikinToMQTT Started !!");
+    logger.info("[main.ts] => DaikinToMQTT Started !!");
     await (0, modules_1.startDaikinAPI)();
-    logger.info("Load Polling Daikin");
+    logger.info("[main.ts] => Load Polling Daikin");
     await (0, cron_1.loadCron)();
-})().catch(error => {
+})().catch(async (error) => {
     if (error.error == "invalid_grant") {
         try {
             console.log('====> Token invalid, delete de l ancien token, une reconnection va être necesaire');
@@ -39,7 +37,14 @@ const fs_1 = __importDefault(require("fs"));
             process.exit(1);
         }
     }
+    else if (error == 'Error: Authorization time out') {
+        console.log('====> Authorization time out, please restart DaikinToMQTT and retry');
+        await (0, modules_1.publishConfig)('authorization_timeout', true);
+        await (0, promises_1.setTimeout)(5000);
+        process.exit(1);
+    }
     else {
         console.error(error);
     }
 });
+//# sourceMappingURL=main.js.map

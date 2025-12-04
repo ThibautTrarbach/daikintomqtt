@@ -32,6 +32,7 @@ class BRP069B4x {
     _powerfulMode;
     _streamerMode;
     _roomTemperature;
+    _roomHumidity;
     _outdoorTemperature;
     _temperatureControl;
     _fanCurrentMode;
@@ -70,6 +71,9 @@ class BRP069B4x {
     }
     set roomTemperature(value) {
         this._roomTemperature = value;
+    }
+    set roomHumidity(value) {
+        this._roomHumidity = value;
     }
     set outdoorTemperature(value) {
         this._outdoorTemperature = value;
@@ -252,6 +256,25 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069B4x.prototype, "_roomTemperature", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControl",
+        dataPoint: "sensoryData",
+        dataPointPath: "/roomHumidity"
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Room Humidity',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "sensoryData",
+            dataPointPath: "/roomHumidity"
+        },
+        unite: '%'
+    }),
+    __metadata("design:type", Number)
+], BRP069B4x.prototype, "_roomHumidity", void 0);
 __decorate([
     (0, decorator_1.modulesDaikinAcces)({
         managementPoint: "climateControl",
@@ -506,3 +529,4 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069B4x.prototype, "_coolingConsumptionM", void 0);
+//# sourceMappingURL=BRP069B4x.js.map

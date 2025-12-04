@@ -23,6 +23,7 @@ function generateCMD(data, modules, device) {
             }
         }
         catch (e) {
+            logger.error("[jeedom.ts] => ");
             logger.error(e);
         }
     });
@@ -179,3 +180,4 @@ function generateActionSelect(id, value) {
     };
     return [cmd_slider];
 }
+//# sourceMappingURL=jeedom.js.map
