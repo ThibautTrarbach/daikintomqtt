@@ -218,7 +218,7 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 			} else if (value.multiple === true) {
 				let multipleValue: any;
 				if (value.multipleValue.dataPointPath !== undefined) multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, value.multipleValue.dataPointPath).value
-				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, null).value
+				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, undefined).value
 
 				let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
 				updateMade = await validateDataPath(device, value, dataPointPath, gatewayClass[key])
@@ -298,7 +298,7 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 		// AND explicitly set operationMode first (even if unchanged) as API may require it
 		if (def.dataPoint === "onOffMode" && data.value === "on") {
 			logger.debug(`[BaseModules.ts] => Pre-activation check: Verifying and setting operationMode before setting onOffMode to "on" for ${deviceId}`);
-			const operationModeParams = deviceD.getData(def.managementPoint, "operationMode", null);
+			const operationModeParams = deviceD.getData(def.managementPoint, "operationMode", undefined);
 			if (!operationModeParams) {
 				logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode parameters not found`);
 				return false;
