@@ -24,6 +24,7 @@ function generateCMD(data: object, modules: object, device: DaikinCloudDevice) {
 				}
 			}
 		} catch (e) {
+			logger.error("[jeedom.ts] => ")
 			logger.error(e)
 		}
 	});

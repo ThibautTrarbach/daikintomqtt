@@ -182,6 +182,24 @@ export class BRP069A78 implements ClassModule{
 		unite: '°C'
 	})
 	private _leavingWaterTemperatureMain?: number;
+	// Leaving water offset
+	@modulesDaikinAcces({
+		managementPoint: "climateControlMainZone",
+		dataPoint: "sensoryData",
+		dataPointPath: "/leavingWaterOffset"
+	})
+	@modulesDataDescription({
+		name: 'Main Zone - Leaving Water Offset',
+		settable: false,
+		type: typeEnum.numeric,
+		minMaxValue: {
+			managementPoint: "climateControlMainZone",
+			dataPoint: "sensoryData",
+			dataPointPath: "/leavingWaterOffset"
+		},
+		unite: '°C'
+	})
+	private _leavingWaterOffsetMain?: number;
 	@modulesDaikinAcces({
 		managementPoint: "climateControlMainZone",
 		dataPoint: "setpointMode",
@@ -440,6 +458,9 @@ export class BRP069A78 implements ClassModule{
 	}
 	set leavingWaterTemperatureMain(value: number) {
 		this._leavingWaterTemperatureMain = value;
+	}
+	set leavingWaterOffsetMain(value: number) {
+		this._leavingWaterOffsetMain = value;
 	}
 	set setpointModeMain(value: boolean) {
 		this._setpointModeMain = value;
