@@ -40,6 +40,9 @@ function getTimeUntilNextInterval() {
     const intervalSeconds = intervalMinutes * 60;
     const nextInterval = Math.ceil(secondsInCurrentHour / intervalSeconds) * intervalSeconds;
     const timeUntilNext = (nextInterval - secondsInCurrentHour) * 1000;
+    if (timeUntilNext === 0) {
+        return intervalSeconds * 1000;
+    }
     return timeUntilNext;
 }
 let pollingTimer = null;
