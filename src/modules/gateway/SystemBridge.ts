@@ -9,7 +9,7 @@ export class SystemBridge implements ClassModule {
 		name: "Daikin2MQTT Bridge",
 		modelInfo: "Daikin2MQTT",
 		serialNumber: "Daikin2MQTT",
-		firmwareVersion: "2.0.0",
+		firmwareVersion: "2.0.1",
 		isInErrorState: "false",
 		errorCode: ""
 	}
