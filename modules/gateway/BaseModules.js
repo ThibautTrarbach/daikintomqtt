@@ -73,7 +73,16 @@ function convertDaikinDevice(device, gatewayClass) {
                         logger.debug("[BaseModules.ts] => Retrieving consumption with dataPointPath");
                         logger.debug(value.dataPointPath);
                         let datavalue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath);
-                        daikinValue = getConsumptionData(datavalue, value.consumptionT);
+                        if (datavalue && datavalue.value) {
+                            daikinValue = getConsumptionData(datavalue.value, value.consumptionT);
+                            if (!Array.isArray(daikinValue)) {
+                                daikinValue = [];
+                            }
+                        }
+                        else {
+                            logger.debug(`[BaseModules.ts] => Consumption data not available for ${key} at path ${value.dataPointPath}`);
+                            daikinValue = [];
+                        }
                     }
                     else {
                         daikinValue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath).value;
@@ -327,7 +336,8 @@ async function validateDataPath(device, def, dataPointPath, value) {
         }
         let params = deviceD.getData(def.managementPoint, def.dataPoint, dataPointPath);
         if (!params) {
-            logger.warn(`[BaseModules.ts] => Parameters not found for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath}`);
+            const normalizedPath = dataPointPath.startsWith('/') ? dataPointPath : `/${dataPointPath}`;
+            logger.warn(`[BaseModules.ts] => Parameters not found for ${deviceId} - ${def.managementPoint}/${def.dataPoint}${normalizedPath}`);
             return false;
         }
         if (def.converter !== undefined) {
@@ -444,23 +454,57 @@ function convertBinary1(value) {
     }
 }
 function convertConsumption(values) {
+    if (!values || values.length === 0) {
+        return 0;
+    }
     let consumption = parseFloat(String(values.reduce((acc, currentValue) => acc + currentValue, 0)));
     return Math.round((consumption + Number.EPSILON) * 100) / 100;
 }
 function getConsumptionData(values, consumptionT) {
+    if (!values) {
+        logger.debug(`[BaseModules.ts] => getConsumptionData: values is null or undefined`);
+        return [];
+    }
     switch (consumptionT) {
         case consumptionEnum.heatingDay:
+            if (!values.heating || !values.heating.d) {
+                logger.debug(`[BaseModules.ts] => getConsumptionData: heating.d not available`);
+                return [];
+            }
             return values.heating.d.slice(12);
         case consumptionEnum.heatingWeek:
+            if (!values.heating || !values.heating.w) {
+                logger.debug(`[BaseModules.ts] => getConsumptionData: heating.w not available`);
+                return [];
+            }
             return values.heating.w.slice(7);
         case consumptionEnum.heatingMonth:
+            if (!values.heating || !values.heating.m) {
+                logger.debug(`[BaseModules.ts] => getConsumptionData: heating.m not available`);
+                return [];
+            }
             return values.heating.m.slice(12);
         case consumptionEnum.coolingDay:
+            if (!values.cooling || !values.cooling.d) {
+                logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.d not available`);
+                return [];
+            }
             return values.cooling.d.slice(12);
         case consumptionEnum.coolingWeek:
+            if (!values.cooling || !values.cooling.w) {
+                logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.w not available`);
+                return [];
+            }
             return values.cooling.w.slice(7);
         case consumptionEnum.coolingMonth:
+            if (!values.cooling || !values.cooling.m) {
+                logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.m not available`);
+                return [];
+            }
             return values.cooling.m.slice(12);
+        default:
+            logger.debug(`[BaseModules.ts] => getConsumptionData: unknown consumptionT: ${consumptionT}`);
+            return [];
     }
 }
 //# sourceMappingURL=BaseModules.js.map

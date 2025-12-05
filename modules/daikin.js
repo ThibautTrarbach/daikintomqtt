@@ -243,6 +243,7 @@ async function subscribeDevices(devices) {
             const topicString = topic.toString();
             const messageString = message.toString();
             logger.debug(`[daikin.ts] => MQTT message received - Topic: ${topicString}, Size: ${messageString.length} bytes`);
+            logger.debug(`[daikin.ts] => MQTT message content: ${messageString}`);
             const systemBridgeSetTopicPath = config.mqtt.topic + "/" + instanceId_1.INSTANCE_ID + "/set";
             if (topicString === systemBridgeSetTopicPath) {
                 let data;
