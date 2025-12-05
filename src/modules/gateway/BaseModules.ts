@@ -129,13 +129,38 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
  * (optimistic update and/or delayed refresh) based on configuration.
  */
 async function eventValue(device: any, gatewayClass: Gateways, events: object) {
+	const deviceId = (device as DaikinCloudDevice).getId();
+	logger.debug(`[BaseModules.ts] => eventValue called for device ${deviceId} with events: ${JSON.stringify(events)}`);
+	
 	Object.entries(events).forEach(entry => {
 		const [key, value] = entry;
+		
+		// If the key starts with underscore, remove it to use the setter
+		// (e.g., "_onOffModeMain" -> "onOffModeMain" setter)
+		let propertyKey = key;
+		if (key.startsWith('_')) {
+			propertyKey = key.substring(1);
+			logger.debug(`[BaseModules.ts] => Mapping property ${key} -> ${propertyKey} (removed underscore)`);
+		}
+		
+		// Assign to the property (will use setter if it exists)
+		logger.debug(`[BaseModules.ts] => Assigning ${propertyKey} = ${value} (type: ${typeof value})`);
 		// @ts-ignore
-		gatewayClass[key] = value
+		gatewayClass[propertyKey] = value;
+		
+		// Verify the assignment worked
+		// @ts-ignore
+		const assignedValue = gatewayClass[propertyKey];
+		// Also check the private property if it exists
+		const privateKey = `_${propertyKey}`;
+		// @ts-ignore
+		const privateValue = gatewayClass[privateKey];
+		logger.debug(`[BaseModules.ts] => After assignment - ${propertyKey}: ${assignedValue}, ${privateKey}: ${privateValue}`);
 	})
 
 	const updateResult = await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
+	
+	logger.debug(`[BaseModules.ts] => eventValue - updateResult for ${deviceId}: success=${updateResult.success}, hasUpdates=${updateResult.hasUpdates}, hasErrors=${updateResult.hasErrors}`);
 
 	// Handle post-action behavior based on the configured refresh mode
 	try {
@@ -193,6 +218,9 @@ interface UpdateResult {
  * Note: operationMode is processed before onOffMode to ensure proper API ordering.
  */
 async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways): Promise<UpdateResult> {
+	const deviceId = device.getId();
+	logger.debug(`[BaseModules.ts] => updateDaikinDevice called for device ${deviceId}`);
+	
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	let allSucceeded = true;
 	let atLeastOneUpdate = false; // Track if at least one API call was made
@@ -207,22 +235,64 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 		return !isOperationMode && !isOnOffMode;
 	});
 	
+	logger.debug(`[BaseModules.ts] => Found ${entries.length} total properties: operationMode=${operationModeEntry ? 'yes' : 'no'}, onOffMode=${onOffModeEntry ? 'yes' : 'no'}, others=${otherEntries.length}`);
+	
 	// Process in order: operationMode first, then onOffMode, then others
 	const orderedEntries: Array<[string, any]> = [];
-	if (operationModeEntry) orderedEntries.push(operationModeEntry);
-	if (onOffModeEntry) orderedEntries.push(onOffModeEntry);
+	if (operationModeEntry) {
+		orderedEntries.push(operationModeEntry);
+		logger.debug(`[BaseModules.ts] => operationMode entry: key=${operationModeEntry[0]}, dataPoint=${operationModeEntry[1].dataPoint}`);
+	}
+	if (onOffModeEntry) {
+		orderedEntries.push(onOffModeEntry);
+		logger.debug(`[BaseModules.ts] => onOffMode entry: key=${onOffModeEntry[0]}, dataPoint=${onOffModeEntry[1].dataPoint}`);
+	}
 	orderedEntries.push(...otherEntries);
+	logger.debug(`[BaseModules.ts] => Processing ${orderedEntries.length} properties in order`);
 	
 	for (const entry of orderedEntries) {
 		const [key, value] = entry;
 
 		try {
+			logger.debug(`[BaseModules.ts] => Processing property ${key} (dataPoint: ${value.dataPoint}, managementPoint: ${value.managementPoint})`);
+			
+			// Read the value from the gateway class
+			// The key from metadata is the private property name (with underscore, e.g., "_onOffModeMain")
+			// But eventValue assigns via setter (without underscore, e.g., "onOffModeMain")
+			// The setter updates the private property, so we can read it directly
+			let propertyValue = gatewayClass[key];
+			logger.debug(`[BaseModules.ts] => Initial read of ${key}: ${propertyValue} (type: ${typeof propertyValue})`);
+			
+			// If value is undefined and key starts with underscore, the setter might have been used
+			// Try to read the private property directly (it should be set by the setter)
+			if (propertyValue === undefined && key.startsWith('_')) {
+				// The setter should have updated the private property, so try reading it again
+				// In JavaScript, we can access private properties with bracket notation
+				propertyValue = (gatewayClass as any)[key];
+				logger.debug(`[BaseModules.ts] => After retry, ${key}: ${propertyValue} (type: ${typeof propertyValue})`);
+			}
+			
+			// Also try reading without underscore if still undefined
+			if (propertyValue === undefined && key.startsWith('_')) {
+				const propertyKeyWithoutUnderscore = key.substring(1);
+				// @ts-ignore
+				propertyValue = gatewayClass[propertyKeyWithoutUnderscore];
+				logger.debug(`[BaseModules.ts] => Trying without underscore ${propertyKeyWithoutUnderscore}: ${propertyValue} (type: ${typeof propertyValue})`);
+			}
+			
+			// Log for debugging
+			if (propertyValue === undefined) {
+				logger.debug(`[BaseModules.ts] => WARNING: Property ${key} is undefined in gatewayClass after all attempts`);
+			} else {
+				logger.debug(`[BaseModules.ts] => Successfully read property ${key}: ${propertyValue} (type: ${typeof propertyValue})`);
+			}
+			
 			let updateMade = false;
 			if (value.multiple !== true) {
 				if (value.dataPointPath !== undefined) {
-					updateMade = await validateDataPath(device, value, value.dataPointPath, gatewayClass[key])
+					updateMade = await validateDataPath(device, value, value.dataPointPath, propertyValue)
 				} else {
-					updateMade = await validateData(device, value, gatewayClass[key])
+					updateMade = await validateData(device, value, propertyValue)
 				}
 			} else if (value.multiple === true) {
 				let multipleValue: any;
@@ -230,7 +300,7 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, undefined).value
 
 				let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-				updateMade = await validateDataPath(device, value, dataPointPath, gatewayClass[key])
+				updateMade = await validateDataPath(device, value, dataPointPath, propertyValue)
 			}
 			
 			if (updateMade) {
@@ -248,11 +318,15 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 	}
 	
 	// Return result object with detailed information
-	return {
+	const result = {
 		success: atLeastOneUpdate && allSucceeded,
 		hasUpdates: atLeastOneUpdate,
 		hasErrors: !allSucceeded
 	};
+	
+	logger.debug(`[BaseModules.ts] => updateDaikinDevice completed for ${deviceId}: success=${result.success}, hasUpdates=${result.hasUpdates}, hasErrors=${result.hasErrors}`);
+	
+	return result;
 }
 
 /**
@@ -263,6 +337,7 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetadata, value: any): Promise<boolean> {
 	try {
 		const deviceId = device.getId();
+		logger.debug(`[BaseModules.ts] => validateData called for ${deviceId} - ${def.managementPoint}/${def.dataPoint}, input value: ${value} (type: ${typeof value})`);
 		
 		// Get device from cache to ensure we have the latest state
 		const deviceD = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
@@ -280,8 +355,12 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			return false;
 		}
 
+		logger.debug(`[BaseModules.ts] => Current params value: ${params.value} (type: ${typeof params.value}), settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
+
 		if (def.converter !== undefined) {
+			const valueBeforeConversion = value;
 			value = convert(def.converter, value, 1);
+			logger.debug(`[BaseModules.ts] => Value converted: ${valueBeforeConversion} -> ${value} (converter: ${def.converter})`);
 		}
 		
 		// Check if value is identical BEFORE validation (to avoid unnecessary API calls)
@@ -303,10 +382,11 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			return false;
 		}
 
-		// Special check: if setting onOffMode to "on", ensure operationMode is valid and settable
-		// AND explicitly set operationMode first (even if unchanged) as API may require it
+		// Special check: if setting onOffMode to "on", ensure operationMode is valid
+		// If operationMode is settable and needs to be set, it will be handled by the operationMode entry processing
 		if (def.dataPoint === "onOffMode" && data.value === "on") {
-			logger.debug(`[BaseModules.ts] => Pre-activation check: Verifying and setting operationMode before setting onOffMode to "on" for ${deviceId}`);
+			logger.debug(`[BaseModules.ts] => Pre-activation check: Verifying operationMode before setting onOffMode to "on" for ${deviceId}`);
+			logger.debug(`[BaseModules.ts] => Pre-activation check - data.value: "${data.value}" (type: ${typeof data.value}), def.dataPoint: "${def.dataPoint}"`);
 			const operationModeParams = deviceD.getData(def.managementPoint, "operationMode", undefined);
 			if (!operationModeParams) {
 				logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode parameters not found`);
@@ -314,12 +394,7 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 			}
 			
 			logger.debug(`[BaseModules.ts] => Pre-activation check - operationMode params: settable=${operationModeParams.settable}, value="${operationModeParams.value}", values=${operationModeParams.values ? JSON.stringify(operationModeParams.values) : 'N/A'}`);
-			
-			// Check if operationMode is settable
-			if (!operationModeParams.settable) {
-				logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode is not settable`);
-				return false;
-			}
+			logger.debug(`[BaseModules.ts] => Pre-activation check - operationMode params full: ${JSON.stringify(operationModeParams)}`);
 			
 			// Check if operationMode has a valid value
 			if (!operationModeParams.value) {
@@ -333,10 +408,13 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 				return false;
 			}
 			
-			// Note: We don't pre-set operationMode if it's already the current value
-			// because the API rejects identical values with 422 error.
-			// The API should accept onOffMode activation if operationMode is already set correctly.
-			logger.debug(`[BaseModules.ts] => operationMode is already set to "${operationModeParams.value}", no need to pre-set it`);
+			// If operationMode is settable and different from current, it will be set first by the ordered processing
+			// If operationMode is not settable but has a valid value, we can still proceed with activation
+			if (operationModeParams.settable) {
+				logger.debug(`[BaseModules.ts] => operationMode is settable and will be processed before onOffMode`);
+			} else {
+				logger.debug(`[BaseModules.ts] => operationMode is not settable but has valid value "${operationModeParams.value}", allowing onOffMode activation`);
+			}
 			
 			logger.debug(`[BaseModules.ts] => Pre-activation check PASSED: operationMode is valid, allowing onOffMode activation`);
 		}
