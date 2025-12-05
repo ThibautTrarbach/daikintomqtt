@@ -61,6 +61,12 @@ function getTimeUntilNextInterval(): number {
 	const nextInterval = Math.ceil(secondsInCurrentHour / intervalSeconds) * intervalSeconds;
 	const timeUntilNext = (nextInterval - secondsInCurrentHour) * 1000;
 	
+	// If timeUntilNext is 0, it means we're exactly at an interval boundary
+	// In this case, wait for the full interval to avoid immediate re-triggering
+	if (timeUntilNext === 0) {
+		return intervalSeconds * 1000;
+	}
+	
 	return timeUntilNext;
 }
 
