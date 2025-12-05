@@ -142,11 +142,24 @@ function createDeviceInfo(device, gatewayClass) {
     });
 }
 async function eventValue(device, gatewayClass, events) {
+    const deviceId = device.getId();
+    logger.debug(`[BaseModules.ts] => eventValue called for device ${deviceId} with events: ${JSON.stringify(events)}`);
     Object.entries(events).forEach(entry => {
         const [key, value] = entry;
-        gatewayClass[key] = value;
+        let propertyKey = key;
+        if (key.startsWith('_')) {
+            propertyKey = key.substring(1);
+            logger.debug(`[BaseModules.ts] => Mapping property ${key} -> ${propertyKey} (removed underscore)`);
+        }
+        logger.debug(`[BaseModules.ts] => Assigning ${propertyKey} = ${value} (type: ${typeof value})`);
+        gatewayClass[propertyKey] = value;
+        const assignedValue = gatewayClass[propertyKey];
+        const privateKey = `_${propertyKey}`;
+        const privateValue = gatewayClass[privateKey];
+        logger.debug(`[BaseModules.ts] => After assignment - ${propertyKey}: ${assignedValue}, ${privateKey}: ${privateValue}`);
     });
     const updateResult = await updateDaikinDevice(device, gatewayClass);
+    logger.debug(`[BaseModules.ts] => eventValue - updateResult for ${deviceId}: success=${updateResult.success}, hasUpdates=${updateResult.hasUpdates}, hasErrors=${updateResult.hasErrors}`);
     try {
         const mode = config.system?.actionRefreshMode ?? 1;
         const now = Math.floor(Date.now() / 1000);
@@ -184,6 +197,8 @@ async function eventValue(device, gatewayClass, events) {
     }
 }
 async function updateDaikinDevice(device, gatewayClass) {
+    const deviceId = device.getId();
+    logger.debug(`[BaseModules.ts] => updateDaikinDevice called for device ${deviceId}`);
     let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
     let allSucceeded = true;
     let atLeastOneUpdate = false;
@@ -195,22 +210,46 @@ async function updateDaikinDevice(device, gatewayClass) {
         const isOnOffMode = value.dataPoint === "onOffMode" && !value.dataPointPath;
         return !isOperationMode && !isOnOffMode;
     });
+    logger.debug(`[BaseModules.ts] => Found ${entries.length} total properties: operationMode=${operationModeEntry ? 'yes' : 'no'}, onOffMode=${onOffModeEntry ? 'yes' : 'no'}, others=${otherEntries.length}`);
     const orderedEntries = [];
-    if (operationModeEntry)
+    if (operationModeEntry) {
         orderedEntries.push(operationModeEntry);
-    if (onOffModeEntry)
+        logger.debug(`[BaseModules.ts] => operationMode entry: key=${operationModeEntry[0]}, dataPoint=${operationModeEntry[1].dataPoint}`);
+    }
+    if (onOffModeEntry) {
         orderedEntries.push(onOffModeEntry);
+        logger.debug(`[BaseModules.ts] => onOffMode entry: key=${onOffModeEntry[0]}, dataPoint=${onOffModeEntry[1].dataPoint}`);
+    }
     orderedEntries.push(...otherEntries);
+    logger.debug(`[BaseModules.ts] => Processing ${orderedEntries.length} properties in order`);
     for (const entry of orderedEntries) {
         const [key, value] = entry;
         try {
+            logger.debug(`[BaseModules.ts] => Processing property ${key} (dataPoint: ${value.dataPoint}, managementPoint: ${value.managementPoint})`);
+            let propertyValue = gatewayClass[key];
+            logger.debug(`[BaseModules.ts] => Initial read of ${key}: ${propertyValue} (type: ${typeof propertyValue})`);
+            if (propertyValue === undefined && key.startsWith('_')) {
+                propertyValue = gatewayClass[key];
+                logger.debug(`[BaseModules.ts] => After retry, ${key}: ${propertyValue} (type: ${typeof propertyValue})`);
+            }
+            if (propertyValue === undefined && key.startsWith('_')) {
+                const propertyKeyWithoutUnderscore = key.substring(1);
+                propertyValue = gatewayClass[propertyKeyWithoutUnderscore];
+                logger.debug(`[BaseModules.ts] => Trying without underscore ${propertyKeyWithoutUnderscore}: ${propertyValue} (type: ${typeof propertyValue})`);
+            }
+            if (propertyValue === undefined) {
+                logger.debug(`[BaseModules.ts] => WARNING: Property ${key} is undefined in gatewayClass after all attempts`);
+            }
+            else {
+                logger.debug(`[BaseModules.ts] => Successfully read property ${key}: ${propertyValue} (type: ${typeof propertyValue})`);
+            }
             let updateMade = false;
             if (value.multiple !== true) {
                 if (value.dataPointPath !== undefined) {
-                    updateMade = await validateDataPath(device, value, value.dataPointPath, gatewayClass[key]);
+                    updateMade = await validateDataPath(device, value, value.dataPointPath, propertyValue);
                 }
                 else {
-                    updateMade = await validateData(device, value, gatewayClass[key]);
+                    updateMade = await validateData(device, value, propertyValue);
                 }
             }
             else if (value.multiple === true) {
@@ -220,7 +259,7 @@ async function updateDaikinDevice(device, gatewayClass) {
                 else
                     multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint, undefined).value;
                 let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-                updateMade = await validateDataPath(device, value, dataPointPath, gatewayClass[key]);
+                updateMade = await validateDataPath(device, value, dataPointPath, propertyValue);
             }
             if (updateMade) {
                 atLeastOneUpdate = true;
@@ -235,15 +274,18 @@ async function updateDaikinDevice(device, gatewayClass) {
             continue;
         }
     }
-    return {
+    const result = {
         success: atLeastOneUpdate && allSucceeded,
         hasUpdates: atLeastOneUpdate,
         hasErrors: !allSucceeded
     };
+    logger.debug(`[BaseModules.ts] => updateDaikinDevice completed for ${deviceId}: success=${result.success}, hasUpdates=${result.hasUpdates}, hasErrors=${result.hasErrors}`);
+    return result;
 }
 async function validateData(device, def, value) {
     try {
         const deviceId = device.getId();
+        logger.debug(`[BaseModules.ts] => validateData called for ${deviceId} - ${def.managementPoint}/${def.dataPoint}, input value: ${value} (type: ${typeof value})`);
         const deviceD = await cache.get(`device_${deviceId}`);
         if (!deviceD) {
             logger.error(`[BaseModules.ts] => Device ${deviceId} not found in cache`);
@@ -254,8 +296,11 @@ async function validateData(device, def, value) {
             logger.warn(`[BaseModules.ts] => Parameters not found for ${deviceId} - ${def.managementPoint}/${def.dataPoint}`);
             return false;
         }
+        logger.debug(`[BaseModules.ts] => Current params value: ${params.value} (type: ${typeof params.value}), settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
         if (def.converter !== undefined) {
+            const valueBeforeConversion = value;
             value = convert(def.converter, value, 1);
+            logger.debug(`[BaseModules.ts] => Value converted: ${valueBeforeConversion} -> ${value} (converter: ${def.converter})`);
         }
         if (String(params.value) === String(value)) {
             logger.debug(`[BaseModules.ts] => Value identical to current value for ${deviceId} - ${def.managementPoint}/${def.dataPoint} (${params.value} === ${value}), skipping API call`);
@@ -271,17 +316,15 @@ async function validateData(device, def, value) {
             return false;
         }
         if (def.dataPoint === "onOffMode" && data.value === "on") {
-            logger.debug(`[BaseModules.ts] => Pre-activation check: Verifying and setting operationMode before setting onOffMode to "on" for ${deviceId}`);
+            logger.debug(`[BaseModules.ts] => Pre-activation check: Verifying operationMode before setting onOffMode to "on" for ${deviceId}`);
+            logger.debug(`[BaseModules.ts] => Pre-activation check - data.value: "${data.value}" (type: ${typeof data.value}), def.dataPoint: "${def.dataPoint}"`);
             const operationModeParams = deviceD.getData(def.managementPoint, "operationMode", undefined);
             if (!operationModeParams) {
                 logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode parameters not found`);
                 return false;
             }
             logger.debug(`[BaseModules.ts] => Pre-activation check - operationMode params: settable=${operationModeParams.settable}, value="${operationModeParams.value}", values=${operationModeParams.values ? JSON.stringify(operationModeParams.values) : 'N/A'}`);
-            if (!operationModeParams.settable) {
-                logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode is not settable`);
-                return false;
-            }
+            logger.debug(`[BaseModules.ts] => Pre-activation check - operationMode params full: ${JSON.stringify(operationModeParams)}`);
             if (!operationModeParams.value) {
                 logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: operationMode is not set`);
                 return false;
@@ -290,7 +333,12 @@ async function validateData(device, def, value) {
                 logger.warn(`[BaseModules.ts] => Cannot set onOffMode to "on" for ${deviceId}: current operationMode "${operationModeParams.value}" is not in allowed values ${JSON.stringify(operationModeParams.values)}`);
                 return false;
             }
-            logger.debug(`[BaseModules.ts] => operationMode is already set to "${operationModeParams.value}", no need to pre-set it`);
+            if (operationModeParams.settable) {
+                logger.debug(`[BaseModules.ts] => operationMode is settable and will be processed before onOffMode`);
+            }
+            else {
+                logger.debug(`[BaseModules.ts] => operationMode is not settable but has valid value "${operationModeParams.value}", allowing onOffMode activation`);
+            }
             logger.debug(`[BaseModules.ts] => Pre-activation check PASSED: operationMode is valid, allowing onOffMode activation`);
         }
         logger.info(`[BaseModules.ts] => API CALL - setData (reason: action_mqtt_no_dataPointPath) for ${deviceId} - ${def.managementPoint}/${def.dataPoint}: ${data.value}`);
