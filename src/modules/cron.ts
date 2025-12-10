@@ -34,12 +34,12 @@ function getCurrentPollingInterval(): number {
 	const pollingConfig = config.system.polling;
 	if (!pollingConfig) {
 		// Default, 10 minutes if no config
-		return 10;
+		return 30;
 	}
 	
 	return isNightTime() 
-		? (pollingConfig.nightInterval ?? 20)
-		: (pollingConfig.dayInterval ?? 10);
+		? (pollingConfig.nightInterval ?? 60)
+		: (pollingConfig.dayInterval ?? 20);
 }
 
 /**
