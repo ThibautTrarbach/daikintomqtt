@@ -70,12 +70,18 @@ function convertDaikinDevice(device, gatewayClass) {
             if (value.multiple !== true) {
                 if (value.dataPointPath !== undefined) {
                     if (value.dataPoint == "consumptionData") {
-                        logger.debug("[BaseModules.ts] => Retrieving consumption with dataPointPath");
-                        logger.debug(value.dataPointPath);
                         let datavalue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath);
-                        if (datavalue && datavalue.value) {
-                            daikinValue = getConsumptionData(datavalue.value, value.consumptionT);
-                            if (!Array.isArray(daikinValue)) {
+                        if (datavalue) {
+                            let consumptionData = datavalue.value !== undefined ? datavalue.value : datavalue;
+                            let unit = datavalue.unit || consumptionData?.unit;
+                            if (consumptionData && (consumptionData.heating || consumptionData.cooling)) {
+                                daikinValue = getConsumptionData(consumptionData, value.consumptionT, unit);
+                                if (!Array.isArray(daikinValue)) {
+                                    daikinValue = [];
+                                }
+                            }
+                            else {
+                                logger.debug(`[BaseModules.ts] => Consumption data structure not as expected for ${key} at path ${value.dataPointPath}`);
                                 daikinValue = [];
                             }
                         }
@@ -508,51 +514,72 @@ function convertConsumption(values) {
     let consumption = parseFloat(String(values.reduce((acc, currentValue) => acc + currentValue, 0)));
     return Math.round((consumption + Number.EPSILON) * 100) / 100;
 }
-function getConsumptionData(values, consumptionT) {
-    if (!values) {
-        logger.debug(`[BaseModules.ts] => getConsumptionData: values is null or undefined`);
+function convertConsumptionToKWh(values, unit) {
+    if (!values || values.length === 0) {
         return [];
     }
+    if (!unit || unit.toLowerCase() === 'kwh') {
+        return values;
+    }
+    const unitLower = unit.toLowerCase();
+    let conversionFactor = 1;
+    if (unitLower === 'wh') {
+        conversionFactor = 1 / 1000;
+    }
+    else if (unitLower === 'mwh') {
+        conversionFactor = 1000;
+    }
+    else {
+        logger.debug(`[BaseModules.ts] => Unknown consumption unit '${unit}', assuming kWh`);
+        return values;
+    }
+    return values.map(value => value * conversionFactor);
+}
+function getConsumptionData(values, consumptionT, unit) {
+    if (!values) {
+        return [];
+    }
+    let result = [];
     switch (consumptionT) {
         case consumptionEnum.heatingDay:
             if (!values.heating || !values.heating.d) {
-                logger.debug(`[BaseModules.ts] => getConsumptionData: heating.d not available`);
                 return [];
             }
-            return values.heating.d.slice(12);
+            result = values.heating.d.slice(12);
+            break;
         case consumptionEnum.heatingWeek:
             if (!values.heating || !values.heating.w) {
-                logger.debug(`[BaseModules.ts] => getConsumptionData: heating.w not available`);
                 return [];
             }
-            return values.heating.w.slice(7);
+            result = values.heating.w.slice(7);
+            break;
         case consumptionEnum.heatingMonth:
             if (!values.heating || !values.heating.m) {
-                logger.debug(`[BaseModules.ts] => getConsumptionData: heating.m not available`);
                 return [];
             }
-            return values.heating.m.slice(12);
+            result = values.heating.m.slice(12);
+            break;
         case consumptionEnum.coolingDay:
             if (!values.cooling || !values.cooling.d) {
-                logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.d not available`);
                 return [];
             }
-            return values.cooling.d.slice(12);
+            result = values.cooling.d.slice(12);
+            break;
         case consumptionEnum.coolingWeek:
             if (!values.cooling || !values.cooling.w) {
-                logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.w not available`);
                 return [];
             }
-            return values.cooling.w.slice(7);
+            result = values.cooling.w.slice(7);
+            break;
         case consumptionEnum.coolingMonth:
             if (!values.cooling || !values.cooling.m) {
-                logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.m not available`);
                 return [];
             }
-            return values.cooling.m.slice(12);
+            result = values.cooling.m.slice(12);
+            break;
         default:
-            logger.debug(`[BaseModules.ts] => getConsumptionData: unknown consumptionT: ${consumptionT}`);
             return [];
     }
+    return convertConsumptionToKWh(result, unit);
 }
 //# sourceMappingURL=BaseModules.js.map
