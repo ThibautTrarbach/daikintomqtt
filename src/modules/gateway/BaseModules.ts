@@ -43,13 +43,25 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 			if (value.multiple !== true) {
 				if (value.dataPointPath !== undefined) {
 					if (value.dataPoint == "consumptionData") {
-						logger.debug("[BaseModules.ts] => Retrieving consumption with dataPointPath")
-						logger.debug(value.dataPointPath)
-						let datavalue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath)
-						if (datavalue && datavalue.value) {
-							daikinValue = getConsumptionData(datavalue.value, value.consumptionT)
-							// Ensure we always have an array for convertConsumption
-							if (!Array.isArray(daikinValue)) {
+						let datavalue = device.getData(value.managementPoint, value.dataPoint, value.dataPointPath);
+						
+						// For consumptionData, the structure is different: data is directly in datavalue, not in datavalue.value
+						// The object has properties: unit, heating, cooling (or just unit, heating for some devices)
+						if (datavalue) {
+							// Check if data is directly in datavalue (new structure) or in datavalue.value (old structure)
+							let consumptionData = datavalue.value !== undefined ? datavalue.value : datavalue;
+							
+							// Get the unit from datavalue or consumptionData
+							let unit = datavalue.unit || consumptionData?.unit;
+							
+							if (consumptionData && (consumptionData.heating || consumptionData.cooling)) {
+								daikinValue = getConsumptionData(consumptionData, value.consumptionT, unit)
+								// Ensure we always have an array for convertConsumption
+								if (!Array.isArray(daikinValue)) {
+									daikinValue = [];
+								}
+							} else {
+								logger.debug(`[BaseModules.ts] => Consumption data structure not as expected for ${key} at path ${value.dataPointPath}`);
 								daikinValue = [];
 							}
 						} else {
@@ -641,56 +653,94 @@ function convertConsumption(values: Array<number>) {
 }
 
 /**
- * Extracts a specific consumption bucket (day/week/month, heating/cooling)
- * from the raw Daikin consumption object.
+ * Converts consumption values to kWh based on the unit provided.
+ * @param values Array of consumption values
+ * @param unit Unit of the values (e.g., "Wh", "kWh", "MWh")
+ * @returns Array of values converted to kWh
  */
-function getConsumptionData(values : any, consumptionT: number) {
-	if (!values) {
-		logger.debug(`[BaseModules.ts] => getConsumptionData: values is null or undefined`);
+function convertConsumptionToKWh(values: Array<number>, unit: string | undefined): Array<number> {
+	if (!values || values.length === 0) {
 		return [];
 	}
+	
+	// If no unit provided or already in kWh, return as is
+	if (!unit || unit.toLowerCase() === 'kwh') {
+		return values;
+	}
+	
+	// Convert based on unit
+	const unitLower = unit.toLowerCase();
+	let conversionFactor = 1;
+	
+	if (unitLower === 'wh') {
+		// Convert Wh to kWh: divide by 1000
+		conversionFactor = 1 / 1000;
+	} else if (unitLower === 'mwh') {
+		// Convert MWh to kWh: multiply by 1000
+		conversionFactor = 1000;
+	} else {
+		logger.debug(`[BaseModules.ts] => Unknown consumption unit '${unit}', assuming kWh`);
+		return values;
+	}
+	
+	// Apply conversion factor to all values
+	return values.map(value => value * conversionFactor);
+}
+
+/**
+ * Extracts a specific consumption bucket (day/week/month, heating/cooling)
+ * from the raw Daikin consumption object and converts to kWh if needed.
+ */
+function getConsumptionData(values : any, consumptionT: number, unit?: string) {
+	if (!values) {
+		return [];
+	}
+	
+	let result: Array<number> = [];
 	
 	switch (consumptionT) {
 		case consumptionEnum.heatingDay:
 			if (!values.heating || !values.heating.d) {
-				logger.debug(`[BaseModules.ts] => getConsumptionData: heating.d not available`);
 				return [];
 			}
-			return values.heating.d.slice(12)
+			result = values.heating.d.slice(12);
+			break;
 		case consumptionEnum.heatingWeek:
 			if (!values.heating || !values.heating.w) {
-				logger.debug(`[BaseModules.ts] => getConsumptionData: heating.w not available`);
 				return [];
 			}
-			return values.heating.w.slice(7)
+			result = values.heating.w.slice(7);
+			break;
 		case consumptionEnum.heatingMonth:
 			if (!values.heating || !values.heating.m) {
-				logger.debug(`[BaseModules.ts] => getConsumptionData: heating.m not available`);
 				return [];
 			}
-			return values.heating.m.slice(12)
+			result = values.heating.m.slice(12);
+			break;
 		case consumptionEnum.coolingDay:
 			if (!values.cooling || !values.cooling.d) {
-				logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.d not available`);
 				return [];
 			}
-			return values.cooling.d.slice(12)
+			result = values.cooling.d.slice(12);
+			break;
 		case consumptionEnum.coolingWeek:
 			if (!values.cooling || !values.cooling.w) {
-				logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.w not available`);
 				return [];
 			}
-			return values.cooling.w.slice(7)
+			result = values.cooling.w.slice(7);
+			break;
 		case consumptionEnum.coolingMonth:
 			if (!values.cooling || !values.cooling.m) {
-				logger.debug(`[BaseModules.ts] => getConsumptionData: cooling.m not available`);
 				return [];
 			}
-			return values.cooling.m.slice(12)
+			result = values.cooling.m.slice(12);
+			break;
 		default:
-			logger.debug(`[BaseModules.ts] => getConsumptionData: unknown consumptionT: ${consumptionT}`);
 			return [];
 	}
+	
+	// Convert to kWh if needed
+	return convertConsumptionToKWh(result, unit);
 }
 
 export {
