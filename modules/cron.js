@@ -25,11 +25,11 @@ function isNightTime() {
 function getCurrentPollingInterval() {
     const pollingConfig = config.system.polling;
     if (!pollingConfig) {
-        return 10;
+        return 30;
     }
     return isNightTime()
-        ? (pollingConfig.nightInterval ?? 20)
-        : (pollingConfig.dayInterval ?? 10);
+        ? (pollingConfig.nightInterval ?? 60)
+        : (pollingConfig.dayInterval ?? 20);
 }
 function getTimeUntilNextInterval() {
     const intervalMinutes = getCurrentPollingInterval();
