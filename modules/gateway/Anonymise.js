@@ -6,10 +6,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.anonymise = anonymise;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const paths_1 = require("../paths");
 function anonymise(dev, value) {
     let fileName = value ?? dev.getId();
     let data = recurse(dev);
-    const configFolder = path_1.default.join(datadir, '/newConfig');
+    const configFolder = (0, paths_1.getNewConfigDir)();
     const configFile = path_1.default.join(configFolder, fileName + '.json');
     if (!fs_1.default.existsSync(configFolder))
         fs_1.default.mkdirSync(configFolder);

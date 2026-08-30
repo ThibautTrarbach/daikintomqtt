@@ -15,13 +15,22 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./Anonymise"), exports);
+__exportStar(require("./AbstractGateway"), exports);
+__exportStar(require("./metadataRegistry"), exports);
+__exportStar(require("./characteristics/catalog"), exports);
 __exportStar(require("./BaseModules"), exports);
+__exportStar(require("./SystemBridge"), exports);
+__exportStar(require("./DynamicGateway"), exports);
+__exportStar(require("./CharacteristicWriter"), exports);
+__exportStar(require("./ScheduleManager"), exports);
 __exportStar(require("./BRP069C4x"), exports);
 __exportStar(require("./BRP069A62"), exports);
 __exportStar(require("./BRP069A78"), exports);
 __exportStar(require("./BRP069B4x"), exports);
 __exportStar(require("./BRP069A4x"), exports);
 __exportStar(require("./BRP069A61"), exports);
-__exportStar(require("./BRP069C41"), exports);
-__exportStar(require("./BRP069C8x"), exports);
+__exportStar(require("./MonoZoneClimateGateway"), exports);
+__exportStar(require("./ExtendedMonoZoneClimateGateway"), exports);
+__exportStar(require("./DualZoneHeatPumpGateway"), exports);
+__exportStar(require("./MultiZoneClimateGateway"), exports);
 //# sourceMappingURL=index.js.map

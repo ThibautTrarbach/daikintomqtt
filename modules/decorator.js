@@ -7,37 +7,24 @@ exports.modulesDaikinDevice = modulesDaikinDevice;
 exports.PROPERTY_METADATA_CMD = Symbol("PROPERTY_METADATA_CMD");
 exports.PROPERTY_METADATA_DAIKIN = Symbol("PROPERTY_METADATA_DAIKIN");
 exports.PROPERTY_METADATA_DAIKIN_DEVICE = Symbol("PROPERTY_METADATA_DAIKIN_DEVICE");
-function modulesDataDescription(metadata) {
+function defineMetadata(symbol, metadata) {
     return function (target, propertyKey) {
-        const allMetadata = Reflect.getMetadata(exports.PROPERTY_METADATA_CMD, target) || {};
+        const allMetadata = Reflect.getMetadata(symbol, target) || {};
         allMetadata[propertyKey] = allMetadata[propertyKey] || {};
         const ownKeys = Reflect.ownKeys(metadata);
         ownKeys.forEach((key) => {
             allMetadata[propertyKey][key] = metadata[String(key)];
         });
-        Reflect.defineMetadata(exports.PROPERTY_METADATA_CMD, allMetadata, target);
+        Reflect.defineMetadata(symbol, allMetadata, target);
     };
+}
+function modulesDataDescription(metadata) {
+    return defineMetadata(exports.PROPERTY_METADATA_CMD, metadata);
 }
 function modulesDaikinAcces(metadata) {
-    return function (target, propertyKey) {
-        const allMetadata = Reflect.getMetadata(exports.PROPERTY_METADATA_DAIKIN, target) || {};
-        allMetadata[propertyKey] = allMetadata[propertyKey] || {};
-        const ownKeys = Reflect.ownKeys(metadata);
-        ownKeys.forEach((key) => {
-            allMetadata[propertyKey][key] = metadata[String(key)];
-        });
-        Reflect.defineMetadata(exports.PROPERTY_METADATA_DAIKIN, allMetadata, target);
-    };
+    return defineMetadata(exports.PROPERTY_METADATA_DAIKIN, metadata);
 }
 function modulesDaikinDevice(metadata) {
-    return function (target, propertyKey) {
-        const allMetadata = Reflect.getMetadata(exports.PROPERTY_METADATA_DAIKIN_DEVICE, target) || {};
-        allMetadata[propertyKey] = allMetadata[propertyKey] || {};
-        const ownKeys = Reflect.ownKeys(metadata);
-        ownKeys.forEach((key) => {
-            allMetadata[propertyKey][key] = metadata[String(key)];
-        });
-        Reflect.defineMetadata(exports.PROPERTY_METADATA_DAIKIN_DEVICE, allMetadata, target);
-    };
+    return defineMetadata(exports.PROPERTY_METADATA_DAIKIN_DEVICE, metadata);
 }
 //# sourceMappingURL=decorator.js.map

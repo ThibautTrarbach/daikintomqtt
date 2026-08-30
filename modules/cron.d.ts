@@ -1,2 +1,11 @@
+declare function isNightTime(): boolean;
+declare function getCurrentPollingInterval(): Promise<number>;
+declare function getNextPollingAt(): number;
+declare function getMergeWithPollWindowMs(): number;
+declare function pausePolling(): void;
+declare function resumePolling(): void;
+declare function getEffectiveNextPollingAt(): number;
 declare function loadCron(): Promise<void>;
-export { loadCron };
+declare function isPollingPaused(): boolean;
+declare function stopCronTasks(): void;
+export { loadCron, getNextPollingAt, getEffectiveNextPollingAt, getMergeWithPollWindowMs, isNightTime, getCurrentPollingInterval, pausePolling, resumePolling, isPollingPaused, stopCronTasks, };
