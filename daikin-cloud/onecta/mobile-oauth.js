@@ -176,8 +176,9 @@ class DaikinMobileOAuth {
         };
     }
     extractLoginToken(result, context) {
-        if (result.errorCode !== 0) {
-            throw new Error(`${context} (${result.errorCode}): ${result.errorMessage || result.errorDetails}`);
+        const errorCode = Number(result.errorCode);
+        if (errorCode !== 0) {
+            throw new Error(`${context} (${errorCode}): ${result.errorMessage || result.errorDetails}`);
         }
         if (!result.sessionInfo?.login_token) {
             throw new Error(`No login_token in ${context} response`);
@@ -276,7 +277,8 @@ class DaikinMobileOAuth {
         });
         const response = await this.httpsRequest(`${types_1.DAIKIN_MOBILE_CONFIG.gigyaBaseUrl}/accounts.login`, { method: 'POST', headers: this.gigyaPostHeaders }, params.toString());
         const result = this.parseJsonResponse(response, types_1.DAIKIN_MOBILE_CONFIG.gigyaBaseUrl, 'Login failed');
-        if (result.errorCode === 206001) {
+        const errorCode = Number(result.errorCode);
+        if (errorCode === 206001) {
             this.onLog?.('Account has pending registration (206001). Attempting to complete registration automatically...');
             if (result.sessionInfo?.login_token) {
                 return result.sessionInfo.login_token;
@@ -284,6 +286,8 @@ class DaikinMobileOAuth {
             if (result.regToken) {
                 return this.completePendingRegistration(result.regToken, result.data, result.profile);
             }
+            throw new Error('Account pending registration (206001) without regToken. '
+                + 'Please open the Daikin Onecta app, complete your account setup, then restart Daikin2MQTT.');
         }
         return this.extractLoginToken(result, 'Login failed');
     }
