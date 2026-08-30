@@ -185,8 +185,9 @@ export class DaikinMobileOAuth implements OAuthProvider {
 	}
 
 	private extractLoginToken(result: GigyaLoginResult, context: string): string {
-		if (result.errorCode !== 0) {
-			throw new Error(`${context} (${result.errorCode}): ${result.errorMessage || result.errorDetails}`);
+		const errorCode = Number(result.errorCode);
+		if (errorCode !== 0) {
+			throw new Error(`${context} (${errorCode}): ${result.errorMessage || result.errorDetails}`);
 		}
 		if (!result.sessionInfo?.login_token) {
 			throw new Error(`No login_token in ${context} response`);
@@ -311,7 +312,9 @@ export class DaikinMobileOAuth implements OAuthProvider {
 			'Login failed',
 		);
 
-		if (result.errorCode === 206001) {
+		const errorCode = Number(result.errorCode);
+
+		if (errorCode === 206001) {
 			this.onLog?.('Account has pending registration (206001). Attempting to complete registration automatically...');
 			if (result.sessionInfo?.login_token) {
 				return result.sessionInfo.login_token;
@@ -319,6 +322,10 @@ export class DaikinMobileOAuth implements OAuthProvider {
 			if (result.regToken) {
 				return this.completePendingRegistration(result.regToken, result.data, result.profile);
 			}
+			throw new Error(
+				'Account pending registration (206001) without regToken. '
+				+ 'Please open the Daikin Onecta app, complete your account setup, then restart Daikin2MQTT.',
+			);
 		}
 
 		return this.extractLoginToken(result, 'Login failed');
