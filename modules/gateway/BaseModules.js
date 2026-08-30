@@ -53,6 +53,9 @@ const converterEnum = Object.freeze({
     consumption: 3
 });
 exports.converterEnum = converterEnum;
+function isDeviceMetadataField(value) {
+    return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;
+}
 const consumptionEnum = Object.freeze({
     heatingDay: 0,
     heatingWeek: 1,
@@ -63,7 +66,7 @@ const consumptionEnum = Object.freeze({
 });
 exports.consumptionEnum = consumptionEnum;
 function convertDaikinDevice(device, gatewayClass) {
-    let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
+    let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass) || {};
     createDeviceInfo(device, gatewayClass);
     Object.entries(data).forEach(entry => {
         const [key, value] = entry;
@@ -123,11 +126,18 @@ function convertDaikinDevice(device, gatewayClass) {
     });
 }
 function createDeviceInfo(device, gatewayClass) {
-    let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass);
+    let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass) || {};
     Object.entries(data).forEach(entry1 => {
         const [key1, value1] = entry1;
+        const gatewayRecord = gatewayClass;
+        if (!gatewayRecord[key1]) {
+            gatewayRecord[key1] = {};
+        }
         Object.entries(value1).forEach(entry2 => {
             const [key2, value2] = entry2;
+            if (!isDeviceMetadataField(value2)) {
+                return;
+            }
             let deviceValue;
             try {
                 if (value2.dataPointPath !== undefined) {
@@ -171,7 +181,7 @@ function createDeviceInfo(device, gatewayClass) {
 }
 function resolveMetadataKeysFromEvents(gatewayClass, events) {
     const normalizedEventKeys = new Set(Object.keys(events).map((key) => (key.startsWith('_') ? key.substring(1) : key)));
-    const data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
+    const data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass) || {};
     const matched = new Set();
     Object.entries(data).forEach(([metaKey]) => {
         const withoutUnderscore = metaKey.startsWith('_') ? metaKey.substring(1) : metaKey;
@@ -238,7 +248,7 @@ async function eventValue(device, gatewayClass, events) {
 async function updateDaikinDevice(device, gatewayClass, events) {
     const deviceId = device.getId();
     logger.debug(`[BaseModules.ts] => updateDaikinDevice called for device ${deviceId}`);
-    let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
+    let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass) || {};
     let allSucceeded = true;
     let atLeastOneUpdate = false;
     const changedKeys = events ? resolveMetadataKeysFromEvents(gatewayClass, events) : null;

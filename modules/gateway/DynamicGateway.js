@@ -4,6 +4,8 @@ exports.DynamicGateway = void 0;
 require("reflect-metadata");
 const decorator_1 = require("../decorator");
 const BaseModules_1 = require("./BaseModules");
+const metadataRegistry_1 = require("./metadataRegistry");
+const catalog_1 = require("./characteristics/catalog");
 const SKIP_DATAPOINTS = new Set(['schedule', 'firmwareUpdate', 'firmwareUpdateStatus']);
 function makePropertyKey(embeddedId, dataPoint, dataPointPath) {
     const pathPart = dataPointPath
@@ -126,6 +128,7 @@ class DynamicGateway {
     characteristics = new Map();
     constructor(device) {
         this._device = buildDeviceInfo(device);
+        (0, metadataRegistry_1.registerDeviceMetadata)(this, '_device', (0, catalog_1.standardGatewayDeviceInfo)('gateway'));
         this.buildFromDevice(device);
     }
     get device() {
@@ -175,7 +178,6 @@ class DynamicGateway {
         this.addScheduleReadMetadata(device, cmdMetadata, daikinMetadata);
         Reflect.defineMetadata(decorator_1.PROPERTY_METADATA_CMD, cmdMetadata, this);
         Reflect.defineMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, daikinMetadata, this);
-        Reflect.defineMetadata(decorator_1.PROPERTY_METADATA_DAIKIN_DEVICE, { _device: this._device }, this);
     }
     addFirmwareMetadata(device, cmdMetadata, daikinMetadata) {
         const available = device.isFirmwareUpdateAvailable();
