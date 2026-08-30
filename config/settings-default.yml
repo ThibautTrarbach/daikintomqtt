@@ -1,19 +1,50 @@
 system:
   logLevel: 'info' # Indicates the level of log that the system must use
-  jeedom: false # Activate the integration for the Jeedom home automation system
+  # Post-action refresh mode:
+  # 1 = full refresh delayed by actionRefreshDelaySeconds after the action
+  # 2 = optimistic update (cache + MQTT) without cloud refresh after the action
+  # 3 = hybrid (optimistic update + full refresh actionRefreshDelaySeconds after the last action)
+  actionRefreshMode: 3
+  # Delay (in seconds) before full refresh in modes 1 and 3
+  actionRefreshDelaySeconds: 60
+  # Post-action refresh strategy: timer | merge_with_poll | disabled
+  actionRefreshStrategy: merge_with_poll
+  # Merge post-action GET with upcoming poll if within this many minutes
+  mergeWithPollWindowMinutes: 5
+  # Coalesce rapid MQTT commands per device (ms)
+  commandCoalesceMs: 400
+  # Daily energy consumption stats refresh (HH:MM)
+  energyStatsRefreshTime: "23:58"
+  # Use DynamicGateway for unknown models (auto-map API characteristics)
+  dynamicFallback: true
+  # Publish read-only characteristics in DynamicGateway mode
+  exposeReadOnly: true
+  # Skip MQTT publish when payload unchanged (default: true via cache)
+  publishOnDelta: true
   polling:
-    dayInterval: 10 # Intervalle de rafraîchissement en minutes pendant la journée
-    nightInterval: 20 # Intervalle de rafraîchissement en minutes pendant la nuit
-    nightStart: 22 # Heure de début de la période nuit (0-23)
-    nightEnd: 7 # Heure de fin de la période nuit (0-23)
-homeassistant:
-  enabled: false # Activate the integration for Home Assistant via MQTT Discovery
-  discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)
+    dayInterval: 15 # Refresh interval in minutes during the day
+    nightInterval: 30 # Refresh interval in minutes during the night
+    nightStart: 22 # Night period start hour (0-23)
+    nightEnd: 7 # Night period end hour (0-23)
+integration:
+  jeedom: false # Activate the integration for the Jeedom home automation system
+  homeassistant:
+    enabled: false # Activate the integration for Home Assistant via MQTT Discovery
+    discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)
 daikin:
+  authMode: developer_portal # developer_portal | mobile_app (recommended for higher quota + WebSocket)
+  # Developer Portal (OIDC)
   clientID: null # Client ID allowing connection to the Daikin Onecta Cloud
   clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud
   clientURL: ""
   clientPort: 8765
+  # Mobile App (Onecta account — 3000 req/day + WebSocket)
+  email: null
+  password: null
+  enableWebSocket: true # Real-time updates (mobile_app only)
+  httpTransport: node # node | curl (curl if Node TLS is blocked by WAF)
+  useMock: false # Use Daikin Mock API instead of production
+  mockId: null # Mock device ID, e.g. air-to-air-dx23
 mqtt:
   host: "127.0.0.1" # MQTT broker IP address
   port: 1883 # MQTT broker port

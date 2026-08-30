@@ -1,15 +1,15 @@
 import {ModulesDescriptionMetadata} from "../../types";
 import {typeEnum} from "../gateway";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {DaikinCloudDevice} from "../../daikin-cloud";
 
-function generateCMD(data: object, modules: object, device: DaikinCloudDevice) {
+function generateCMD(data: object, modules: Record<string, unknown>, device: DaikinCloudDevice | null) {
 	let cmd: any[] = [];
 	Object.entries(data).forEach(entry => {
 		try {
 			let [key, value] = entry;
 
 			if (modules[key] !== undefined && modules[key] !== null) {
-				if (value.type == typeEnum.numeric && value.minMaxValue !== undefined) {
+				if (value.type == typeEnum.numeric && value.minMaxValue !== undefined && device !== null) {
 					let minmax = getMinMaxValue(value, device)
 					value.minValue = minmax.min
 					value.maxValue = minmax.max
@@ -42,11 +42,18 @@ function getMinMaxValue(value: any, device: DaikinCloudDevice) {
 		if (value.minMaxValue.multipleValue.dataPointPath !== undefined) multipleValues = device.getData(value.minMaxValue.multipleValue.managementPoint, value.minMaxValue.multipleValue.dataPoint, value.minMaxValue.multipleValue.dataPointPath).values
 		else multipleValues = device.getData(value.minMaxValue.multipleValue.managementPoint, value.minMaxValue.multipleValue.dataPoint, null).values
 
+		if (!multipleValues?.length) {
+			return { min, max }
+		}
+
 		for (let i = 0; i < multipleValues.length; i++) {
 			let dataPointPath = value.minMaxValue.dataPointPath.replace("#value#", multipleValues[i]);
 			let data = device.getData(value.minMaxValue.managementPoint, value.minMaxValue.dataPoint, dataPointPath)
-			if (min !== null && data.minValue < min ) min = data.minValue
-			if (max !== null && data.maxValue > max ) max = data.maxValue
+			if (!data) {
+				continue
+			}
+			if (min === null || data.minValue < min) min = data.minValue
+			if (max === null || data.maxValue > max) max = data.maxValue
 		}
 	} else {
 		let data = device.getData(value.minMaxValue.managementPoint, value.minMaxValue.dataPoint, value.minMaxValue.dataPointPath)

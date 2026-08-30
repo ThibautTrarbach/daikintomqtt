@@ -1,7 +1,31 @@
 import {ModulesDescriptionMetadata} from "../../types";
 import {typeEnum} from "../gateway";
 import {Gateways} from "../../types";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {DaikinCloudDevice} from "../../daikin-cloud";
+import {APP_VERSION, HA_AVAILABILITY_TOPIC_SUFFIX} from "../constants";
+
+function toObjectId(propertyKey: string): string {
+	return propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+}
+
+function valueJsonTemplate(propertyKey: string, defaultValue: string): string {
+	return `{{ value_json['${propertyKey}'] | default(${defaultValue}) }}`;
+}
+
+function buildAvailability(baseTopic: string) {
+	return [{
+		topic: `${baseTopic}/${HA_AVAILABILITY_TOPIC_SUFFIX}`,
+		payload_available: "false",
+		payload_not_available: "true"
+	}];
+}
+
+function buildOrigin() {
+	return {
+		name: "daikin2mqtt",
+		sw: APP_VERSION
+	};
+}
 
 // Mapping des modes Daikin vers les modes Home Assistant
 const daikinModeToHA: { [key: string]: string } = {
@@ -39,8 +63,7 @@ interface HomeAssistantDiscoveryConfig {
 }
 
 /**
- * Génère la configuration de découverte Home Assistant pour un device
- * Similaire à generateCMD pour Jeedom
+ * Generates Home Assistant discovery configuration for a device
  */
 function generateHADiscovery(data: object, modules: object, device: DaikinCloudDevice) {
 	const deviceId = (modules as any)._device?.id || device.getId();
@@ -49,14 +72,13 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 	const modelInfo = (modules as any)._device?.modelInfo || "Daikin";
 	const firmwareVersion = (modules as any)._device?.firmwareVersion || "";
 
-	const discoveryPrefix = global.config.homeassistant?.discoveryPrefix || "homeassistant";
 	const baseTopic = global.config.mqtt.topic;
 	const stateTopic = `${baseTopic}/${deviceId}`;
 	const commandTopic = `${baseTopic}/${deviceId}/set`;
 
 	const discoveryConfigs: { [componentType: string]: { [objectId: string]: HomeAssistantDiscoveryConfig } } = {};
 
-	// 1. Générer la configuration du composant climate
+	// 1. Generate discovery configuration for the climate component
 	const climateConfig = generateClimateDiscovery(
 		device,
 		modules as Gateways,
@@ -71,13 +93,13 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 	);
 	discoveryConfigs["climate"] = { [deviceId]: climateConfig };
 
-	// 2. Générer les configurations des sensors et switches
+	// 2. Generate discovery configuration for sensors and switches
 	Object.entries(data).forEach(entry => {
 		try {
 			let [key, value] = entry;
 			const propertyMetadata = value as ModulesDescriptionMetadata;
 
-			// Ignorer les propriétés déjà gérées par climate
+			// Ignore properties already handled by the climate component
 			if (key === "_operationMode" || 
 				key === "_onOffMode" || 
 				key === "_temperatureControl" ||
@@ -85,6 +107,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 				key === "_econoMode" ||
 				key === "_powerfulMode" ||
 				key === "_streamerMode" ||
+				key === "_outdoorSilentMode" ||
 				key === "_fanVertical" ||
 				key === "_fanHorizontal") {
 				return;
@@ -94,9 +117,9 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 				return;
 			}
 
-			// Générer la configuration selon le type
+			// Generate discovery configuration depending on the type
 			if (propertyMetadata.type === typeEnum.numeric && !propertyMetadata.settable) {
-				// Sensor numérique
+				// Numeric sensor
 				const sensorConfig = generateSensorDiscovery(
 					device,
 					modules as Gateways,
@@ -114,11 +137,11 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 					if (!discoveryConfigs["sensor"]) {
 						discoveryConfigs["sensor"] = {};
 					}
-					const objectId = key.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+					const objectId = toObjectId(key);
 					discoveryConfigs["sensor"][`${deviceId}_${objectId}`] = sensorConfig;
 				}
 			} else if (propertyMetadata.type === typeEnum.binary) {
-				// Binary sensor ou switch
+				// Binary sensor or switch
 				const switchConfig = generateSwitchDiscovery(
 					device,
 					modules as Gateways,
@@ -137,7 +160,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 					if (!discoveryConfigs[componentType]) {
 						discoveryConfigs[componentType] = {};
 					}
-					const objectId = key.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+					const objectId = toObjectId(key);
 					discoveryConfigs[componentType][`${deviceId}_${objectId}`] = switchConfig;
 				}
 			}
@@ -151,7 +174,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 }
 
 /**
- * Génère la configuration de découverte pour un composant climate Home Assistant
+ * Generates Home Assistant discovery configuration for a climate component
  */
 function generateClimateDiscovery(
 	device: DaikinCloudDevice,
@@ -165,7 +188,7 @@ function generateClimateDiscovery(
 	commandTopic: string,
 	metadata: any
 ): HomeAssistantDiscoveryConfig {
-	// Déterminer les modes disponibles
+	// Determine available modes
 	let operationModeMeta: ModulesDescriptionMetadata | undefined;
 	let hvacModes = ["off", "heat", "cool", "auto", "fan_only", "dry"];
 
@@ -181,11 +204,7 @@ function generateClimateDiscovery(
 	const haConfig: HomeAssistantDiscoveryConfig = {
 		name: deviceName,
 		unique_id: `daikin_${deviceId}_climate`,
-		availability: [{
-			topic: `${global.config.mqtt.topic}/system/bridge/authorization_timeout`,
-			payload_available: "false",
-			payload_not_available: "true"
-		}],
+		availability: buildAvailability(global.config.mqtt.topic),
 		device: {
 			identifiers: [serialNumber || deviceId],
 			name: deviceName,
@@ -193,26 +212,23 @@ function generateClimateDiscovery(
 			model: modelInfo,
 			sw_version: firmwareVersion
 		},
-		origin: {
-			name: "daikin2mqtt",
-			sw: "1.1.0"
-		},
+		origin: buildOrigin(),
 		// Topics
 		state_topic: stateTopic,
 		command_topic: commandTopic,
 		// Mode configuration
 		mode_state_topic: stateTopic,
 		mode_command_topic: commandTopic,
-		mode_state_template: "{% if value_json.onOffMode == false %}off{% elif value_json.operationMode == 'heating' %}heat{% elif value_json.operationMode == 'cooling' %}cool{% elif value_json.operationMode == 'fanOnly' %}fan_only{% elif value_json.operationMode == 'auto' %}auto{% elif value_json.operationMode == 'dry' %}dry{% else %}off{% endif %}",
-		mode_command_template: "{% if value == 'off' %}{\"onOffMode\": false}{% elif value == 'heat' %}{\"onOffMode\": true, \"operationMode\": \"heating\"}{% elif value == 'cool' %}{\"onOffMode\": true, \"operationMode\": \"cooling\"}{% elif value == 'fan_only' %}{\"onOffMode\": true, \"operationMode\": \"fanOnly\"}{% else %}{\"onOffMode\": true, \"operationMode\": \"{{ value }}\"}{% endif %}",
+		mode_state_template: "{% if value_json._onOffMode == false %}off{% elif value_json._operationMode == 'heating' %}heat{% elif value_json._operationMode == 'cooling' %}cool{% elif value_json._operationMode == 'fanOnly' %}fan_only{% elif value_json._operationMode == 'auto' %}auto{% elif value_json._operationMode == 'dry' %}dry{% else %}off{% endif %}",
+		mode_command_template: "{% if value == 'off' %}{\"_onOffMode\": false}{% elif value == 'heat' %}{\"_onOffMode\": true, \"_operationMode\": \"heating\"}{% elif value == 'cool' %}{\"_onOffMode\": true, \"_operationMode\": \"cooling\"}{% elif value == 'fan_only' %}{\"_onOffMode\": true, \"_operationMode\": \"fanOnly\"}{% else %}{\"_onOffMode\": true, \"_operationMode\": \"{{ value }}\"}{% endif %}",
 		modes: hvacModes,
 		// Temperature configuration
 		current_temperature_topic: stateTopic,
-		current_temperature_template: "{{ value_json.roomTemperature | default(0) }}",
+		current_temperature_template: "{{ value_json._roomTemperature | default(0) }}",
 		temperature_state_topic: stateTopic,
 		temperature_command_topic: commandTopic,
-		temperature_state_template: "{{ value_json.temperatureControl | default(20) }}",
-		temperature_command_template: "{\"temperatureControl\": {{ value }}}",
+		temperature_state_template: "{{ value_json._temperatureControl | default(20) }}",
+		temperature_command_template: "{\"_temperatureControl\": {{ value }}}",
 		temperature_unit: "C",
 		min_temp: 16,
 		max_temp: 30,
@@ -220,24 +236,24 @@ function generateClimateDiscovery(
 		// Fan mode configuration
 		fan_mode_state_topic: stateTopic,
 		fan_mode_command_topic: commandTopic,
-		fan_mode_state_template: "{{ value_json.fanCurrentMode | default('auto') }}",
-		fan_mode_command_template: "{\"fanCurrentMode\": \"{{ value }}\"}",
+		fan_mode_state_template: "{{ value_json._fanCurrentMode | default('auto') }}",
+		fan_mode_command_template: "{\"_fanCurrentMode\": \"{{ value }}\"}",
 		fan_modes: ["auto", "quiet", "fixed"],
 		// Preset modes (eco, powerful, etc.)
 		preset_mode_state_topic: stateTopic,
 		preset_mode_command_topic: commandTopic,
-		preset_mode_state_template: "{% if value_json.econoMode %}eco{% elif value_json.powerfulMode %}powerful{% elif value_json.streamerMode %}streamer{% else %}none{% endif %}",
-		preset_mode_command_template: "{% if value == 'eco' %}{\"econoMode\": true}{% elif value == 'powerful' %}{\"powerfulMode\": true}{% elif value == 'streamer' %}{\"streamerMode\": true}{% else %}{\"econoMode\": false, \"powerfulMode\": false, \"streamerMode\": false}{% endif %}",
-		preset_modes: ["none", "eco", "powerful", "streamer"],
+		preset_mode_state_template: "{% if value_json._isHolidayModeActive %}away{% elif value_json._econoMode %}eco{% elif value_json._powerfulMode %}powerful{% elif value_json._streamerMode %}streamer{% else %}none{% endif %}",
+		preset_mode_command_template: "{% if value == 'away' %}{\"_setPresetAway\": true}{% elif value == 'eco' %}{\"_econoMode\": true}{% elif value == 'powerful' %}{\"_powerfulMode\": true}{% elif value == 'streamer' %}{\"_streamerMode\": true}{% else %}{\"_econoMode\": false, \"_powerfulMode\": false, \"_streamerMode\": false}{% endif %}",
+		preset_modes: ["none", "away", "eco", "powerful", "streamer"],
 		// Swing mode
 		swing_mode_state_topic: stateTopic,
 		swing_mode_command_topic: commandTopic,
-		swing_mode_state_template: "{% if value_json.fanVertical == 'swing' or value_json.fanHorizontal == 'swing' %}on{% else %}off{% endif %}",
-		swing_mode_command_template: "{% if value == 'on' %}{\"fanVertical\": \"swing\"}{% else %}{\"fanVertical\": \"stop\"}{% endif %}",
+		swing_mode_state_template: "{% if value_json._fanVertical == 'swing' or value_json._fanHorizontal == 'swing' %}on{% else %}off{% endif %}",
+		swing_mode_command_template: "{% if value == 'on' %}{\"_fanVertical\": \"swing\"}{% else %}{\"_fanVertical\": \"stop\"}{% endif %}",
 		swing_modes: ["on", "off"],
 		// Power command
 		power_command_topic: commandTopic,
-		power_command_template: "{\"onOffMode\": {% if value == 'ON' %}true{% else %}false{% endif %}}",
+		power_command_template: "{\"_onOffMode\": {% if value == 'ON' %}true{% else %}false{% endif %}}",
 		// JSON attributes
 		json_attributes_topic: stateTopic,
 		json_attributes_template: "{{ value_json | tojson }}",
@@ -249,7 +265,7 @@ function generateClimateDiscovery(
 }
 
 /**
- * Génère la configuration de découverte pour un sensor Home Assistant
+ * Generates Home Assistant discovery configuration for a sensor
  */
 function generateSensorDiscovery(
 	device: DaikinCloudDevice,
@@ -264,12 +280,13 @@ function generateSensorDiscovery(
 	stateTopic: string,
 	baseTopic: string
 ): HomeAssistantDiscoveryConfig | null {
-	// Déterminer le device_class et l'unité
+	// Determine device_class and unit
 	let deviceClass: string | undefined;
 	let unitOfMeasurement: string | undefined = metadata.unite;
 
-	// Mapping basé sur le nom et l'unité
+	// Mapping based on name and unit
 	const propertyName = metadata.name.toLowerCase();
+	let isEnergy = false;
 	if (propertyName.includes("temperature")) {
 		deviceClass = "temperature";
 		unitOfMeasurement = unitOfMeasurement || "°C";
@@ -279,15 +296,14 @@ function generateSensorDiscovery(
 	} else if (propertyName.includes("consumption") || propertyName.includes("energy")) {
 		deviceClass = "energy";
 		unitOfMeasurement = unitOfMeasurement || "kWh";
+		isEnergy = true;
 	}
-
-	const valuePath = propertyKey.replace(/^_/, "");
 
 	const haConfig: HomeAssistantDiscoveryConfig = {
 		name: `${deviceName} ${metadata.name}`,
-		unique_id: `daikin_${deviceId}_${propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")}`,
+		unique_id: `daikin_${deviceId}_${toObjectId(propertyKey)}`,
 		state_topic: stateTopic,
-		value_template: `{{ value_json.${valuePath} | default(0) }}`,
+		value_template: valueJsonTemplate(propertyKey, "0"),
 		device: {
 			identifiers: [serialNumber || deviceId],
 			name: deviceName,
@@ -295,15 +311,8 @@ function generateSensorDiscovery(
 			model: modelInfo,
 			sw_version: firmwareVersion
 		},
-		origin: {
-			name: "daikin2mqtt",
-			sw: "1.1.0"
-		},
-		availability: [{
-			topic: `${baseTopic}/system/bridge/authorization_timeout`,
-			payload_available: "false",
-			payload_not_available: "true"
-		}],
+		origin: buildOrigin(),
+		availability: buildAvailability(baseTopic),
 		qos: 0,
 		retain: true
 	};
@@ -315,11 +324,17 @@ function generateSensorDiscovery(
 		haConfig.unit_of_measurement = unitOfMeasurement;
 	}
 
+	// For energy / consumption values, mark as a monotonically increasing total
+	// so that Home Assistant can use them directly in the Energy dashboard.
+	if (isEnergy) {
+		(haConfig as any).state_class = "total_increasing";
+	}
+
 	return haConfig;
 }
 
 /**
- * Génère la configuration de découverte pour un switch/binary_sensor Home Assistant
+ * Generates Home Assistant discovery configuration for a switch/binary_sensor
  */
 function generateSwitchDiscovery(
 	device: DaikinCloudDevice,
@@ -334,13 +349,11 @@ function generateSwitchDiscovery(
 	stateTopic: string,
 	commandTopic: string
 ): HomeAssistantDiscoveryConfig | null {
-	const valuePath = propertyKey.replace(/^_/, "");
-
 	const haConfig: HomeAssistantDiscoveryConfig = {
 		name: `${deviceName} ${metadata.name}`,
-		unique_id: `daikin_${deviceId}_${propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")}`,
+		unique_id: `daikin_${deviceId}_${toObjectId(propertyKey)}`,
 		state_topic: stateTopic,
-		state_template: `{{ value_json.${valuePath} | default(false) }}`,
+		value_template: valueJsonTemplate(propertyKey, "false"),
 		device: {
 			identifiers: [serialNumber || deviceId],
 			name: deviceName,
@@ -348,15 +361,8 @@ function generateSwitchDiscovery(
 			model: modelInfo,
 			sw_version: firmwareVersion
 		},
-		origin: {
-			name: "daikin2mqtt",
-			sw: "1.1.0"
-		},
-		availability: [{
-			topic: `${global.config.mqtt.topic}/system/bridge/authorization_timeout`,
-			payload_available: "false",
-			payload_not_available: "true"
-		}],
+		origin: buildOrigin(),
+		availability: buildAvailability(global.config.mqtt.topic),
 		qos: 0,
 		retain: true
 	};
@@ -364,9 +370,11 @@ function generateSwitchDiscovery(
 	// Si settable, c'est un switch avec command_topic
 	if (metadata.settable) {
 		haConfig.command_topic = commandTopic;
-		haConfig.command_template = `{"${valuePath}": {% if value == 'ON' %}true{% else %}false{% endif %}}`;
+		haConfig.command_template = `{"${propertyKey}": {% if value == 'ON' %}true{% else %}false{% endif %}}`;
 		haConfig.payload_on = "ON";
 		haConfig.payload_off = "OFF";
+		haConfig.state_on = "true";
+		haConfig.state_off = "false";
 	} else {
 		// Sinon c'est un binary_sensor
 		haConfig.payload_on = "true";

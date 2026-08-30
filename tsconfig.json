@@ -1,33 +1,38 @@
 {
     "compilerOptions": {
-        "target": "esnext",
+        /* Target & modules */
+        "target": "ES2022",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "rootDir": "./src",
+        "outDir": "./dist",
+
+        /* Experimental features */
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
 
-        /* Modules */
-        "module": "commonjs",
-        "rootDir": "./src",
-
-        /* JavaScript Support */
-         "allowJs": true,
-         "checkJs": true,
+        /* JavaScript support (project full TS) */
+        "allowJs": false,
+        "checkJs": false,
 
         /* Emit */
         "declaration": true,
         "declarationMap": false,
         "sourceMap": true,
-        "moduleResolution": "node",
-        "outDir": "./dist",
         "removeComments": true,
         "noEmitOnError": true,
+        "incremental": true,
 
+        /* Interop & platform */
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
 
         /* Type Checking */
         "strict": true,
         "skipLibCheck": true,
-
-        "noImplicitAny": false
-    }
+        "noImplicitAny": true,
+        "noImplicitOverride": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "test", "scripts"]
 }
