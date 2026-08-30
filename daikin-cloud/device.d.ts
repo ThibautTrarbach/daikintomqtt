@@ -19,6 +19,9 @@ export declare class DaikinCloudDevice extends EventEmitter<DaikinCloudDeviceEve
     isCloudConnectionUp(): boolean;
     getData(managementPoint: any, dataPoint: any, dataPointPath: any): any;
     updateData(): Promise<boolean>;
+    applyWebSocketUpdate(embeddedId: string, characteristicName: string, data: {
+        value: unknown;
+    }): boolean;
     setData(managementPoint: any, dataPoint: any, dataPointPath: any, value: any, options?: SetDataOptions | boolean): Promise<boolean>;
     isFirmwareUpdateAvailable(): boolean;
     getFirmwareUpdateDetails(): any;

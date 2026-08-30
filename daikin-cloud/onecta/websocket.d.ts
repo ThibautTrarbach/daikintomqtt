@@ -1,0 +1,31 @@
+import { EventEmitter } from 'node:events';
+import type { OAuthProvider } from '../types';
+export type WebSocketState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+export declare class DaikinWebSocket extends EventEmitter {
+    private readonly oauth;
+    private readonly onError?;
+    private ws;
+    private state;
+    private reconnectDelay;
+    private reconnectTimeout;
+    private pingInterval;
+    private pongTimeout;
+    private shouldReconnect;
+    private connectionAttempts;
+    constructor(oauth: OAuthProvider, onError?: ((error: Error) => void) | undefined);
+    getState(): WebSocketState;
+    isConnected(): boolean;
+    connect(): Promise<void>;
+    disconnect(): void;
+    private establishConnection;
+    private setupEventHandlers;
+    private handleMessage;
+    private handleClose;
+    private handleError;
+    private scheduleReconnect;
+    private startHeartbeat;
+    private stopHeartbeat;
+    private setPongTimeout;
+    private clearPongTimeout;
+    private cleanup;
+}

@@ -24,8 +24,8 @@ export declare enum OnectaMockDevice {
 export declare const onecta_oidc_issuer: Issuer<import("openid-client").BaseClient>;
 export declare const onecta_oidc_auth_thank_you_html = "\n<html>\n<head>\n<title>Thank you!</title>\n</head>\n<body>\n  <h1>Authorization complete</h1>\n  <p>Thank you for authorizing <code>daikin-controller-cloud</code> to access your devices.</p>\n</body>\n</html>\n";
 export interface OnectaClientConfig {
-    oidcClientId: string;
-    oidcClientSecret: string;
+    oidcClientId?: string;
+    oidcClientSecret?: string;
     oidcCallbackServerExternalAddress?: string;
     oidcCallbackServerBaseUrl?: string;
     oidcCallbackServerPort?: number;

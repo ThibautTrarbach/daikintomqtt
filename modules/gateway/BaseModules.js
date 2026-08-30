@@ -38,6 +38,7 @@ exports.convertDaikinDevice = convertDaikinDevice;
 exports.eventValue = eventValue;
 const decorator_1 = require("../decorator");
 const mqtt_1 = require("../mqtt");
+const actionRefresh_1 = require("../actionRefresh");
 const typeEnum = Object.freeze({
     numeric: 0,
     string: 1,
@@ -145,7 +146,49 @@ function createDeviceInfo(device, gatewayClass) {
             gatewayClass[key1][key2] = deviceValue;
         });
         gatewayClass[key1]['id'] = device.getId();
+        const extraDeviceFields = [
+            ['timeZone', 'gateway', 'timeZone'],
+            ['wifiConnectionSSID', 'gateway', 'wifiConnectionSSID'],
+            ['wifiConnectionStrength', 'gateway', 'wifiConnectionStrength'],
+        ];
+        for (const [field, mp, dp] of extraDeviceFields) {
+            try {
+                const extra = device.getData(mp, dp, undefined);
+                if (extra?.value !== undefined && extra?.value !== null) {
+                    gatewayClass[key1][field] = String(extra.value);
+                }
+            }
+            catch {
+            }
+        }
+        try {
+            gatewayClass[key1]['isCloudConnectionUp'] = device.isCloudConnectionUp() ? 'true' : 'false';
+        }
+        catch {
+        }
     });
+}
+function resolveMetadataKeysFromEvents(gatewayClass, events) {
+    const normalizedEventKeys = new Set(Object.keys(events).map((key) => (key.startsWith('_') ? key.substring(1) : key)));
+    const data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
+    const matched = new Set();
+    Object.entries(data).forEach(([metaKey]) => {
+        const withoutUnderscore = metaKey.startsWith('_') ? metaKey.substring(1) : metaKey;
+        if (normalizedEventKeys.has(withoutUnderscore) || normalizedEventKeys.has(metaKey)) {
+            matched.add(metaKey);
+        }
+    });
+    return matched;
+}
+async function publishOptimisticUpdate(device, gatewayClass) {
+    const deviceId = device.getId();
+    const cachedDevice = await cache.get(`device_${deviceId}`);
+    const sourceDevice = cachedDevice ?? device;
+    await cache.set(`device_${deviceId}`, sourceDevice, 10800000);
+    convertDaikinDevice(sourceDevice, gatewayClass);
+    const payload = JSON.stringify(gatewayClass);
+    await (0, mqtt_1.publishToMQTT)(deviceId, payload);
+    logger.debug(`[BaseModules.ts] => Optimistic MQTT update published for device ${deviceId}`);
 }
 async function eventValue(device, gatewayClass, events) {
     const deviceId = device.getId();
@@ -164,51 +207,41 @@ async function eventValue(device, gatewayClass, events) {
         const privateValue = gatewayClass[privateKey];
         logger.debug(`[BaseModules.ts] => After assignment - ${propertyKey}: ${assignedValue}, ${privateKey}: ${privateValue}`);
     });
-    const updateResult = await updateDaikinDevice(device, gatewayClass);
+    const updateResult = await updateDaikinDevice(device, gatewayClass, events);
     logger.debug(`[BaseModules.ts] => eventValue - updateResult for ${deviceId}: success=${updateResult.success}, hasUpdates=${updateResult.hasUpdates}, hasErrors=${updateResult.hasErrors}`);
     try {
-        const mode = config.system?.actionRefreshMode ?? 1;
-        const now = Math.floor(Date.now() / 1000);
-        const deviceId = device.getId();
-        if ((mode === 2 || mode === 3) && updateResult.success) {
+        const mode = config.system?.actionRefreshMode ?? 3;
+        if (updateResult.success && updateResult.hasUpdates) {
             try {
-                await cache.set(`device_${deviceId}`, device, 10800000);
-                const payload = JSON.stringify(gatewayClass);
-                await (0, mqtt_1.publishToMQTT)(deviceId, payload);
-                logger.debug(`[BaseModules.ts] => Post-action optimistic update published for device ${deviceId} (mode=${mode})`);
+                await publishOptimisticUpdate(device, gatewayClass);
             }
             catch (e) {
-                logger.error(`[BaseModules.ts] => Error during optimistic post-action update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
+                logger.error(`[BaseModules.ts] => Error during optimistic update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
             }
         }
-        else if ((mode === 2 || mode === 3) && !updateResult.success) {
-            if (updateResult.hasErrors) {
-                logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because API update failed`);
-            }
-            else if (!updateResult.hasUpdates) {
-                logger.debug(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because no updates were necessary`);
-            }
+        else if (updateResult.hasErrors) {
+            logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} because API update failed`);
         }
-        if (mode === 1 || mode === 3) {
-            await cache.set('needRefresh', now);
-            logger.debug(`[BaseModules.ts] => Post-action refresh scheduled (mode=${mode}) at ${new Date(now * 1000).toISOString()}`);
+        if ((mode === 1 || mode === 3) && updateResult.hasUpdates && updateResult.success) {
+            await (0, actionRefresh_1.schedulePostActionRefresh)(deviceId);
         }
-        else {
+        else if (mode === 2) {
             await cache.del('needRefresh');
-            logger.debug("[BaseModules.ts] => Post-action refresh disabled (mode=2), any pending refresh cleared");
+            await cache.del('postActionDeviceId');
         }
     }
     catch (postActionError) {
         logger.error(`[BaseModules.ts] => Error handling post-action behavior: ${postActionError instanceof Error ? postActionError.message : String(postActionError)}`);
     }
 }
-async function updateDaikinDevice(device, gatewayClass) {
+async function updateDaikinDevice(device, gatewayClass, events) {
     const deviceId = device.getId();
     logger.debug(`[BaseModules.ts] => updateDaikinDevice called for device ${deviceId}`);
     let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass);
     let allSucceeded = true;
     let atLeastOneUpdate = false;
-    const entries = Object.entries(data);
+    const changedKeys = events ? resolveMetadataKeysFromEvents(gatewayClass, events) : null;
+    const entries = Object.entries(data).filter(([key]) => !changedKeys || changedKeys.has(key));
     const operationModeEntry = entries.find(([key, value]) => value.dataPoint === "operationMode" && !value.dataPointPath);
     const onOffModeEntry = entries.find(([key, value]) => value.dataPoint === "onOffMode" && !value.dataPointPath);
     const otherEntries = entries.filter(([key, value]) => {

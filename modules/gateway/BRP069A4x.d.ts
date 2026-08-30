@@ -5,10 +5,13 @@ export declare class BRP069A4x implements ClassModule {
     private _isHolidayModeActive?;
     private _isInErrorState?;
     private _isInModeConflict?;
+    private _isInWarningState?;
+    private _isInCautionState?;
     private _operationMode?;
     private _onOffMode?;
     private _powerfulMode?;
     private _roomTemperature?;
+    private _outdoorTemperature?;
     private _roomHumidity?;
     private _temperatureControl?;
     private _fanCurrentMode?;
@@ -23,10 +26,13 @@ export declare class BRP069A4x implements ClassModule {
     set isHolidayModeActive(value: boolean);
     set isInErrorState(value: boolean);
     set isInModeConflict(value: boolean);
+    set isInWarningState(value: boolean);
+    set isInCautionState(value: boolean);
     set operationMode(value: string);
     set onOffMode(value: boolean);
     set powerfulMode(value: boolean);
     set roomTemperature(value: number);
+    set outdoorTemperature(value: number);
     set roomHumidity(value: number);
     set temperatureControl(value: number);
     set fanCurrentMode(value: string);

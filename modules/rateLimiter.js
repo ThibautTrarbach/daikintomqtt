@@ -19,7 +19,7 @@ class RateLimiter {
             limitMinute: rateLimitStatus.limitMinute || 0,
             remainingMinute: rateLimitStatus.remainingMinute || 0,
             limitDay: rateLimitStatus.limitDay || 0,
-            remainingDay: rateLimitStatus.remainingMinute || 0,
+            remainingDay: rateLimitStatus.remainingDay || 0,
             lastUpdate: Date.now()
         };
         logger.debug(`[rateLimiter.ts] => Rate limit updated - Minute: ${this.rateLimitInfo.remainingMinute}/${this.rateLimitInfo.limitMinute}, Day: ${this.rateLimitInfo.remainingDay}/${this.rateLimitInfo.limitDay}`);

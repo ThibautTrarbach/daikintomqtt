@@ -38,6 +38,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const modules_1 = require("./modules");
 const cron_1 = require("./modules/cron");
+const actionRefresh_1 = require("./modules/actionRefresh");
+const cron_2 = require("./modules/cron");
+const daikin_1 = require("./modules/daikin");
 const cache_manager_1 = require("cache-manager");
 const node_path_1 = require("node:path");
 const fs_1 = __importDefault(require("fs"));
@@ -61,6 +64,20 @@ const promises_1 = require("timers/promises");
         global.logger.info("[main.ts] => Loading polling system");
         await (0, cron_1.loadCron)();
         global.logger.info("[main.ts] => DaikinToMQTT started successfully!");
+        const shutdown = async (signal) => {
+            global.logger.info(`[main.ts] => ${signal} received, shutting down gracefully...`);
+            (0, actionRefresh_1.clearPostActionTimer)();
+            (0, cron_2.pausePolling)();
+            try {
+                await (0, daikin_1.disableDaikinWebSocket)();
+            }
+            catch (e) {
+                global.logger.debug(`[main.ts] => WebSocket shutdown: ${e instanceof Error ? e.message : String(e)}`);
+            }
+            process.exit(0);
+        };
+        process.on('SIGINT', () => { void shutdown('SIGINT'); });
+        process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
     }
     catch (error) {
         if (!global.logger) {

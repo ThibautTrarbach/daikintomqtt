@@ -26,10 +26,13 @@ class BRP069A4x {
     _isHolidayModeActive;
     _isInErrorState;
     _isInModeConflict;
+    _isInWarningState;
+    _isInCautionState;
     _operationMode;
     _onOffMode;
     _powerfulMode;
     _roomTemperature;
+    _outdoorTemperature;
     _roomHumidity;
     _temperatureControl;
     _fanCurrentMode;
@@ -50,6 +53,12 @@ class BRP069A4x {
     set isInModeConflict(value) {
         this._isInModeConflict = value;
     }
+    set isInWarningState(value) {
+        this._isInWarningState = value;
+    }
+    set isInCautionState(value) {
+        this._isInCautionState = value;
+    }
     set operationMode(value) {
         this._operationMode = value;
     }
@@ -61,6 +70,9 @@ class BRP069A4x {
     }
     set roomTemperature(value) {
         this._roomTemperature = value;
+    }
+    set outdoorTemperature(value) {
+        this._outdoorTemperature = value;
     }
     set roomHumidity(value) {
         this._roomHumidity = value;
@@ -149,6 +161,30 @@ __decorate([
 __decorate([
     (0, decorator_1.modulesDaikinAcces)({
         managementPoint: "climateControl",
+        dataPoint: "isInWarningState"
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Warning State',
+        settable: false,
+        type: BaseModules_1.typeEnum.binary
+    }),
+    __metadata("design:type", Boolean)
+], BRP069A4x.prototype, "_isInWarningState", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControl",
+        dataPoint: "isInCautionState"
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Caution State',
+        settable: false,
+        type: BaseModules_1.typeEnum.binary
+    }),
+    __metadata("design:type", Boolean)
+], BRP069A4x.prototype, "_isInCautionState", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControl",
         dataPoint: "operationMode"
     }),
     (0, decorator_1.modulesDataDescription)({
@@ -182,12 +218,12 @@ __decorate([
 __decorate([
     (0, decorator_1.modulesDaikinAcces)({
         managementPoint: "climateControl",
-        dataPoint: "isPowerfulModeActive",
+        dataPoint: "powerfulMode",
         converter: BaseModules_1.converterEnum.binary
     }),
     (0, decorator_1.modulesDataDescription)({
         name: 'Powerful Mode',
-        settable: false,
+        settable: true,
         generic_type: "ENERGY_STATE",
         type: BaseModules_1.typeEnum.binary
     }),
@@ -209,6 +245,25 @@ __decorate([
     }),
     __metadata("design:type", Number)
 ], BRP069A4x.prototype, "_roomTemperature", void 0);
+__decorate([
+    (0, decorator_1.modulesDaikinAcces)({
+        managementPoint: "climateControl",
+        dataPoint: "sensoryData",
+        dataPointPath: "/outdoorTemperature"
+    }),
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Outdoor Temperature',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "sensoryData",
+            dataPointPath: "/outdoorTemperature"
+        },
+        unite: '°C'
+    }),
+    __metadata("design:type", Number)
+], BRP069A4x.prototype, "_outdoorTemperature", void 0);
 __decorate([
     (0, decorator_1.modulesDaikinAcces)({
         managementPoint: "climateControl",

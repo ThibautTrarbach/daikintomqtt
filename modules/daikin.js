@@ -42,8 +42,9 @@ exports.generateConfig = generateConfig;
 exports.sendDevice = sendDevice;
 exports.startDaikinAPI = startDaikinAPI;
 exports.getDevices = getDevices;
-exports.timeUpdate = timeUpdate;
 exports.updateSystemBridge = updateSystemBridge;
+exports.getModels = getModels;
+exports.disableDaikinWebSocket = disableDaikinWebSocket;
 const node_path_1 = require("node:path");
 const gateway_1 = require("./gateway");
 const converter_1 = require("./converter");
@@ -51,18 +52,69 @@ const mqtt_1 = require("./mqtt");
 const daikin_cloud_1 = require("../daikin-cloud");
 const fs_1 = __importDefault(require("fs"));
 const instanceId_1 = require("./instanceId");
+const requestBudget_1 = require("./requestBudget");
+const constants_1 = require("../daikin-cloud/constants");
+const pendingCommands = new Map();
+function getCommandCoalesceMs() {
+    return config.system?.commandCoalesceMs ?? 400;
+}
+async function queueDeviceCommand(device, eventData) {
+    const deviceId = device.getId();
+    const existing = pendingCommands.get(deviceId);
+    const merged = existing ? { ...existing.payload, ...eventData } : { ...eventData };
+    if (existing?.timer) {
+        clearTimeout(existing.timer);
+    }
+    const timer = setTimeout(async () => {
+        pendingCommands.delete(deviceId);
+        const gateway = getModels(device);
+        if (gateway === undefined) {
+            logger.warn(`[daikin.ts] => No gateway found for coalesced command on device ${deviceId}`);
+            return;
+        }
+        try {
+            await (0, gateway_1.applyGatewayEvents)(device, gateway, merged);
+            logger.debug(`[daikin.ts] => Coalesced command processed for device: ${deviceId}`);
+        }
+        catch (eventError) {
+            logger.error(`[daikin.ts] => Error processing coalesced event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
+        }
+    }, getCommandCoalesceMs());
+    pendingCommands.set(deviceId, { payload: merged, timer });
+    logger.debug(`[daikin.ts] => Command queued for device ${deviceId} (${getCommandCoalesceMs()}ms coalesce)`);
+}
+function getTokenFilePath() {
+    const authMode = config.daikin.authMode ?? 'developer_portal';
+    if (authMode === constants_1.AUTH_MODE_MOBILE_APP) {
+        return (0, node_path_1.resolve)(datadir, 'daikin-mobile-tokenset');
+    }
+    return (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset');
+}
 async function loadDaikinAPI() {
-    if (!config.daikin.clientID || !config.daikin.clientSecret) {
+    const authMode = config.daikin.authMode ?? 'developer_portal';
+    if (authMode === constants_1.AUTH_MODE_MOBILE_APP) {
+        if (!config.daikin.email || !config.daikin.password) {
+            logger.error('[daikin.ts] => Please set daikin.email and daikin.password for mobile_app auth mode');
+            process.exit(0);
+        }
+    }
+    else if (!config.daikin.clientID || !config.daikin.clientSecret) {
         logger.error('[daikin.ts] => Please set the clientID and clientSecret in the settings files');
         process.exit(0);
     }
     const daikinClient = new daikin_cloud_1.DaikinCloudController({
+        authMode,
         oidcClientId: config.daikin.clientID,
         oidcClientSecret: config.daikin.clientSecret,
         oidcCallbackServerBindAddr: '0.0.0.0',
-        oidcCallbackServerPort: config.daikin.clientPort,
+        oidcCallbackServerPort: config.daikin.clientPort ?? 8765,
         oidcCallbackServerExternalAddress: config.daikin.clientURL,
         oidcTokenSetFilePath: (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset'),
+        mobileEmail: config.daikin.email ?? undefined,
+        mobilePassword: config.daikin.password ?? undefined,
+        mobileTokenFilePath: (0, node_path_1.resolve)(datadir, 'daikin-mobile-tokenset'),
+        enableWebSocket: config.daikin.enableWebSocket ?? true,
+        httpTransport: config.daikin.httpTransport,
         oidcAuthorizationTimeoutS: 120,
         useMock: config.daikin.useMock ?? false,
         mockId: config.daikin.mockId ?? undefined,
@@ -106,6 +158,25 @@ async function loadDaikinAPI() {
         logger.debug(`[daikin.ts] => EVENT - Token Update - DATA: `);
         logger.debug(JSON.stringify(set));
     });
+    daikinClient.on('websocket_connected', async () => {
+        logger.info('[daikin.ts] => WebSocket connected - receiving real-time updates');
+        await cache.set('ws/connected', true);
+        await updateSystemBridge();
+    });
+    daikinClient.on('websocket_disconnected', async (info) => {
+        logger.info(`[daikin.ts] => WebSocket disconnected${info?.reconnecting ? ' (reconnecting)' : ''}`);
+        await cache.set('ws/connected', false);
+        await updateSystemBridge();
+    });
+    daikinClient.on('websocket_device_update', async (update) => {
+        try {
+            const { handleWebSocketDeviceUpdate } = await Promise.resolve().then(() => __importStar(require('./wsUpdateMapper')));
+            await handleWebSocketDeviceUpdate(update);
+        }
+        catch (error) {
+            logger.error(`[daikin.ts] => WebSocket update handler error: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    });
     daikinClient.on('error', async (error) => {
         logger.error(`[daikin.ts] => EVENT - Daikin client error: ${error instanceof Error ? error.message : String(error)}`);
         if (error instanceof Error && error.stack) {
@@ -141,7 +212,7 @@ async function loadDaikinAPI() {
         else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || error?.error === "invalid_grant") {
             try {
                 logger.error('[daikin.ts] => Invalid token detected (invalid_grant), deleting old token and shutting down');
-                const tokenPath = (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset');
+                const tokenPath = getTokenFilePath();
                 if (fs_1.default.existsSync(tokenPath)) {
                     fs_1.default.unlinkSync(tokenPath);
                     logger.info(`[daikin.ts] => Token file deleted: ${tokenPath}`);
@@ -177,9 +248,23 @@ async function startDaikinAPI() {
         await rateLimiter.loadRateLimitFromCache();
         logger.info("[daikin.ts] => Initializing system bridge");
         await initializeSystemBridge([]);
-        const tokenPath = (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset');
+        const tokenPath = getTokenFilePath();
         const tokenExists = fs_1.default.existsSync(tokenPath);
-        if (!tokenExists) {
+        const authMode = config.daikin.authMode ?? 'developer_portal';
+        if (authMode === constants_1.AUTH_MODE_MOBILE_APP) {
+            if (!daikinClient.isAuthenticated()) {
+                logger.info('[daikin.ts] => Mobile App auth: authenticating with Onecta credentials...');
+                try {
+                    await daikinClient.authenticateMobile();
+                    logger.info('[daikin.ts] => Mobile App authentication successful');
+                }
+                catch (authError) {
+                    logger.error(`[daikin.ts] => Mobile App authentication failed: ${authError instanceof Error ? authError.message : String(authError)}`);
+                    return;
+                }
+            }
+        }
+        else if (!tokenExists) {
             logger.info("[daikin.ts] => No token found, making initial request to trigger authorization");
             try {
                 await getDevices(false, "authorization_initial_request");
@@ -204,6 +289,14 @@ async function startDaikinAPI() {
             logger.info("[daikin.ts] => Sending initial data values");
             await sendDevice(devices, false, "startup_initial_send");
             await updateSystemBridge(null, devices);
+            if (authMode === constants_1.AUTH_MODE_MOBILE_APP && (config.daikin.enableWebSocket ?? true)) {
+                try {
+                    await daikinClient.enableWebSocket();
+                }
+                catch (wsError) {
+                    logger.warn(`[daikin.ts] => WebSocket enable failed, falling back to polling: ${wsError instanceof Error ? wsError.message : String(wsError)}`);
+                }
+            }
             logger.info("[daikin.ts] => Daikin API started successfully");
         }
         catch (apiError) {
@@ -304,8 +397,7 @@ async function subscribeDevices(devices) {
                         continue;
                     }
                     try {
-                        await (0, gateway_1.eventValue)(dev, gateway, eventData);
-                        logger.debug(`[daikin.ts] => Command processed successfully for device: ${deviceId}`);
+                        await queueDeviceCommand(dev, eventData);
                     }
                     catch (eventError) {
                         logger.error(`[daikin.ts] => Error processing event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
@@ -327,8 +419,44 @@ async function subscribeDevices(devices) {
         }
     });
 }
-async function sendDevice(devices = null, cron = false, reason = "unspecified") {
+async function refreshSingleDevice(deviceId, reason) {
     try {
+        const devices = await cache.get('devices');
+        if (!devices?.length) {
+            return false;
+        }
+        const device = devices.find((dev) => dev.getId() === deviceId);
+        if (!device) {
+            return false;
+        }
+        if (!(await (0, requestBudget_1.canRefresh)(reason))) {
+            return false;
+        }
+        logger.info(`[daikin.ts] => Partial refresh for device ${deviceId} (reason: ${reason})`);
+        await device.updateData();
+        await cache.set('devices', devices, 10800000);
+        await cache.set(`device_${deviceId}`, device, 10800000);
+        const gateway = getModels(device);
+        if (gateway === undefined) {
+            return false;
+        }
+        await (0, mqtt_1.publishToMQTT)(deviceId, JSON.stringify(gateway));
+        await updateSystemBridge(null, devices);
+        return true;
+    }
+    catch (error) {
+        logger.warn(`[daikin.ts] => Partial refresh failed for ${deviceId}, falling back to full refresh: ${error instanceof Error ? error.message : String(error)}`);
+        return false;
+    }
+}
+async function sendDevice(devices = null, cron = false, reason = "unspecified", onlyDeviceIds) {
+    try {
+        if (reason === 'post_action_refresh' && onlyDeviceIds?.length === 1) {
+            const partialOk = await refreshSingleDevice(onlyDeviceIds[0], reason);
+            if (partialOk) {
+                return;
+            }
+        }
         if (devices == null) {
             logger.debug(`[daikin.ts] => Retrieving devices${cron ? ' (forced from cloud)' : ' (from cache if available)'} for sendDevice (reason: ${reason})`);
             devices = await getDevices(cron, reason);
@@ -337,8 +465,11 @@ async function sendDevice(devices = null, cron = false, reason = "unspecified") 
             logger.warn(`[daikin.ts] => No devices found for sending`);
             return;
         }
-        logger.debug(`[daikin.ts] => Sending ${devices.length} device(s) to MQTT`);
-        for (let dev of devices) {
+        const devicesToPublish = onlyDeviceIds?.length
+            ? devices.filter((dev) => onlyDeviceIds.includes(dev.getId()))
+            : devices;
+        logger.debug(`[daikin.ts] => Sending ${devicesToPublish.length} device(s) to MQTT (reason: ${reason})`);
+        for (let dev of devicesToPublish) {
             const deviceId = dev.getId();
             try {
                 await cache.set(`device_${deviceId}`, dev, 10800000);
@@ -384,67 +515,6 @@ async function sendDevice(devices = null, cron = false, reason = "unspecified") 
         throw error;
     }
 }
-async function timeUpdate() {
-    try {
-        logger.debug("[daikin.ts] => Checking refresh after command => START");
-        const mode = config.system?.actionRefreshMode ?? 1;
-        if (mode === 2) {
-            logger.debug("[daikin.ts] => Post-action refresh disabled (mode=2), skipping timeUpdate");
-            return;
-        }
-        const defaultDelay = 45;
-        const delaySeconds = config.system?.actionRefreshDelaySeconds ?? defaultDelay;
-        const now = Math.floor(Date.now() / 1000);
-        logger.debug(`[daikin.ts] => Current timestamp: ${now} (${new Date(now * 1000).toISOString()}) - mode=${mode}, delay=${delaySeconds}s`);
-        const lastActionTs = await cache.get('needRefresh');
-        if (lastActionTs === undefined || lastActionTs === null) {
-            logger.debug("[daikin.ts] => No refresh pending");
-            return;
-        }
-        if (typeof lastActionTs !== "number") {
-            logger.warn(`[daikin.ts] => Invalid timestamp type in cache: ${typeof lastActionTs}, removing`);
-            await cache.del('needRefresh');
-            return;
-        }
-        logger.debug(`[daikin.ts] => Cached last action timestamp: ${lastActionTs} (${new Date(lastActionTs * 1000).toISOString()})`);
-        const lastPeriodicRefreshTs = await cache.get('lastPeriodicRefreshTs');
-        if (typeof lastPeriodicRefreshTs === "number") {
-            logger.debug(`[daikin.ts] => Last periodic refresh timestamp: ${lastPeriodicRefreshTs} (${new Date(lastPeriodicRefreshTs * 1000).toISOString()})`);
-            if (lastPeriodicRefreshTs >= lastActionTs) {
-                logger.info("[daikin.ts] => Skipping post-action refresh because a periodic refresh occurred after the last action");
-                await cache.del('needRefresh');
-                return;
-            }
-        }
-        const elapsed = now - lastActionTs;
-        logger.debug(`[daikin.ts] => Elapsed time since last action: ${elapsed}s`);
-        if (elapsed >= delaySeconds) {
-            logger.info("[daikin.ts] => Refresh needed after command, updating devices");
-            await cache.del('needRefresh');
-            try {
-                await sendDevice(null, true, "post_action_refresh");
-                logger.debug("[daikin.ts] => Refresh after command completed successfully");
-            }
-            catch (refreshError) {
-                logger.error(`[daikin.ts] => Error during refresh after command: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
-                if (refreshError instanceof Error && refreshError.stack) {
-                    logger.debug(`[daikin.ts] => Stack trace: ${refreshError.stack}`);
-                }
-            }
-        }
-        else {
-            const remainingSeconds = delaySeconds - elapsed;
-            logger.debug(`[daikin.ts] => Refresh not yet needed, ${remainingSeconds} second(s) remaining`);
-        }
-        logger.debug("[daikin.ts] => Checking refresh after command => FINISH");
-    }
-    catch (error) {
-        logger.error(`[daikin.ts] => Error in timeUpdate: ${error instanceof Error ? error.message : String(error)}`);
-        if (error instanceof Error && error.stack) {
-            logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
-        }
-    }
-}
 function getModels(devices) {
     try {
         if (!devices) {
@@ -469,6 +539,10 @@ function getModels(devices) {
             return undefined;
         }
         if (!value) {
+            if (config.system?.dynamicFallback !== false) {
+                logger.info(`[daikin.ts] => Using DynamicGateway for device without modelInfo`);
+                return new gateway_1.DynamicGateway(devices);
+            }
             logger.warn(`[daikin.ts] => No modelInfo found for device ${devices.getId ? devices.getId() : 'unknown'}`);
             (0, gateway_1.anonymise)(devices, 'unknown');
             return undefined;
@@ -492,6 +566,10 @@ function getModels(devices) {
             case 'BRP069C8x':
                 return new gateway_1.BRP069C8x(devices);
             default:
+                if (config.system?.dynamicFallback !== false) {
+                    logger.info(`[daikin.ts] => Using DynamicGateway for model: ${value}`);
+                    return new gateway_1.DynamicGateway(devices);
+                }
                 logger.warn(`[daikin.ts] => Unsupported model: ${value}`);
                 (0, gateway_1.anonymise)(devices, value);
                 return undefined;
@@ -545,6 +623,13 @@ async function getDevices(force = false, reason = "unspecified") {
     try {
         const devices = await cache.get('devices');
         if (devices === undefined || force) {
+            if (force && !(await (0, requestBudget_1.canRefresh)(reason))) {
+                if (devices && devices.length > 0) {
+                    logger.warn(`[daikin.ts] => Refresh blocked by API budget (${reason}), using cache (${devices.length} device(s))`);
+                    return devices;
+                }
+                throw new Error(`API refresh blocked by budget (${reason})`);
+            }
             logger.info(`[daikin.ts] => API CALL - getDevices (reason: ${reason}) - ${force ? 'forced retrieval' : 'cache invalid or empty'}, retrieving information from Daikin cloud`);
             if (!global.daikinClient) {
                 logger.error(`[daikin.ts] => Daikin client is not initialized`);
@@ -576,6 +661,20 @@ async function getDevices(force = false, reason = "unspecified") {
                     throw new Error("Invalid response from Daikin cloud");
                 }
                 logger.info(`[daikin.ts] => ${freshDevices.length} device(s) retrieved from cloud`);
+                if (reason === 'cron_forced_23h58_stats') {
+                    let electricalCount = 0;
+                    for (const dev of freshDevices) {
+                        try {
+                            const mp = dev.managementPoints;
+                            const hasElectrical = Object.values(mp).some((point) => point && (point.consumptionData || point.electrical));
+                            if (hasElectrical)
+                                electricalCount++;
+                        }
+                        catch {
+                        }
+                    }
+                    logger.info(`[daikin.ts] => Energy stats refresh: ${electricalCount}/${freshDevices.length} device(s) with electrical data`);
+                }
                 await cache.set('devices', freshDevices, 10800000);
                 if (devices && devices.length) {
                     logger.debug(`[daikin.ts] => Invalidating cache for ${devices.length} previous device(s)`);
@@ -785,6 +884,13 @@ async function updateSystemBridge(rateLimitStatus, devices, authorizationInfo, e
     const unsupportedModules = getUnsupportedModules();
     systemBridge.unsupportedModulesCount = unsupportedModules.length;
     systemBridge.unsupportedModulesList = JSON.stringify(unsupportedModules);
+    systemBridge.apiBudgetStatus = await (0, requestBudget_1.getBudgetStatus)();
+    systemBridge.skippedRefreshCount = await (0, requestBudget_1.getSkippedRefreshCount)();
+    systemBridge.authMode = (0, requestBudget_1.getConfiguredAuthMode)();
+    systemBridge.dailyQuotaLimit = (0, requestBudget_1.getDefaultDailyQuotaLimit)();
+    systemBridge.webSocketConnected = global.daikinClient?.isWebSocketConnected?.() ?? Boolean(await cache.get('ws/connected'));
+    const { getNextPollingAt } = await Promise.resolve().then(() => __importStar(require('./cron')));
+    systemBridge.nextPollingAt = getNextPollingAt();
     await publishSystemBridge(systemBridge);
 }
 async function publishSystemBridge(systemBridge) {
@@ -816,5 +922,8 @@ function getUnsupportedModules() {
         }
     });
     return unsupportedModules;
+}
+async function disableDaikinWebSocket() {
+    global.daikinClient?.disableWebSocket();
 }
 //# sourceMappingURL=daikin.js.map

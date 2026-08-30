@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DaikinCloudDevice = void 0;
 const events_1 = require("events");
+const writeQueue_1 = require("../modules/writeQueue");
 class DaikinCloudDevice extends events_1.EventEmitter {
     #client;
     desc;
@@ -115,6 +116,28 @@ class DaikinCloudDevice extends events_1.EventEmitter {
         if (typeof def.maxValue === 'number' && typeof value === 'number' && value > def.maxValue) {
             throw new Error('Value (' + value + ') must not be bigger then ' + def.maxValue);
         }
+        if (typeof def.stepValue === 'number' && typeof value === 'number') {
+            const remainder = Math.abs((value - (typeof def.minValue === 'number' ? def.minValue : 0)) % def.stepValue);
+            if (remainder > 0.0001 && Math.abs(remainder - def.stepValue) > 0.0001) {
+                throw new Error('Value (' + value + ') must be a multiple of step ' + def.stepValue);
+            }
+        }
+    }
+    applyWebSocketUpdate(embeddedId, characteristicName, data) {
+        const mp = this.managementPoints[embeddedId];
+        if (!mp) {
+            return false;
+        }
+        const dp = mp[characteristicName];
+        if (!dp) {
+            return false;
+        }
+        if (typeof dp === 'object' && dp !== null && 'value' in dp) {
+            dp.value = data.value;
+            this.emit('updated');
+            return true;
+        }
+        return false;
     }
     async setData(managementPoint, dataPoint, dataPointPath, value, options = { ignoreWritableCheck: false, updateLocalData: false }) {
         if (typeof options === 'boolean') {
@@ -145,7 +168,7 @@ class DaikinCloudDevice extends events_1.EventEmitter {
                 'Content-Type': 'application/json'
             }
         };
-        await this.#client.requestResource(setPath, setOptions);
+        await (0, writeQueue_1.enqueueWriteForDevice)(this.getId(), () => this.#client.requestResource(setPath, setOptions));
         if (options.updateLocalData) {
             dataPointDef.value = value;
         }

@@ -41,6 +41,12 @@ class SystemBridge {
     _authorizationUrl;
     _authorizationRequest;
     _authorizationTimeout;
+    _apiBudgetStatus;
+    _nextPollingAt;
+    _skippedRefreshCount;
+    _authMode;
+    _webSocketConnected;
+    _dailyQuotaLimit;
     constructor() {
         this._rateLimitMinute = 0;
         this._rateRemainingMinute = 0;
@@ -54,6 +60,12 @@ class SystemBridge {
         this._authorizationUrl = "";
         this._authorizationRequest = false;
         this._authorizationTimeout = false;
+        this._apiBudgetStatus = 'ok';
+        this._nextPollingAt = 0;
+        this._skippedRefreshCount = 0;
+        this._authMode = 'developer_portal';
+        this._webSocketConnected = false;
+        this._dailyQuotaLimit = 200;
     }
     get rateLimitMinute() {
         return this._rateLimitMinute;
@@ -126,6 +138,42 @@ class SystemBridge {
     }
     set authorizationTimeout(value) {
         this._authorizationTimeout = value;
+    }
+    get apiBudgetStatus() {
+        return this._apiBudgetStatus;
+    }
+    set apiBudgetStatus(value) {
+        this._apiBudgetStatus = value;
+    }
+    get nextPollingAt() {
+        return this._nextPollingAt;
+    }
+    set nextPollingAt(value) {
+        this._nextPollingAt = value;
+    }
+    get skippedRefreshCount() {
+        return this._skippedRefreshCount;
+    }
+    set skippedRefreshCount(value) {
+        this._skippedRefreshCount = value;
+    }
+    get authMode() {
+        return this._authMode;
+    }
+    set authMode(value) {
+        this._authMode = value;
+    }
+    get webSocketConnected() {
+        return this._webSocketConnected;
+    }
+    set webSocketConnected(value) {
+        this._webSocketConnected = value;
+    }
+    get dailyQuotaLimit() {
+        return this._dailyQuotaLimit;
+    }
+    set dailyQuotaLimit(value) {
+        this._dailyQuotaLimit = value;
     }
 }
 exports.SystemBridge = SystemBridge;
@@ -231,4 +279,55 @@ __decorate([
     }),
     __metadata("design:type", Boolean)
 ], SystemBridge.prototype, "_authorizationTimeout", void 0);
+__decorate([
+    (0, decorator_1.modulesDataDescription)({
+        name: 'API Budget Status',
+        settable: false,
+        type: BaseModules_1.typeEnum.string
+    }),
+    __metadata("design:type", String)
+], SystemBridge.prototype, "_apiBudgetStatus", void 0);
+__decorate([
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Next Polling At',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        unite: 'ms'
+    }),
+    __metadata("design:type", Number)
+], SystemBridge.prototype, "_nextPollingAt", void 0);
+__decorate([
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Skipped Refresh Count',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        unite: 'count'
+    }),
+    __metadata("design:type", Number)
+], SystemBridge.prototype, "_skippedRefreshCount", void 0);
+__decorate([
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Auth Mode',
+        settable: false,
+        type: BaseModules_1.typeEnum.string
+    }),
+    __metadata("design:type", String)
+], SystemBridge.prototype, "_authMode", void 0);
+__decorate([
+    (0, decorator_1.modulesDataDescription)({
+        name: 'WebSocket Connected',
+        settable: false,
+        type: BaseModules_1.typeEnum.binary
+    }),
+    __metadata("design:type", Boolean)
+], SystemBridge.prototype, "_webSocketConnected", void 0);
+__decorate([
+    (0, decorator_1.modulesDataDescription)({
+        name: 'Daily Quota Limit',
+        settable: false,
+        type: BaseModules_1.typeEnum.numeric,
+        unite: 'req/day'
+    }),
+    __metadata("design:type", Number)
+], SystemBridge.prototype, "_dailyQuotaLimit", void 0);
 //# sourceMappingURL=SystemBridge.js.map

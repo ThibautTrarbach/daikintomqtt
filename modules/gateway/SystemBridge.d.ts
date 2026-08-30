@@ -16,6 +16,12 @@ export declare class SystemBridge implements ClassModule {
     private _authorizationUrl?;
     private _authorizationRequest?;
     private _authorizationTimeout?;
+    private _apiBudgetStatus?;
+    private _nextPollingAt?;
+    private _skippedRefreshCount?;
+    private _authMode?;
+    private _webSocketConnected?;
+    private _dailyQuotaLimit?;
     constructor();
     get rateLimitMinute(): number | undefined;
     set rateLimitMinute(value: number | undefined);
@@ -41,4 +47,16 @@ export declare class SystemBridge implements ClassModule {
     set authorizationRequest(value: boolean | undefined);
     get authorizationTimeout(): boolean | undefined;
     set authorizationTimeout(value: boolean | undefined);
+    get apiBudgetStatus(): string | undefined;
+    set apiBudgetStatus(value: string | undefined);
+    get nextPollingAt(): number | undefined;
+    set nextPollingAt(value: number | undefined);
+    get skippedRefreshCount(): number | undefined;
+    set skippedRefreshCount(value: number | undefined);
+    get authMode(): string | undefined;
+    set authMode(value: string | undefined);
+    get webSocketConnected(): boolean | undefined;
+    set webSocketConnected(value: boolean | undefined);
+    get dailyQuotaLimit(): number | undefined;
+    set dailyQuotaLimit(value: number | undefined);
 }
