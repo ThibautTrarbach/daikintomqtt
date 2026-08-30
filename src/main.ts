@@ -12,6 +12,7 @@ import {clearPostActionTimer} from "./modules/actionRefresh";
 import {pausePolling} from "./modules/cron";
 import {disableDaikinWebSocket} from "./modules/daikin";
 import {disconnectMqttClient} from "./modules/mqttLifecycle";
+import {beginShutdown, isShuttingDown} from "./modules/shutdown";
 import {getTokenFilePath} from "./modules/tokenPaths";
 import {createCache} from "cache-manager";
 import fs from "fs";
@@ -56,6 +57,7 @@ import { setTimeout } from "timers/promises";
 
 		const shutdown = async (signal: string) => {
 			global.logger.info(`[main.ts] => ${signal} received, shutting down gracefully...`);
+			beginShutdown();
 			clearPostActionTimer();
 			clearPendingCommands();
 			clearGatewayCache();
@@ -75,6 +77,17 @@ import { setTimeout } from "timers/promises";
 		};
 		process.on('SIGINT', () => { void shutdown('SIGINT'); });
 		process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
+		process.on('unhandledRejection', (reason) => {
+			const message = reason instanceof Error ? reason.message : String(reason);
+			if (isShuttingDown() && message.includes('client disconnecting')) {
+				global.logger.debug(`[main.ts] => Ignored unhandled rejection during shutdown: ${message}`);
+				return;
+			}
+			global.logger.error(`[main.ts] => Unhandled rejection: ${message}`);
+			if (reason instanceof Error && reason.stack) {
+				global.logger.debug(`[main.ts] => Stack trace: ${reason.stack}`);
+			}
+		});
 	} catch (error) {
 		// If logger is not yet initialized, use console
 		if (!global.logger) {

@@ -1,6 +1,7 @@
 import {connect} from "mqtt";
 import {IClientOptions} from "mqtt/types/lib/client";
 import {setMqttRepublishHandler, triggerMqttRepublish} from "./mqttLifecycle";
+import {isShuttingDown} from "./shutdown";
 
 async function getOptions() {
 	const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
@@ -99,8 +100,18 @@ function shouldSkipPublish(topic: string, data: string, cachedData: unknown): bo
 
 async function publishToMQTT(topic: string, data: string): Promise<void> {
 	try {
+		if (isShuttingDown()) {
+			logger.debug(`[mqtt.ts] => Skipping publish to ${topic} during shutdown`);
+			return;
+		}
+
 		if (!global.mqttClient) {
 			throw new Error("MQTT client not initialized");
+		}
+
+		if (mqttClient.disconnecting) {
+			logger.debug(`[mqtt.ts] => Skipping publish to ${topic}, MQTT client is disconnecting`);
+			return;
 		}
 
 		if (!mqttClient.connected) {

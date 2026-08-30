@@ -27,6 +27,7 @@ import { getNewConfigDir } from "./paths";
 import { DEVICE_CACHE_TTL_MS } from "./constants";
 import { publishConfig, setMqttRepublishHandler } from "./mqtt";
 import { AuthenticationError } from "./errorHandler";
+import { isShuttingDown } from "./shutdown";
 
 function isAuthFailure(error: unknown): boolean {
 	if (error instanceof AuthenticationError) {
@@ -199,13 +200,17 @@ async function loadDaikinAPI() {
 	daikinClient.on('websocket_connected', async () => {
 		logger.info('[daikin.ts] => WebSocket connected - receiving real-time updates');
 		await cache.set('ws/connected', true);
-		await updateSystemBridge();
+		if (!isShuttingDown()) {
+			await updateSystemBridge();
+		}
 	});
 
 	daikinClient.on('websocket_disconnected', async (info) => {
 		logger.info(`[daikin.ts] => WebSocket disconnected${info?.reconnecting ? ' (reconnecting)' : ''}`);
 		await cache.set('ws/connected', false);
-		await updateSystemBridge();
+		if (!isShuttingDown()) {
+			await updateSystemBridge();
+		}
 	});
 
 	daikinClient.on('websocket_device_update', async (update) => {
@@ -1151,11 +1156,19 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 }
 
 async function publishSystemBridge(systemBridge: SystemBridge) {
-	// Publish complete object like other devices (includes device)
-	await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
-	
-	if (config.integration?.jeedom) {
-		await makeDefineFile(systemBridge, null);
+	try {
+		// Publish complete object like other devices (includes device)
+		await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
+
+		if (config.integration?.jeedom) {
+			await makeDefineFile(systemBridge, null);
+		}
+	} catch (error) {
+		if (isShuttingDown()) {
+			logger.debug(`[daikin.ts] => Skipping system bridge publish during shutdown`);
+			return;
+		}
+		throw error;
 	}
 }
 
