@@ -26,6 +26,21 @@ import { getTokenFilePath } from "./tokenPaths";
 import { getNewConfigDir } from "./paths";
 import { DEVICE_CACHE_TTL_MS } from "./constants";
 import { publishConfig, setMqttRepublishHandler } from "./mqtt";
+import { AuthenticationError } from "./errorHandler";
+
+function isAuthFailure(error: unknown): boolean {
+	if (error instanceof AuthenticationError) {
+		return true;
+	}
+	const message = error instanceof Error ? error.message : String(error);
+	return /invalid_grant|not authenticated|unauthorized \(401\)|login failed|token refresh failed|token expired|authentication failed|registration completion failed|failed to get authorization code|failed to get oidc context|authorization error/i.test(message);
+}
+
+function shutdownOnAuthFailure(message: string): never {
+	logger.error(message);
+	logger.error('[daikin.ts] => Shutting down daemon due to authentication failure.');
+	process.exit(1);
+}
 
 interface PendingCommand {
 	payload: Record<string, unknown>;
@@ -207,8 +222,7 @@ async function loadDaikinAPI() {
 		if (error instanceof Error && 'code' in error) {
 			logger.debug(`[daikin.ts] => Error code: ${(error as any).code}`);
 		}
-		
-		// Handle invalid_grant error (invalid token) - delete token and exit
+
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		const errorString = String(error);
 		
@@ -269,6 +283,8 @@ async function loadDaikinAPI() {
 			
 			// Exit the daemon
 			process.exit(1);
+		} else if (isAuthFailure(error)) {
+			shutdownOnAuthFailure(`[daikin.ts] => Daikin client authentication error: ${errorMessage}`);
 		}
 	});
 
@@ -308,8 +324,9 @@ async function startDaikinAPI() {
 					await daikinClient.authenticateMobile();
 					logger.info('[daikin.ts] => Mobile App authentication successful');
 				} catch (authError) {
-					logger.error(`[daikin.ts] => Mobile App authentication failed: ${authError instanceof Error ? authError.message : String(authError)}`);
-					return;
+					shutdownOnAuthFailure(
+						`[daikin.ts] => Mobile App authentication failed: ${authError instanceof Error ? authError.message : String(authError)}`,
+					);
 				}
 			}
 		} else if (!tokenExists) {
@@ -367,6 +384,11 @@ async function startDaikinAPI() {
 				await updateSystemBridge();
 			});
 		} catch (apiError) {
+			if (isAuthFailure(apiError)) {
+				shutdownOnAuthFailure(
+					`[daikin.ts] => Authentication failed during API startup: ${apiError instanceof Error ? apiError.message : String(apiError)}`,
+				);
+			}
 			logger.error(`[daikin.ts] => Error during API operations: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
 			if (apiError instanceof Error && apiError.stack) {
 				logger.debug(`[daikin.ts] => Stack trace: ${apiError.stack}`);
@@ -376,6 +398,11 @@ async function startDaikinAPI() {
 			// Don't throw, allow system to continue with system bridge initialized
 		}
 	} catch (error) {
+		if (isAuthFailure(error)) {
+			shutdownOnAuthFailure(
+				`[daikin.ts] => Critical authentication error during API startup: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
 		logger.error(`[daikin.ts] => Critical error during API startup: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
 			logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
