@@ -247,10 +247,20 @@ class DaikinMobileOAuth {
         const now = new Date();
         const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
         return JSON.stringify({
+            b0: 14063,
+            b1: [0, 2, 2, 0],
+            b2: 4,
+            b3: [],
+            b4: 2,
+            b5: 1,
             b6: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)',
+            b7: [],
             b8: timeStr,
+            b9: 0,
             b10: { state: 'denied' },
             b11: false,
+            b12: null,
+            b13: [5, '402|874|24', false, true],
         });
     }
     async gigyaLogin() {
@@ -266,11 +276,53 @@ class DaikinMobileOAuth {
         });
         const response = await this.httpsRequest(`${types_1.DAIKIN_MOBILE_CONFIG.gigyaBaseUrl}/accounts.login`, { method: 'POST', headers: this.gigyaPostHeaders }, params.toString());
         const result = this.parseJsonResponse(response, types_1.DAIKIN_MOBILE_CONFIG.gigyaBaseUrl, 'Login failed');
-        if (result.errorCode === 206001 && result.sessionInfo?.login_token) {
-            this.onLog?.('Account has pending registration (206001). Using session token.');
-            return result.sessionInfo.login_token;
+        if (result.errorCode === 206001) {
+            this.onLog?.('Account has pending registration (206001). Attempting to complete registration automatically...');
+            if (result.sessionInfo?.login_token) {
+                return result.sessionInfo.login_token;
+            }
+            if (result.regToken) {
+                return this.completePendingRegistration(result.regToken, result.data, result.profile);
+            }
         }
         return this.extractLoginToken(result, 'Login failed');
+    }
+    async completePendingRegistration(regToken, existingData, existingProfile) {
+        const customProfile = existingData?.profile || {};
+        const countryResidence = customProfile.countryResidence || 'US';
+        const communicationLanguage = customProfile.communicationLanguage || 'en';
+        let firstName = existingProfile?.firstName;
+        let lastName = existingProfile?.lastName;
+        if (!firstName || !lastName) {
+            const emailUser = this.config.email.split('@')[0];
+            const nameParts = emailUser.split(/[._-]/);
+            firstName = firstName || (nameParts[0]
+                ? nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1)
+                : 'User');
+            lastName = lastName || (nameParts.length > 1
+                ? nameParts[nameParts.length - 1].charAt(0).toUpperCase() + nameParts[nameParts.length - 1].slice(1)
+                : 'Account');
+            this.onLog?.(`Using derived name for registration: ${firstName} ${lastName}. You can update your name in the Daikin Onecta app.`);
+        }
+        this.onLog?.(`Completing pending registration with countryResidence=${countryResidence}, communicationLanguage=${communicationLanguage}`);
+        this.onLog?.('Note: Privacy notice consent (privacy.PrivacyNotice.onecta) will be accepted automatically.');
+        const params = new URLSearchParams({
+            ...this.gigyaSdkParams,
+            regToken,
+            email: this.config.email,
+            password: this.config.password,
+            profile: JSON.stringify({ firstName, lastName }),
+            data: JSON.stringify({ profile: { countryResidence, communicationLanguage } }),
+            preferences: JSON.stringify({
+                'privacy.PrivacyNotice.onecta': { isConsentGranted: true },
+            }),
+            finalizeRegistration: 'true',
+        });
+        const response = await this.httpsRequest(`${types_1.DAIKIN_MOBILE_CONFIG.gigyaBaseUrl}/accounts.register`, { method: 'POST', headers: this.gigyaPostHeaders }, params.toString());
+        const result = this.parseJsonResponse(response, types_1.DAIKIN_MOBILE_CONFIG.gigyaBaseUrl, 'Registration completion failed');
+        const loginToken = this.extractLoginToken(result, 'Registration completion failed');
+        this.onLog?.('Pending registration completed successfully.');
+        return loginToken;
     }
     async authorizeWithToken(context, loginToken) {
         const params = new URLSearchParams({ context, login_token: loginToken });

@@ -25,6 +25,7 @@ export declare class DaikinMobileOAuth implements OAuthProvider {
     private initGigyaSdk;
     private generateRiskContext;
     private gigyaLogin;
+    private completePendingRegistration;
     private authorizeWithToken;
     private exchangeCodeForTokens;
     private parseJsonResponse;
