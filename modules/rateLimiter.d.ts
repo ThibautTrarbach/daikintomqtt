@@ -1,8 +1,8 @@
 interface RateLimitInfo {
-    limitMinute: number;
-    remainingMinute: number;
-    limitDay: number;
-    remainingDay: number;
+    limitMinute?: number;
+    remainingMinute?: number;
+    limitDay?: number;
+    remainingDay?: number;
     lastUpdate: number;
 }
 interface RetryQueueItem {
@@ -29,6 +29,9 @@ declare class RateLimiter {
     private isProcessingQueue;
     private defaultConfig;
     updateRateLimit(rateLimitStatus: any): void;
+    private formatLimit;
+    private isMinuteLimitBlocking;
+    private isDayLimitBlocking;
     loadRateLimitFromCache(): Promise<void>;
     canMakeRequest(): boolean;
     getWaitTime(): number;

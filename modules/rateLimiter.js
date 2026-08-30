@@ -15,14 +15,43 @@ class RateLimiter {
         refreshMode: false
     };
     updateRateLimit(rateLimitStatus) {
+        const previous = this.rateLimitInfo;
         this.rateLimitInfo = {
-            limitMinute: rateLimitStatus.limitMinute || 0,
-            remainingMinute: rateLimitStatus.remainingMinute || 0,
-            limitDay: rateLimitStatus.limitDay || 0,
-            remainingDay: rateLimitStatus.remainingDay || 0,
-            lastUpdate: Date.now()
+            limitMinute: rateLimitStatus.limitMinute !== undefined
+                ? rateLimitStatus.limitMinute
+                : previous?.limitMinute,
+            remainingMinute: rateLimitStatus.remainingMinute !== undefined
+                ? rateLimitStatus.remainingMinute
+                : previous?.remainingMinute,
+            limitDay: rateLimitStatus.limitDay !== undefined
+                ? rateLimitStatus.limitDay
+                : previous?.limitDay,
+            remainingDay: rateLimitStatus.remainingDay !== undefined
+                ? rateLimitStatus.remainingDay
+                : previous?.remainingDay,
+            lastUpdate: Date.now(),
         };
-        logger.debug(`[rateLimiter.ts] => Rate limit updated - Minute: ${this.rateLimitInfo.remainingMinute}/${this.rateLimitInfo.limitMinute}, Day: ${this.rateLimitInfo.remainingDay}/${this.rateLimitInfo.limitDay}`);
+        logger.debug(`[rateLimiter.ts] => Rate limit updated - Minute: ${this.formatLimit(this.rateLimitInfo.remainingMinute, this.rateLimitInfo.limitMinute)}, Day: ${this.formatLimit(this.rateLimitInfo.remainingDay, this.rateLimitInfo.limitDay)}`);
+    }
+    formatLimit(remaining, limit) {
+        if (limit == null || limit <= 0) {
+            return 'n/a';
+        }
+        return `${remaining ?? '?'}/${limit}`;
+    }
+    isMinuteLimitBlocking() {
+        if (!this.rateLimitInfo) {
+            return false;
+        }
+        const { limitMinute, remainingMinute } = this.rateLimitInfo;
+        return limitMinute != null && limitMinute > 0 && (remainingMinute ?? 0) <= 0;
+    }
+    isDayLimitBlocking() {
+        if (!this.rateLimitInfo) {
+            return false;
+        }
+        const { limitDay, remainingDay } = this.rateLimitInfo;
+        return limitDay != null && limitDay > 0 && (remainingDay ?? 0) <= 0;
     }
     async loadRateLimitFromCache() {
         try {
@@ -32,13 +61,23 @@ class RateLimiter {
                 cache.get('rate/limitDay'),
                 cache.get('rate/remainingDay')
             ]);
-            if (limitMinute !== undefined && remainingMinute !== undefined) {
+            if (limitMinute !== undefined || remainingMinute !== undefined
+                || limitDay !== undefined || remainingDay !== undefined) {
+                const previous = this.rateLimitInfo;
                 this.rateLimitInfo = {
-                    limitMinute: Number(limitMinute),
-                    remainingMinute: Number(remainingMinute),
-                    limitDay: limitDay !== undefined ? Number(limitDay) : 0,
-                    remainingDay: remainingDay !== undefined ? Number(remainingDay) : 0,
-                    lastUpdate: Date.now()
+                    limitMinute: limitMinute !== undefined
+                        ? (Number(limitMinute) || undefined)
+                        : previous?.limitMinute,
+                    remainingMinute: remainingMinute !== undefined
+                        ? Number(remainingMinute)
+                        : previous?.remainingMinute,
+                    limitDay: limitDay !== undefined
+                        ? (Number(limitDay) || undefined)
+                        : previous?.limitDay,
+                    remainingDay: remainingDay !== undefined
+                        ? Number(remainingDay)
+                        : previous?.remainingDay,
+                    lastUpdate: Date.now(),
                 };
                 logger.debug(`[rateLimiter.ts] => Rate limit loaded from cache`);
             }
@@ -51,24 +90,28 @@ class RateLimiter {
         if (!this.rateLimitInfo) {
             return true;
         }
-        const canMakeRequest = this.rateLimitInfo.remainingMinute > 0 && this.rateLimitInfo.remainingDay > 0;
-        if (!canMakeRequest) {
-            logger.warn(`[rateLimiter.ts] => Rate limit reached - Minute: ${this.rateLimitInfo.remainingMinute}/${this.rateLimitInfo.limitMinute}, Day: ${this.rateLimitInfo.remainingDay}/${this.rateLimitInfo.limitDay}`);
+        if (this.isDayLimitBlocking()) {
+            logger.warn(`[rateLimiter.ts] => Daily rate limit reached - Day: ${this.formatLimit(this.rateLimitInfo.remainingDay, this.rateLimitInfo.limitDay)}`);
+            return false;
         }
-        return canMakeRequest;
+        if (this.isMinuteLimitBlocking()) {
+            logger.warn(`[rateLimiter.ts] => Minute rate limit reached - Minute: ${this.formatLimit(this.rateLimitInfo.remainingMinute, this.rateLimitInfo.limitMinute)}`);
+            return false;
+        }
+        return true;
     }
     getWaitTime() {
         if (!this.rateLimitInfo) {
             return 0;
         }
-        if (this.rateLimitInfo.remainingMinute > 0 && this.rateLimitInfo.remainingDay > 0) {
+        if (!this.isMinuteLimitBlocking() && !this.isDayLimitBlocking()) {
             return 0;
         }
         let waitTime = 0;
-        if (this.rateLimitInfo.remainingMinute <= 0) {
+        if (this.isMinuteLimitBlocking()) {
             waitTime = Math.max(waitTime, 60000);
         }
-        if (this.rateLimitInfo.remainingDay <= 0) {
+        if (this.isDayLimitBlocking()) {
             const now = new Date();
             const tomorrow = new Date(now);
             tomorrow.setDate(tomorrow.getDate() + 1);
@@ -173,7 +216,7 @@ class RateLimiter {
                     logger.warn(`[rateLimiter.ts] => Rate limit detected for ${operationId} (attempt ${attempt}/${finalConfig.maxRetries + 1})`);
                     if (finalConfig.refreshMode) {
                         const info = this.rateLimitInfo;
-                        if (info && info.remainingDay <= 0) {
+                        if (info && info.limitDay != null && info.limitDay > 0 && (info.remainingDay ?? 0) <= 0) {
                             logger.error(`[rateLimiter.ts] => Daily rate limit reached for refresh operation ${operationId}, aborting without further retries`);
                             break;
                         }
