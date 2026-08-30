@@ -21,6 +21,7 @@ abstract class AbstractGateway {
 		registerCharacteristics(this, characteristics);
 		registerDeviceMetadata(this, deviceKey, deviceMetadata);
 		installGatewayProperties(this, characteristics);
+		this._device = {} as DevicesInformation;
 		convertDaikinDevice(device, this as never);
 	}
 
