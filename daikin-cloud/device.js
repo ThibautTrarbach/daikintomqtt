@@ -129,12 +129,75 @@ class DaikinCloudDevice extends events_1.EventEmitter {
             return false;
         }
         const dp = mp[characteristicName];
-        if (!dp) {
+        if (!dp || typeof dp !== 'object' || dp === null) {
             return false;
         }
-        if (typeof dp === 'object' && dp !== null && 'value' in dp) {
+        if (this.#isTraversedDatapointMap(dp)) {
+            if (typeof data.value !== 'object' || data.value === null) {
+                return false;
+            }
+            const changed = this.#mergeTraversedWebSocketValue(dp, data.value, data.ref);
+            if (changed) {
+                this.emit('updated');
+            }
+            return changed;
+        }
+        if ('value' in dp) {
             dp.value = data.value;
             this.emit('updated');
+            return true;
+        }
+        return false;
+    }
+    #isTraversedDatapointMap(dp) {
+        return Object.keys(dp).some((key) => key.startsWith('/'));
+    }
+    #isDatapointLeaf(obj) {
+        if (typeof obj !== 'object' || obj === null) {
+            return false;
+        }
+        const keys = Object.keys(obj);
+        return keys.includes('value') || keys.includes('settable') || keys.includes('unit');
+    }
+    #mergeTraversedWebSocketValue(target, incoming, ref) {
+        if (ref) {
+            const path = ref.startsWith('/') ? ref : `/${ref}`;
+            return this.#mergeLeafAtPath(target, path, incoming);
+        }
+        let changed = false;
+        const walk = (obj, prefix) => {
+            for (const [key, val] of Object.entries(obj)) {
+                if (val === null || val === undefined) {
+                    continue;
+                }
+                const path = `${prefix}/${key}`;
+                if (this.#isDatapointLeaf(val)) {
+                    if (this.#mergeLeafAtPath(target, path, val)) {
+                        changed = true;
+                    }
+                }
+                else if (typeof val === 'object') {
+                    walk(val, path);
+                }
+            }
+        };
+        walk(incoming, '');
+        return changed;
+    }
+    #mergeLeafAtPath(target, path, leaf) {
+        const existing = target[path];
+        if (existing && typeof existing === 'object' && existing !== null && 'value' in existing) {
+            if ('value' in leaf && existing.value !== leaf.value) {
+                existing.value = leaf.value;
+                if ('unit' in leaf) {
+                    existing.unit = leaf.unit;
+                }
+                return true;
+            }
+            return false;
+        }
+        if (!existing && 'value' in leaf) {
+            target[path] = { ...leaf };
             return true;
         }
         return false;

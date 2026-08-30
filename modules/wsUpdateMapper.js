@@ -38,6 +38,23 @@ exports.wasConfirmedByWebSocket = wasConfirmedByWebSocket;
 exports.recordWebSocketConfirmation = recordWebSocketConfirmation;
 const mqtt_1 = require("./mqtt");
 const constants_1 = require("./constants");
+function resolveEmbeddedId(device, update) {
+    const points = device.managementPoints;
+    if (update.embeddedId in points) {
+        return update.embeddedId;
+    }
+    if (update.managementPointId && update.managementPointId in points) {
+        return update.managementPointId;
+    }
+    if (update.managementPointId) {
+        for (const id of Object.keys(points)) {
+            if (id === update.managementPointId || id.startsWith(update.managementPointId)) {
+                return id;
+            }
+        }
+    }
+    return update.embeddedId;
+}
 async function recordWebSocketConfirmation(deviceId) {
     const key = `ws/confirmed/${deviceId}`;
     await cache.set(key, Date.now(), constants_1.WS_CONFIRMATION_TTL_MS);
@@ -61,9 +78,11 @@ async function handleWebSocketDeviceUpdate(update) {
         logger.debug(`[wsUpdateMapper.ts] => No cached device for WebSocket update: ${update.deviceId}`);
         return;
     }
-    const applied = device.applyWebSocketUpdate(update.embeddedId, update.characteristicName, update.data);
+    const embeddedId = resolveEmbeddedId(device, update);
+    const applied = device.applyWebSocketUpdate(embeddedId, update.characteristicName, update.data);
     if (!applied) {
-        logger.debug(`[wsUpdateMapper.ts] => Could not apply WS update ${update.characteristicName} on ${update.deviceId}`);
+        logger.debug(`[wsUpdateMapper.ts] => Could not apply WS update ${update.characteristicName} on ${update.deviceId}`
+            + ` (embeddedId=${embeddedId}, ref=${update.data.ref ?? 'none'})`);
         return;
     }
     await recordWebSocketConfirmation(update.deviceId);
