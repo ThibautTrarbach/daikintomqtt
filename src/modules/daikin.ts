@@ -18,7 +18,8 @@ import {publishToMQTT} from "./mqtt";
 import {DaikinCloudController, DaikinCloudDevice} from "../daikin-cloud";
 import fs from "fs";
 import {INSTANCE_ID} from "./instanceId";
-import {canRefresh, getBudgetStatus, getSkippedRefreshCount} from "./requestBudget";
+import {canRefresh, getBudgetStatus, getSkippedRefreshCount, getDefaultDailyQuotaLimit, getConfiguredAuthMode} from "./requestBudget";
+import { AUTH_MODE_MOBILE_APP } from "../daikin-cloud/constants";
 
 interface PendingCommand {
 	payload: Record<string, unknown>;
@@ -60,32 +61,45 @@ async function queueDeviceCommand(device: DaikinCloudDevice, eventData: Record<s
 	logger.debug(`[daikin.ts] => Command queued for device ${deviceId} (${getCommandCoalesceMs()}ms coalesce)`);
 }
 
+function getTokenFilePath(): string {
+	const authMode = config.daikin.authMode ?? 'developer_portal';
+	if (authMode === AUTH_MODE_MOBILE_APP) {
+		return resolve(datadir, 'daikin-mobile-tokenset');
+	}
+	return resolve(datadir, 'daikin-controller-cloud-tokenset');
+}
+
 /**
  * Initializes the Daikin Cloud client (OIDC) and registers core event handlers
  * for authorization, rate limiting, token updates and errors.
  */
 async function loadDaikinAPI() {
-	if (!config.daikin.clientID || !config.daikin.clientSecret) {
+	const authMode = config.daikin.authMode ?? 'developer_portal';
+
+	if (authMode === AUTH_MODE_MOBILE_APP) {
+		if (!config.daikin.email || !config.daikin.password) {
+			logger.error('[daikin.ts] => Please set daikin.email and daikin.password for mobile_app auth mode');
+			process.exit(0);
+		}
+	} else if (!config.daikin.clientID || !config.daikin.clientSecret) {
 		logger.error('[daikin.ts] => Please set the clientID and clientSecret in the settings files');
 		process.exit(0);
 	}
 
 	/** Start Daikin Client **/
 	const daikinClient = new DaikinCloudController({
-		/* OIDC client id */
+		authMode,
 		oidcClientId: config.daikin.clientID,
-		/* OIDC client secret */
 		oidcClientSecret: config.daikin.clientSecret,
-		/* Network interface that the HTTP server should bind to. Bind to all interfaces for convenience, please limit as needed to single interfaces! */
 		oidcCallbackServerBindAddr: '0.0.0.0',
-		/* port that the HTTP server should bind to */
-		oidcCallbackServerPort: config.daikin.clientPort,
-		/* OIDC Redirect URI */
+		oidcCallbackServerPort: config.daikin.clientPort ?? 8765,
 		oidcCallbackServerExternalAddress: config.daikin.clientURL,
-		//oidcCallbackServerBaseUrl: 'https://daikin.local:8765', // or use local IP address where server is reachable
-		/* path of file used to cache the OIDC tokenset */
 		oidcTokenSetFilePath: resolve(datadir, 'daikin-controller-cloud-tokenset'),
-		/* time to wait for the user to go through the authorization grant flow before giving up (in seconds) */
+		mobileEmail: config.daikin.email ?? undefined,
+		mobilePassword: config.daikin.password ?? undefined,
+		mobileTokenFilePath: resolve(datadir, 'daikin-mobile-tokenset'),
+		enableWebSocket: config.daikin.enableWebSocket ?? true,
+		httpTransport: config.daikin.httpTransport,
 		oidcAuthorizationTimeoutS: 120,
 		useMock: config.daikin.useMock ?? false,
 		mockId: config.daikin.mockId ?? undefined,
@@ -139,6 +153,27 @@ async function loadDaikinAPI() {
 		logger.debug(JSON.stringify(set))
 	});
 
+	daikinClient.on('websocket_connected', async () => {
+		logger.info('[daikin.ts] => WebSocket connected - receiving real-time updates');
+		await cache.set('ws/connected', true);
+		await updateSystemBridge();
+	});
+
+	daikinClient.on('websocket_disconnected', async (info) => {
+		logger.info(`[daikin.ts] => WebSocket disconnected${info?.reconnecting ? ' (reconnecting)' : ''}`);
+		await cache.set('ws/connected', false);
+		await updateSystemBridge();
+	});
+
+	daikinClient.on('websocket_device_update', async (update) => {
+		try {
+			const { handleWebSocketDeviceUpdate } = await import('./wsUpdateMapper');
+			await handleWebSocketDeviceUpdate(update);
+		} catch (error) {
+			logger.error(`[daikin.ts] => WebSocket update handler error: ${error instanceof Error ? error.message : String(error)}`);
+		}
+	});
+
 	daikinClient.on('error', async (error) => {
 		logger.error(`[daikin.ts] => EVENT - Daikin client error: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
@@ -183,7 +218,7 @@ async function loadDaikinAPI() {
 		else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (error as any)?.error === "invalid_grant") {
 			try {
 				logger.error('[daikin.ts] => Invalid token detected (invalid_grant), deleting old token and shutting down');
-				const tokenPath = resolve(datadir, 'daikin-controller-cloud-tokenset');
+				const tokenPath = getTokenFilePath();
 				
 				if (fs.existsSync(tokenPath)) {
 					fs.unlinkSync(tokenPath);
@@ -237,11 +272,23 @@ async function startDaikinAPI() {
 		logger.info("[daikin.ts] => Initializing system bridge");
 		await initializeSystemBridge([]);
 		
-		// Check if token exists
-		const tokenPath = resolve(datadir, 'daikin-controller-cloud-tokenset');
+		// Check if token exists / authenticate mobile app
+		const tokenPath = getTokenFilePath();
 		const tokenExists = fs.existsSync(tokenPath);
-		
-		if (!tokenExists) {
+		const authMode = config.daikin.authMode ?? 'developer_portal';
+
+		if (authMode === AUTH_MODE_MOBILE_APP) {
+			if (!daikinClient.isAuthenticated()) {
+				logger.info('[daikin.ts] => Mobile App auth: authenticating with Onecta credentials...');
+				try {
+					await daikinClient.authenticateMobile();
+					logger.info('[daikin.ts] => Mobile App authentication successful');
+				} catch (authError) {
+					logger.error(`[daikin.ts] => Mobile App authentication failed: ${authError instanceof Error ? authError.message : String(authError)}`);
+					return;
+				}
+			}
+		} else if (!tokenExists) {
 			logger.info("[daikin.ts] => No token found, making initial request to trigger authorization");
 			// Make a first request to trigger the authorization_request event
 			// This will cause the API to request authorization and emit the authorization_request event
@@ -277,6 +324,14 @@ async function startDaikinAPI() {
 			
 			// Update system bridge with devices
 			await updateSystemBridge(null, devices);
+
+			if (authMode === AUTH_MODE_MOBILE_APP && (config.daikin.enableWebSocket ?? true)) {
+				try {
+					await daikinClient.enableWebSocket();
+				} catch (wsError) {
+					logger.warn(`[daikin.ts] => WebSocket enable failed, falling back to polling: ${wsError instanceof Error ? wsError.message : String(wsError)}`);
+				}
+			}
 			
 			logger.info("[daikin.ts] => Daikin API started successfully");
 		} catch (apiError) {
@@ -976,6 +1031,9 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 
 	systemBridge.apiBudgetStatus = await getBudgetStatus();
 	systemBridge.skippedRefreshCount = await getSkippedRefreshCount();
+	systemBridge.authMode = getConfiguredAuthMode();
+	systemBridge.dailyQuotaLimit = getDefaultDailyQuotaLimit();
+	systemBridge.webSocketConnected = global.daikinClient?.isWebSocketConnected?.() ?? Boolean(await cache.get('ws/connected'));
 	const { getNextPollingAt } = await import('./cron');
 	systemBridge.nextPollingAt = getNextPollingAt();
 
@@ -1031,6 +1089,12 @@ export {
 	sendDevice,
 	startDaikinAPI,
 	getDevices,
-	updateSystemBridge
+	updateSystemBridge,
+	getModels,
+	disableDaikinWebSocket,
+}
+
+async function disableDaikinWebSocket(): Promise<void> {
+	global.daikinClient?.disableWebSocket();
 }
 

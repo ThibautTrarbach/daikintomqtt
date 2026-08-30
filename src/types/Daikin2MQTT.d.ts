@@ -72,11 +72,16 @@ export interface ConfigHomeAssistant {
 }
 
 export interface ConfigDaikin {
-	modeProxy?: boolean // Optional, not used currently
-	clientSecret: string
-	clientID: string
-	clientURL: string
-	clientPort: number
+	authMode?: 'developer_portal' | 'mobile_app'
+	modeProxy?: boolean
+	clientSecret?: string
+	clientID?: string
+	clientURL?: string
+	clientPort?: number
+	email?: string | null
+	password?: string | null
+	enableWebSocket?: boolean
+	httpTransport?: 'node' | 'curl'
 	useMock?: boolean
 	mockId?: string | null
 }

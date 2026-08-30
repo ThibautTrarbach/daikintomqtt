@@ -1,7 +1,9 @@
-import { getNextPollingAt, getMergeWithPollWindowMs } from './cron';
+import { getNextPollingAt, getMergeWithPollWindowMs, pausePolling, resumePolling } from './cron';
 import { canRefresh, incrementSkippedRefreshCount } from './requestBudget';
+import { wasConfirmedByWebSocket } from './wsUpdateMapper';
 
 let postActionTimer: NodeJS.Timeout | null = null;
+let postActionDebounceActive = false;
 
 function getActionRefreshMode(): number {
 	return config.system?.actionRefreshMode ?? 3;
@@ -29,14 +31,32 @@ async function shouldMergePostActionWithPoll(): Promise<boolean> {
 	return nextPollingAt - Date.now() <= windowMs;
 }
 
+function finishPostActionDebounce(): void {
+	if (postActionDebounceActive) {
+		postActionDebounceActive = false;
+		resumePolling();
+	}
+}
+
 async function executePostActionRefresh(): Promise<void> {
 	const mode = getActionRefreshMode();
 	if (mode === 2) {
+		finishPostActionDebounce();
 		return;
 	}
 
 	const lastActionTs = await cache.get('needRefresh');
 	if (lastActionTs === undefined || lastActionTs === null) {
+		finishPostActionDebounce();
+		return;
+	}
+
+	const deviceIdPending = await cache.get('postActionDeviceId') as string | undefined;
+	if (typeof lastActionTs === 'number' && await wasConfirmedByWebSocket(deviceIdPending, lastActionTs)) {
+		logger.info('[actionRefresh.ts] => Skipping post-action refresh: change confirmed by WebSocket');
+		await cache.del('needRefresh');
+		await cache.del('postActionDeviceId');
+		finishPostActionDebounce();
 		return;
 	}
 
@@ -45,6 +65,7 @@ async function executePostActionRefresh(): Promise<void> {
 		logger.info('[actionRefresh.ts] => Skipping post-action refresh: periodic refresh already occurred');
 		await cache.del('needRefresh');
 		await cache.del('postActionDeviceId');
+		finishPostActionDebounce();
 		return;
 	}
 
@@ -53,6 +74,7 @@ async function executePostActionRefresh(): Promise<void> {
 		await cache.del('needRefresh');
 		await cache.del('postActionDeviceId');
 		await incrementSkippedRefreshCount();
+		finishPostActionDebounce();
 		return;
 	}
 
@@ -61,6 +83,7 @@ async function executePostActionRefresh(): Promise<void> {
 		await cache.del('needRefresh');
 		await cache.del('postActionDeviceId');
 		await incrementSkippedRefreshCount();
+		finishPostActionDebounce();
 		return;
 	}
 
@@ -69,8 +92,12 @@ async function executePostActionRefresh(): Promise<void> {
 	await cache.del('postActionDeviceId');
 
 	logger.info(`[actionRefresh.ts] => Executing post-action cloud refresh${deviceId ? ` (triggered by ${deviceId})` : ''}`);
-	const { sendDevice } = await import('./daikin');
-	await sendDevice(null, true, 'post_action_refresh', deviceId ? [deviceId] : undefined);
+	try {
+		const { sendDevice } = await import('./daikin');
+		await sendDevice(null, true, 'post_action_refresh', deviceId ? [deviceId] : undefined);
+	} finally {
+		finishPostActionDebounce();
+	}
 }
 
 function clearPostActionTimer(): void {
@@ -97,10 +124,16 @@ async function schedulePostActionRefresh(deviceId: string): Promise<void> {
 	await cache.set('postActionDeviceId', deviceId);
 	clearPostActionTimer();
 
+	if (!postActionDebounceActive) {
+		postActionDebounceActive = true;
+		pausePolling();
+	}
+
 	const delayMs = getActionRefreshDelaySeconds() * 1000;
 	postActionTimer = setTimeout(() => {
 		executePostActionRefresh().catch((error) => {
 			logger.error(`[actionRefresh.ts] => Post-action refresh failed: ${error instanceof Error ? error.message : String(error)}`);
+			finishPostActionDebounce();
 		});
 	}, delayMs);
 

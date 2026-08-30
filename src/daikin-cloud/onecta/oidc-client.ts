@@ -15,15 +15,20 @@ import {
 } from './oidc-utils';
 import { OnectaOIDCCallbackServer } from './oidc-callback-server';
 import { RateLimitedError } from "../index";
+import { TOKEN_FILE_MODE } from '../token-storage';
+import { AuthenticationError, categorizeHttpError, GatewayError, getRetryDelayMs, isRetryableError } from '../../modules/errorHandler';
+import type { OAuthProvider } from '../types';
+import { MAX_RETRY_ATTEMPTS } from '../constants';
 
 type RequestParameters = Parameters<typeof BaseClient.prototype.requestResource>[2] & {
     ignoreRateLimit?: boolean;
+    _authRetry?: boolean;
 }
 
 const ONE_DAY_S = 24 * 60 * 60;
 
 custom.setHttpOptionsDefaults({
-    timeout: 10_000, // Default 3.5s is too less sometimes as it seems
+    timeout: 10_000,
 });
 
 export class OnectaClient {
@@ -34,13 +39,16 @@ export class OnectaClient {
     #emitter: EventEmitter;
     #getTokenSetQueue: { resolve: (set: TokenSet) => any, reject: (err: Error) => any }[];
     #blockedUntil: number = 0;
+    #refreshPromise: Promise<TokenSet> | null = null;
+    #mobileOAuth: OAuthProvider | null = null;
 
-    constructor(config: OnectaClientConfig, emitter: EventEmitter) {
+    constructor(config: OnectaClientConfig, emitter: EventEmitter, mobileOAuth?: OAuthProvider | null) {
         this.#config = config;
         this.#emitter = emitter;
+        this.#mobileOAuth = mobileOAuth ?? null;
         this.#client = new onecta_oidc_issuer.Client({
-            client_id: config.oidcClientId,
-            client_secret: config.oidcClientSecret,
+            client_id: config.oidcClientId ?? '',
+            client_secret: config.oidcClientSecret ?? '',
         });
         this.#tokenSet = config.tokenSet ? new TokenSet(config.tokenSet) : null;
         this.#getTokenSetQueue = [];
@@ -90,6 +98,16 @@ export class OnectaClient {
         });
     }
 
+    async #refreshOnce(refreshToken: string): Promise<TokenSet> {
+        if (this.#refreshPromise) {
+            return this.#refreshPromise;
+        }
+        this.#refreshPromise = this.#refresh(refreshToken).finally(() => {
+            this.#refreshPromise = null;
+        });
+        return this.#refreshPromise;
+    }
+
     async #refresh(refreshToken: string): Promise<TokenSet> {
         return await this.#client.grant({
             grant_type: 'refresh_token',
@@ -117,15 +135,19 @@ export class OnectaClient {
         this.#emitter.emit('token_update', set);
         if (this.#config.oidcTokenSetFilePath) {
             try {
-                await writeFile(this.#config.oidcTokenSetFilePath, JSON.stringify(set, null, 2));
+                await writeFile(this.#config.oidcTokenSetFilePath, JSON.stringify(set, null, 2), { mode: TOKEN_FILE_MODE });
             } catch (err) {
                 this.#emitter.emit('error', 'Could not store OIDC tokenset to disk: ' + (err as Error).message);
             }
         }
-    };
-
+    }
 
     async #getTokenSet(): Promise<TokenSet> {
+        if (this.#mobileOAuth) {
+            const accessToken = await this.#mobileOAuth.getAccessToken();
+            return new TokenSet({ access_token: accessToken, token_type: 'Bearer' });
+        }
+
         let tokenSet: TokenSet | null = this.#tokenSet;
         if (!tokenSet && (tokenSet = await this.#loadTokenSet())){
             this.#tokenSet = tokenSet;
@@ -133,7 +155,7 @@ export class OnectaClient {
         if (!tokenSet || !tokenSet.refresh_token) {
             tokenSet = await this.#authorize();
         } else if (!tokenSet.expires_at || tokenSet.expires_at < (Date.now() / 1000) + 10) {
-            tokenSet = await this.#refresh(tokenSet.refresh_token);
+            tokenSet = await this.#refreshOnce(tokenSet.refresh_token);
         }
         if (this.#tokenSet !== tokenSet) {
             await this.#storeTokenSet(tokenSet);
@@ -160,7 +182,6 @@ export class OnectaClient {
     }
 
     #getRateLimitStatus(res: IncomingMessage): OnectaRateLimitStatus {
-        // See "Rate limitation" at https://developer.cloud.daikineurope.com/docs/b0dffcaa-7b51-428a-bdff-a7c8a64195c0/general_api_guidelines
         return {
             limitMinute: maybeParseInt(res.headers['x-ratelimit-limit-minute']),
             remainingMinute: maybeParseInt(res.headers['x-ratelimit-remaining-minute']),
@@ -169,13 +190,18 @@ export class OnectaClient {
         };
     }
 
-    async requestResource(path: string, opts?: RequestParameters): Promise<any> {
+    #parseResponseBody(res: IncomingMessage & { body?: Buffer }): any {
+        return res.body ? JSON.parse(res.body.toString()) : null;
+    }
+
+    async #executeRequest(path: string, opts?: RequestParameters): Promise<any> {
         if (!opts?.ignoreRateLimit && this.#blockedUntil > Date.now()) {
             const retryAfter = Math.ceil((this.#blockedUntil - Date.now()) / 1000);
             throw new RateLimitedError(`API request blocked because of rate-limits for ${retryAfter} seconds`, retryAfter);
         }
         const reqOpts = { ...opts };
         delete reqOpts.ignoreRateLimit;
+        delete reqOpts._authRetry;
         if (this.#config.mockId) {
             reqOpts.headers = {
                 ...reqOpts.headers,
@@ -185,14 +211,30 @@ export class OnectaClient {
         const tokenSet = await this.#getTokenSetQueued();
         const baseUrl = this.#config.useMock ? OnectaAPIBaseUrl.mock : OnectaAPIBaseUrl.prod;
         const url = `${baseUrl}${path}`;
-        const res = await this.#client.requestResource(url, tokenSet, reqOpts);
+        const res = await this.#client.requestResource(url, tokenSet, reqOpts) as IncomingMessage & { body?: Buffer; statusCode?: number };
         RESOLVED.then(() => this.#emitter.emit('rate_limit_status', this.#getRateLimitStatus(res)));
+
         switch (res.statusCode) {
             case 200:
             case 204:
-                return res.body ? JSON.parse(res.body.toString()) :  null;
-            case 400:
-                throw new Error(`Bad Request (400): ${res.body ? res.body.toString() : 'No body response from the API'}`);
+                return this.#parseResponseBody(res);
+            case 400: {
+                const body = res.body ? res.body.toString() : '';
+                throw categorizeHttpError(400, body);
+            }
+            case 401: {
+                const body = res.body ? res.body.toString() : '';
+                if (!opts?._authRetry && this.#mobileOAuth) {
+                    await this.#mobileOAuth.refreshToken();
+                    return this.#executeRequest(path, { ...opts, _authRetry: true });
+                }
+                if (!opts?._authRetry && this.#tokenSet?.refresh_token) {
+                    this.#tokenSet = await this.#refreshOnce(this.#tokenSet.refresh_token);
+                    await this.#storeTokenSet(this.#tokenSet);
+                    return this.#executeRequest(path, { ...opts, _authRetry: true });
+                }
+                throw categorizeHttpError(401, body);
+            }
             case 404:
                 throw new Error(`Not Found (404): ${res.body ? res.body.toString() : 'No body response from the API'}`);
             case 409:
@@ -200,7 +242,6 @@ export class OnectaClient {
             case 422:
                 throw new Error(`Unprocessable Entity (422): ${res.body ? res.body.toString() : 'No body response from the API'}`);
             case 429: {
-                // See "Rate limitation" at https://developer.cloud.daikineurope.com/docs/b0dffcaa-7b51-428a-bdff-a7c8a64195c0/general_api_guidelines
                 const retryAfter = maybeParseInt(res.headers['retry-after']);
                 let blockedFor = retryAfter;
                 if (retryAfter !== undefined) {
@@ -209,10 +250,36 @@ export class OnectaClient {
                 }
                 throw new RateLimitedError(`API request rate-limited, retry after ${retryAfter} seconds. API requests blocked for ${blockedFor} seconds`, blockedFor);
             }
+            case 502:
+            case 503:
+            case 504: {
+                const body = res.body ? res.body.toString() : '';
+                throw new GatewayError(`Gateway error (${res.statusCode}): ${body || 'Temporary server error'}`, res.statusCode ?? 502);
+            }
             case 500:
             default:
-                throw new Error(`Unexpected API error`);
+                throw new Error(`Unexpected API error (${res.statusCode})`);
         }
+    }
+
+    async requestResource(path: string, opts?: RequestParameters): Promise<any> {
+        let lastError: unknown;
+        for (let attempt = 0; attempt < MAX_RETRY_ATTEMPTS; attempt++) {
+            try {
+                return await this.#executeRequest(path, opts);
+            } catch (error) {
+                lastError = error;
+                if (error instanceof AuthenticationError || error instanceof RateLimitedError) {
+                    throw error;
+                }
+                if (!isRetryableError(error) || attempt >= MAX_RETRY_ATTEMPTS - 1) {
+                    throw error;
+                }
+                const delay = getRetryDelayMs(attempt);
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+        }
+        throw lastError;
     }
 
 }

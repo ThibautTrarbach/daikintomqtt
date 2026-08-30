@@ -5,6 +5,8 @@ import {canRefresh, getPollingIntervalMultiplier, incrementSkippedRefreshCount} 
 
 let nextPollingAt = 0;
 let pollingTimer: NodeJS.Timeout | null = null;
+let pollingPaused = false;
+let pollingPausedAt = 0;
 
 /**
  * Determines if we are currently in night period
@@ -35,13 +37,22 @@ async function getCurrentPollingInterval(): Promise<number> {
 	if (!pollingConfig) {
 		return 15;
 	}
+
+	const wsConnected = Boolean(await cache.get('ws/connected'));
+	const authMode = config.daikin?.authMode ?? 'developer_portal';
 	
 	const base = isNightTime()
 		? (pollingConfig.nightInterval ?? 30)
 		: (pollingConfig.dayInterval ?? 15);
 
+	let interval = base;
+	if (authMode === 'mobile_app' && wsConnected) {
+		// Safety-net polling when WebSocket provides real-time updates
+		interval = Math.max(base, isNightTime() ? 60 : 30);
+	}
+
 	const multiplier = await getPollingIntervalMultiplier();
-	return Math.min(60, Math.round(base * multiplier));
+	return Math.min(60, Math.round(interval * multiplier));
 }
 
 /**
@@ -89,7 +100,35 @@ function parseEnergyStatsCronTime(): { hour: number; minute: number } {
 /**
  * Schedules next polling based on current time
  */
+function pausePolling(): void {
+	if (pollingPaused) {
+		return;
+	}
+	pollingPaused = true;
+	pollingPausedAt = Date.now();
+	if (pollingTimer) {
+		clearTimeout(pollingTimer);
+		pollingTimer = null;
+	}
+	nextPollingAt = 0;
+	logger.debug('[cron.ts] => Polling paused (post-action debounce active)');
+}
+
+function resumePolling(): void {
+	if (!pollingPaused) {
+		return;
+	}
+	pollingPaused = false;
+	pollingPausedAt = 0;
+	logger.debug('[cron.ts] => Polling resumed after post-action debounce');
+	void scheduleNextPolling();
+}
+
 async function scheduleNextPolling() {
+	if (pollingPaused) {
+		return;
+	}
+
 	if (pollingTimer) {
 		clearTimeout(pollingTimer);
 	}
@@ -204,10 +243,17 @@ async function loadCron() {
 	}
 }
 
+function isPollingPaused(): boolean {
+	return pollingPaused;
+}
+
 export {
 	loadCron,
 	getNextPollingAt,
 	getMergeWithPollWindowMs,
 	isNightTime,
 	getCurrentPollingInterval,
+	pausePolling,
+	resumePolling,
+	isPollingPaused,
 }

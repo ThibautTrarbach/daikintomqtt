@@ -141,6 +141,28 @@ export class SystemBridge implements ClassModule {
 	})
 	private _skippedRefreshCount?: number;
 
+	@modulesDataDescription({
+		name: 'Auth Mode',
+		settable: false,
+		type: typeEnum.string
+	})
+	private _authMode?: string;
+
+	@modulesDataDescription({
+		name: 'WebSocket Connected',
+		settable: false,
+		type: typeEnum.binary
+	})
+	private _webSocketConnected?: boolean;
+
+	@modulesDataDescription({
+		name: 'Daily Quota Limit',
+		settable: false,
+		type: typeEnum.numeric,
+		unite: 'req/day'
+	})
+	private _dailyQuotaLimit?: number;
+
 	constructor() {
 		// Default initialization
 		this._rateLimitMinute = 0;
@@ -158,6 +180,9 @@ export class SystemBridge implements ClassModule {
 		this._apiBudgetStatus = 'ok';
 		this._nextPollingAt = 0;
 		this._skippedRefreshCount = 0;
+		this._authMode = 'developer_portal';
+		this._webSocketConnected = false;
+		this._dailyQuotaLimit = 200;
 	}
 
 	// Getters to access properties
@@ -279,6 +304,30 @@ export class SystemBridge implements ClassModule {
 
 	set skippedRefreshCount(value: number | undefined) {
 		this._skippedRefreshCount = value;
+	}
+
+	get authMode(): string | undefined {
+		return this._authMode;
+	}
+
+	set authMode(value: string | undefined) {
+		this._authMode = value;
+	}
+
+	get webSocketConnected(): boolean | undefined {
+		return this._webSocketConnected;
+	}
+
+	set webSocketConnected(value: boolean | undefined) {
+		this._webSocketConnected = value;
+	}
+
+	get dailyQuotaLimit(): number | undefined {
+		return this._dailyQuotaLimit;
+	}
+
+	set dailyQuotaLimit(value: number | undefined) {
+		this._dailyQuotaLimit = value;
 	}
 }
 

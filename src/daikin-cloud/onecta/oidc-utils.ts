@@ -47,8 +47,8 @@ export const onecta_oidc_auth_thank_you_html = `
 `;
 
 export interface OnectaClientConfig {
-    oidcClientId: string;
-    oidcClientSecret: string;
+    oidcClientId?: string;
+    oidcClientSecret?: string;
     oidcCallbackServerExternalAddress?: string;
     oidcCallbackServerBaseUrl?: string;
     oidcCallbackServerPort?: number;

@@ -1,5 +1,6 @@
 import type { OnectaClient } from './onecta/oidc-client';
 import { EventEmitter } from "events";
+import { enqueueWriteForDevice } from "../modules/writeQueue";
 
 interface DaikinCloudDeviceEvents {
     "updated": [];
@@ -233,6 +234,26 @@ export class DaikinCloudDevice extends EventEmitter<DaikinCloudDeviceEvents> {
     }
 
     /**
+     * Apply a partial WebSocket update to the in-memory device structure.
+     */
+    applyWebSocketUpdate(embeddedId: string, characteristicName: string, data: { value: unknown }): boolean {
+        const mp = this.managementPoints[embeddedId];
+        if (!mp) {
+            return false;
+        }
+        const dp = mp[characteristicName];
+        if (!dp) {
+            return false;
+        }
+        if (typeof dp === 'object' && dp !== null && 'value' in dp) {
+            (dp as { value: unknown }).value = data.value;
+            this.emit('updated');
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Set a datapoint on this device
      *
      * @param {string} managementPoint Management point name
@@ -276,7 +297,7 @@ export class DaikinCloudDevice extends EventEmitter<DaikinCloudDeviceEvents> {
             }
         } as const;
 
-        await this.#client.requestResource(setPath, setOptions);
+        await enqueueWriteForDevice(this.getId(), () => this.#client.requestResource(setPath, setOptions));
         if (options.updateLocalData) {
             dataPointDef.value = value;
         }

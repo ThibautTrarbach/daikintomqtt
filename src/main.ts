@@ -6,6 +6,9 @@ import {
 	startDaikinAPI,
 } from "./modules";
 import {loadCron} from "./modules/cron";
+import {clearPostActionTimer} from "./modules/actionRefresh";
+import {pausePolling} from "./modules/cron";
+import {disableDaikinWebSocket} from "./modules/daikin";
 import {createCache} from "cache-manager";
 import {resolve} from "node:path";
 import fs from "fs";
@@ -47,6 +50,20 @@ import { setTimeout } from "timers/promises";
 		await loadCron();
 
 		global.logger.info("[main.ts] => DaikinToMQTT started successfully!");
+
+		const shutdown = async (signal: string) => {
+			global.logger.info(`[main.ts] => ${signal} received, shutting down gracefully...`);
+			clearPostActionTimer();
+			pausePolling();
+			try {
+				await disableDaikinWebSocket();
+			} catch (e) {
+				global.logger.debug(`[main.ts] => WebSocket shutdown: ${e instanceof Error ? e.message : String(e)}`);
+			}
+			process.exit(0);
+		};
+		process.on('SIGINT', () => { void shutdown('SIGINT'); });
+		process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
 	} catch (error) {
 		// If logger is not yet initialized, use console
 		if (!global.logger) {

@@ -32,10 +32,17 @@ integration:
     enabled: false # Activate the integration for Home Assistant via MQTT Discovery
     discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)
 daikin:
+  authMode: developer_portal # developer_portal | mobile_app (recommended for higher quota + WebSocket)
+  # Developer Portal (OIDC)
   clientID: null # Client ID allowing connection to the Daikin Onecta Cloud
   clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud
   clientURL: ""
   clientPort: 8765
+  # Mobile App (Onecta account — 3000 req/day + WebSocket)
+  email: null
+  password: null
+  enableWebSocket: true # Real-time updates (mobile_app only)
+  httpTransport: node # node | curl (curl if Node TLS is blocked by WAF)
   useMock: false # Use Daikin Mock API instead of production
   mockId: null # Mock device ID, e.g. air-to-air-dx23
 mqtt:

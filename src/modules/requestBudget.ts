@@ -1,7 +1,10 @@
 /**
  * API request budget management based on Daikin rate-limit headers.
- * Daikin Onecta default: 200 req/day, 20 req/minute.
+ * Thresholds adapt to auth mode (developer_portal vs mobile_app).
  */
+
+import { AUTH_MODE_MOBILE_APP } from '../daikin-cloud/constants';
+import { BUDGET_THRESHOLDS } from '../daikin-cloud/constants';
 
 export type ApiBudgetStatus = 'ok' | 'low' | 'critical' | 'exhausted';
 
@@ -12,10 +15,15 @@ const PRIORITY_REFRESH_REASONS = new Set([
 	'system_bridge_refresh_all',
 ]);
 
-const LOW_THRESHOLD = 50;
-const CRITICAL_THRESHOLD = 30;
-const EXHAUSTED_THRESHOLD = 0;
 const ENERGY_STATS_RESERVED = 1;
+
+function getAuthMode(): 'developer_portal' | 'mobile_app' {
+	return config.daikin?.authMode === AUTH_MODE_MOBILE_APP ? AUTH_MODE_MOBILE_APP : 'developer_portal';
+}
+
+function getThresholds() {
+	return BUDGET_THRESHOLDS[getAuthMode()];
+}
 
 async function getRemainingDay(): Promise<number | undefined> {
 	const remainingDay = await cache.get('rate/remainingDay');
@@ -26,16 +34,17 @@ async function getRemainingDay(): Promise<number | undefined> {
 }
 
 function statusFromRemaining(remaining: number | undefined): ApiBudgetStatus {
+	const { low, critical } = getThresholds();
 	if (remaining === undefined) {
 		return 'ok';
 	}
-	if (remaining <= EXHAUSTED_THRESHOLD) {
+	if (remaining <= 0) {
 		return 'exhausted';
 	}
-	if (remaining <= CRITICAL_THRESHOLD) {
+	if (remaining <= critical) {
 		return 'critical';
 	}
-	if (remaining <= LOW_THRESHOLD) {
+	if (remaining <= low) {
 		return 'low';
 	}
 	return 'ok';
@@ -45,13 +54,12 @@ async function getBudgetStatus(): Promise<ApiBudgetStatus> {
 	return statusFromRemaining(await getRemainingDay());
 }
 
-/**
- * Returns true if a cloud GET (refresh) is allowed for the given reason.
- */
 async function canRefresh(reason: string): Promise<boolean> {
+	const { critical } = getThresholds();
+
 	if (PRIORITY_REFRESH_REASONS.has(reason)) {
 		const remaining = await getRemainingDay();
-		if (remaining !== undefined && remaining <= EXHAUSTED_THRESHOLD) {
+		if (remaining !== undefined && remaining <= 0) {
 			logger.warn(`[requestBudget.ts] => Daily quota exhausted, blocking even priority refresh (${reason})`);
 			return false;
 		}
@@ -63,46 +71,42 @@ async function canRefresh(reason: string): Promise<boolean> {
 		return true;
 	}
 
-	if (remaining <= EXHAUSTED_THRESHOLD) {
+	if (remaining <= 0) {
 		logger.warn(`[requestBudget.ts] => Daily quota exhausted, blocking refresh (${reason})`);
 		return false;
 	}
 
-	if (reason === 'post_action_refresh' && remaining <= CRITICAL_THRESHOLD) {
+	if (reason === 'post_action_refresh' && remaining <= critical) {
 		logger.info(`[requestBudget.ts] => Low daily quota (${remaining}), deferring post-action refresh (${reason})`);
 		return false;
 	}
 
-	if (reason === 'cron_polling') {
-		const reserved = getReservedDailyGets();
-		if (remaining <= reserved) {
-			logger.info(`[requestBudget.ts] => Daily quota (${remaining}) at or below energy reserve (${reserved}), skipping polling refresh`);
-			return false;
-		}
-		if (remaining <= LOW_THRESHOLD) {
-			logger.info(`[requestBudget.ts] => Low daily quota (${remaining}), skipping polling refresh`);
-			return false;
-		}
+	const { low } = getThresholds();
+	if (reason === 'cron_polling' && remaining <= low) {
+		logger.info(`[requestBudget.ts] => Low daily quota (${remaining}), skipping polling refresh`);
+		return false;
 	}
 
 	return true;
 }
 
-/**
- * Multiplier applied to configured polling interval when quota is low (1 = no change).
- */
 async function getPollingIntervalMultiplier(): Promise<number> {
 	const remaining = await getRemainingDay();
+	const { critical, low } = getThresholds();
 	if (remaining === undefined) {
 		return 1;
 	}
-	if (remaining <= CRITICAL_THRESHOLD) {
+	if (remaining <= critical) {
 		return 2;
 	}
-	if (remaining <= LOW_THRESHOLD) {
+	if (remaining <= low) {
 		return 1.5;
 	}
 	return 1;
+}
+
+function getDefaultDailyQuotaLimit(): number {
+	return getThresholds().defaultDayLimit;
 }
 
 async function incrementSkippedRefreshCount(): Promise<number> {
@@ -128,5 +132,7 @@ export {
 	getSkippedRefreshCount,
 	incrementSkippedRefreshCount,
 	getReservedDailyGets,
+	getDefaultDailyQuotaLimit,
+	getAuthMode as getConfiguredAuthMode,
 	PRIORITY_REFRESH_REASONS,
 };

@@ -60,9 +60,16 @@ Par défaut, Daikin2MQTT attend sa configuration dans le répertoire `config` si
     - `enabled` : à `true` pour activer la découverte MQTT pour Home Assistant
     - `discoveryPrefix` : préfixe MQTT Discovery (par défaut `homeassistant`)
 - `daikin`
-  - `clientID` et `clientSecret` : fournis par votre application Daikin Developer Portal
-  - `clientURL` : URL externe utilisée comme Redirect URL dans le Developer Portal (doit correspondre à celle configurée dans le portail)
-  - `clientPort` : port local utilisé par le serveur HTTP de callback OIDC (par défaut `8765`)
+  - `authMode` : `developer_portal` (défaut, 200 req/j) ou `mobile_app` (recommandé, 3000 req/j + WebSocket)
+  - **Developer Portal** (`authMode: developer_portal`) :
+    - `clientID` et `clientSecret` : fournis par votre application Daikin Developer Portal
+    - `clientURL` : URL externe utilisée comme Redirect URL dans le Developer Portal
+    - `clientPort` : port local du callback OIDC (défaut `8765`)
+  - **Mobile App** (`authMode: mobile_app`) :
+    - `email` et `password` : identifiants du compte Onecta (même que l'app mobile)
+    - `enableWebSocket` : mises à jour temps réel (défaut `true`)
+    - Jetons stockés dans `daikin-mobile-tokenset`
+  - `httpTransport` : `node` (défaut) ou `curl` si le TLS Node est bloqué par un WAF
 - `mqtt`
   - `host` et `port` : adresse de votre broker MQTT
   - `auth`, `username`, `password` : paramètres d'authentification MQTT si nécessaire
@@ -72,14 +79,23 @@ Si le fichier de configuration est invalide au démarrage, Daikin2MQTT s'arrête
 
 ### Parcours d'autorisation avec Daikin Cloud
 
-Au premier démarrage, si aucun jeton n'est encore stocké, Daikin2MQTT va :
+#### Mode Developer Portal (OIDC)
 
-1. Démarrer le serveur de callback OIDC local en utilisant `daikin.clientURL` / `daikin.clientPort`
-2. Déclencher un évènement `authorization_request` et inscrire une URL d'autorisation dans les logs
-3. Vous devez ouvrir cette URL dans votre navigateur, accepter l'avertissement de certificat (si présent), puis vous authentifier avec votre compte Daikin et autoriser l'accès
-4. Les jetons OIDC seront stockés dans `config/daikin-controller-cloud-tokenset` (ou dans le répertoire défini par `STORE_DIR`)
+Au premier démarrage, si aucun jeton n'est encore stocké :
 
-Les démarrages suivants réutiliseront ce jeton. Si le jeton devient invalide, Daikin2MQTT le supprimera et redemandera une nouvelle autorisation au prochain lancement.
+1. Démarrage du serveur de callback OIDC local (`daikin.clientURL` / `daikin.clientPort`)
+2. Événement `authorization_request` avec URL dans les logs
+3. Ouvrir l'URL dans le navigateur, accepter le certificat auto-signé, autoriser l'accès
+4. Jetons stockés dans `config/daikin-controller-cloud-tokenset`
+
+#### Mode Mobile App (recommandé)
+
+1. Configurer `authMode: mobile_app`, `email` et `password` dans `settings.yml`
+2. Au démarrage, authentification automatique via l'API Gigya (comme l'app Onecta)
+3. Jetons stockés dans `config/daikin-mobile-tokenset`
+4. WebSocket activé par défaut pour les mises à jour temps réel (quota ~3000 req/j)
+
+Les démarrages suivants réutilisent le jeton. Si le jeton devient invalide, Daikin2MQTT le supprime et redemandera une autorisation.
 
 ### Exécution
 
@@ -116,22 +132,28 @@ Vous pouvez changer le répertoire de données (configuration, jetons, fichiers 
 - **Home Assistant** : lorsque `integration.homeassistant.enabled` est à `true`, la configuration MQTT Discovery est générée automatiquement et publiée au démarrage.
 - **Jeedom** : lorsque `integration.jeedom` est à `true`, le format des messages est adapté à l'intégration Jeedom.
 
-## Quota API Daikin (200 requêtes/jour)
+## Quota API Daikin
 
-L'API Onecta limite chaque application à **200 requêtes/jour** et **20/minute**.
+| Mode | Limite jour | Polling recommandé | WebSocket |
+|------|-------------|-------------------|-----------|
+| Developer Portal | 200 req/j | 15+ min | Non |
+| Mobile App | 3000 req/j | 1–5 min (30+ min si WS actif) | Oui |
 
 | Opération | Coût API |
 |-----------|----------|
-| Polling / refresh | **1 GET** = tous les équipements du compte |
-| Commande | **1 PATCH** par propriété modifiée |
-| Refresh énergie (`energyStatsRefreshTime`) | **1 GET** réservé pour les compteurs kWh |
+| Polling / refresh | **1 GET** = tous les équipements |
+| Commande | **1 PATCH** par propriété |
+| Mise à jour WebSocket | **0 GET** |
+| Refresh énergie (`energyStatsRefreshTime`) | **1 GET** prioritaire |
 
-**Bonnes pratiques intégrées dans le daemon :**
-- Publication **optimiste** immédiate sur MQTT après chaque commande réussie (UI réactive sans attendre le cloud)
-- Stratégie `merge_with_poll` : évite un GET dédié si un polling est prévu dans les prochaines minutes
-- **Coalescence** des commandes MQTT rapides (scénarios Jeedom) : un seul refresh post-action par rafale
-- Polling adaptatif quand le quota journalier est bas (via `API Budget Status` sur le pont système)
-- Le refresh de fin de journée (`23:58` par défaut) est **prioritaire** pour les statistiques de consommation
+**Optimisations intégrées :**
+- Auth **Mobile App** + **WebSocket** (inspiré de [mp-consulting/homebridge-daikin-cloud](https://github.com/mp-consulting/homebridge-daikin-cloud))
+- Pause du polling pendant le debounce post-action (évite les GET doubles)
+- File d'attente PATCH séquentielle par équipement (400 ms)
+- Retry automatique sur erreurs 502/503/504
+- Publication **optimiste** MQTT après commande
+- Stratégie `merge_with_poll` et skip post-action si WebSocket confirme le changement
+- Polling adaptatif selon quota (`API Budget Status` sur le pont système)
 
 Estimation avec les défauts (polling 15 min, ~10 commandes/jour) : ~110 requêtes/jour.
 

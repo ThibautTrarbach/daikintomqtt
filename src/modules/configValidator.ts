@@ -295,8 +295,52 @@ function validatePollingConfig(polling: ConfigPolling): ValidationError[] {
  */
 function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 	const errors: ValidationError[] = [];
+	const authMode = daikin.authMode ?? 'developer_portal';
 
-	// Validate clientID
+	if (authMode !== 'developer_portal' && authMode !== 'mobile_app') {
+		errors.push({
+			field: 'daikin.authMode',
+			message: 'authMode must be developer_portal or mobile_app',
+			value: authMode,
+		});
+		return errors;
+	}
+
+	if (daikin.httpTransport !== undefined && daikin.httpTransport !== 'node' && daikin.httpTransport !== 'curl') {
+		errors.push({
+			field: 'daikin.httpTransport',
+			message: 'httpTransport must be node or curl',
+			value: daikin.httpTransport,
+		});
+	}
+
+	if (daikin.enableWebSocket !== undefined && typeof daikin.enableWebSocket !== 'boolean') {
+		errors.push({
+			field: 'daikin.enableWebSocket',
+			message: 'enableWebSocket must be a boolean',
+			value: daikin.enableWebSocket,
+		});
+	}
+
+	if (authMode === 'mobile_app') {
+		if (!daikin.email || typeof daikin.email !== 'string' || daikin.email.trim().length === 0) {
+			errors.push({
+				field: 'daikin.email',
+				message: 'Daikin email is required for mobile_app auth mode',
+				value: daikin.email,
+			});
+		}
+		if (!daikin.password || typeof daikin.password !== 'string' || daikin.password.trim().length === 0) {
+			errors.push({
+				field: 'daikin.password',
+				message: 'Daikin password is required for mobile_app auth mode',
+				value: daikin.password ? '***' : daikin.password,
+			});
+		}
+		return errors;
+	}
+
+	// developer_portal validation (existing)
 	if (!daikin.clientID || typeof daikin.clientID !== 'string' || daikin.clientID.trim().length === 0) {
 		errors.push({
 			field: 'daikin.clientID',

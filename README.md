@@ -60,9 +60,10 @@ By default Daikin2MQTT expects its configuration in the `config` directory locat
     - `enabled`: if `true`, Home Assistant MQTT discovery will be used
     - `discoveryPrefix`: MQTT discovery prefix (default `homeassistant`)
 - `daikin`
-  - `clientID` and `clientSecret`: from your Daikin Developer Portal application
-  - `clientURL`: external URL used as Redirect URL in the Daikin Developer Portal (must match the one configured there)
-  - `clientPort`: port used locally for the OIDC callback HTTP server (default `8765`)
+  - `authMode`: `developer_portal` (default, 200 req/day) or `mobile_app` (recommended, 3000 req/day + WebSocket)
+  - **Developer Portal**: `clientID`, `clientSecret`, `clientURL`, `clientPort`
+  - **Mobile App**: `email`, `password` (Onecta account), `enableWebSocket` (default `true`)
+  - `httpTransport`: `node` (default) or `curl` (WAF workaround)
 - `mqtt`
   - `host` and `port`: address of your MQTT broker
   - `auth`, `username`, `password`: MQTT authentication if required
@@ -116,17 +117,14 @@ You can change the data directory (configuration, tokens, generated files) by se
 - Home Assistant: when `integration.homeassistant.enabled` is `true`, MQTT Discovery configuration is generated automatically and published on startup.
 - Jeedom: when `integration.jeedom` is `true`, the payload format is adapted for the Jeedom integration.
 
-## Daikin API quota (200 requests/day)
+## Daikin API quota
 
-The Onecta API limits each application to **200 requests/day** and **20/minute**.
+| Mode | Daily limit | WebSocket |
+|------|-------------|-----------|
+| Developer Portal | 200 req/day | No |
+| Mobile App | 3000 req/day | Yes |
 
-| Operation | API cost |
-|-----------|----------|
-| Polling / refresh | **1 GET** returns all account devices |
-| Command | **1 PATCH** per changed property |
-| Energy stats refresh (`energyStatsRefreshTime`) | **1 GET** reserved for kWh counters |
-
-Built-in optimizations: immediate optimistic MQTT publish, `merge_with_poll` strategy, command coalescing, adaptive polling when quota is low, and priority end-of-day energy refresh.
+Built-in optimizations (inspired by [mp-consulting/homebridge-daikin-cloud](https://github.com/mp-consulting/homebridge-daikin-cloud)): Mobile App auth, WebSocket push, polling pause during post-action debounce, sequential PATCH queue, 502/503/504 retries, optimistic MQTT publish, `merge_with_poll`, WS-confirmed skip of post-action GET, adaptive polling.
 
 ## Supported devices
 
