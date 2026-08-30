@@ -60,6 +60,19 @@ const tokenPaths_1 = require("./tokenPaths");
 const paths_1 = require("./paths");
 const constants_2 = require("./constants");
 const mqtt_2 = require("./mqtt");
+const errorHandler_1 = require("./errorHandler");
+function isAuthFailure(error) {
+    if (error instanceof errorHandler_1.AuthenticationError) {
+        return true;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    return /invalid_grant|not authenticated|unauthorized \(401\)|login failed|token refresh failed|token expired|authentication failed|registration completion failed|failed to get authorization code|failed to get oidc context|authorization error/i.test(message);
+}
+function shutdownOnAuthFailure(message) {
+    logger.error(message);
+    logger.error('[daikin.ts] => Shutting down daemon due to authentication failure.');
+    process.exit(1);
+}
 const pendingCommands = new Map();
 const gatewayCache = new Map();
 function clearPendingCommands() {
@@ -259,6 +272,9 @@ async function loadDaikinAPI() {
             }
             process.exit(1);
         }
+        else if (isAuthFailure(error)) {
+            shutdownOnAuthFailure(`[daikin.ts] => Daikin client authentication error: ${errorMessage}`);
+        }
     });
     global.daikinClient = daikinClient;
 }
@@ -281,8 +297,7 @@ async function startDaikinAPI() {
                     logger.info('[daikin.ts] => Mobile App authentication successful');
                 }
                 catch (authError) {
-                    logger.error(`[daikin.ts] => Mobile App authentication failed: ${authError instanceof Error ? authError.message : String(authError)}`);
-                    return;
+                    shutdownOnAuthFailure(`[daikin.ts] => Mobile App authentication failed: ${authError instanceof Error ? authError.message : String(authError)}`);
                 }
             }
         }
@@ -329,6 +344,9 @@ async function startDaikinAPI() {
             });
         }
         catch (apiError) {
+            if (isAuthFailure(apiError)) {
+                shutdownOnAuthFailure(`[daikin.ts] => Authentication failed during API startup: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
+            }
             logger.error(`[daikin.ts] => Error during API operations: ${apiError instanceof Error ? apiError.message : String(apiError)}`);
             if (apiError instanceof Error && apiError.stack) {
                 logger.debug(`[daikin.ts] => Stack trace: ${apiError.stack}`);
@@ -337,6 +355,9 @@ async function startDaikinAPI() {
         }
     }
     catch (error) {
+        if (isAuthFailure(error)) {
+            shutdownOnAuthFailure(`[daikin.ts] => Critical authentication error during API startup: ${error instanceof Error ? error.message : String(error)}`);
+        }
         logger.error(`[daikin.ts] => Critical error during API startup: ${error instanceof Error ? error.message : String(error)}`);
         if (error instanceof Error && error.stack) {
             logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
