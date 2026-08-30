@@ -20,6 +20,10 @@ const converterEnum = Object.freeze({
 	consumption: 3
 });
 
+function isDeviceMetadataField(value: unknown): value is ModulePropertyMetadata {
+	return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;
+}
+
 // Indices used to select specific energy consumption periods
 const consumptionEnum = Object.freeze({
 	heatingDay: 0,
@@ -35,7 +39,7 @@ const consumptionEnum = Object.freeze({
  * using metadata declared via decorators.
  */
 function convertDaikinDevice(device: any, gatewayClass: Gateways) {
-	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
+	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass) || {};
 	createDeviceInfo(device, gatewayClass)
 	Object.entries(data).forEach(entry => {
 		const [key, value] = entry;
@@ -108,11 +112,18 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
  * (model, serial, firmware, error state, etc.).
  */
 function createDeviceInfo(device: any, gatewayClass: Gateways) {
-	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass);
+	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN_DEVICE, gatewayClass) || {};
 	Object.entries(data).forEach(entry1 => {
 		const [key1, value1] = entry1;
+		const gatewayRecord = gatewayClass as unknown as Record<string, Record<string, unknown>>;
+		if (!gatewayRecord[key1]) {
+			gatewayRecord[key1] = {};
+		}
 		Object.entries(value1 as object).forEach(entry2 => {
 			const [key2, value2] = entry2;
+			if (!isDeviceMetadataField(value2)) {
+				return;
+			}
 			let deviceValue;
 
 			try {
@@ -167,7 +178,7 @@ function resolveMetadataKeysFromEvents(gatewayClass: Gateways, events: object): 
 	const normalizedEventKeys = new Set(
 		Object.keys(events).map((key) => (key.startsWith('_') ? key.substring(1) : key))
 	);
-	const data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
+	const data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass) || {};
 	const matched = new Set<string>();
 
 	Object.entries(data).forEach(([metaKey]) => {
@@ -278,7 +289,7 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 	const deviceId = device.getId();
 	logger.debug(`[BaseModules.ts] => updateDaikinDevice called for device ${deviceId}`);
 	
-	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
+	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass) || {};
 	let allSucceeded = true;
 	let atLeastOneUpdate = false;
 

@@ -1,8 +1,10 @@
 import "reflect-metadata";
 import {DaikinCloudDevice} from "../../daikin-cloud";
-import {PROPERTY_METADATA_CMD, PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../decorator";
+import {PROPERTY_METADATA_CMD, PROPERTY_METADATA_DAIKIN} from "../decorator";
 import {ClassModule, DevicesInformation, ModulePropertyMetadata, ModulesDescriptionMetadata} from "../../types";
 import {converterEnum, typeEnum} from "./BaseModules";
+import {registerDeviceMetadata} from "./metadataRegistry";
+import {standardGatewayDeviceInfo} from "./characteristics/catalog";
 
 export interface DynamicCharacteristicDef {
 	key: string;
@@ -156,6 +158,7 @@ export class DynamicGateway implements ClassModule {
 
 	constructor(device: DaikinCloudDevice) {
 		this._device = buildDeviceInfo(device);
+		registerDeviceMetadata(this, '_device', standardGatewayDeviceInfo('gateway'));
 		this.buildFromDevice(device);
 	}
 
@@ -220,7 +223,6 @@ export class DynamicGateway implements ClassModule {
 
 		Reflect.defineMetadata(PROPERTY_METADATA_CMD, cmdMetadata, this);
 		Reflect.defineMetadata(PROPERTY_METADATA_DAIKIN, daikinMetadata, this);
-		Reflect.defineMetadata(PROPERTY_METADATA_DAIKIN_DEVICE, { _device: this._device }, this);
 	}
 
 	private addFirmwareMetadata(
