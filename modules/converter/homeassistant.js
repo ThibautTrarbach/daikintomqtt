@@ -2,6 +2,26 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateHADiscovery = generateHADiscovery;
 const gateway_1 = require("../gateway");
+const constants_1 = require("../constants");
+function toObjectId(propertyKey) {
+    return propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+}
+function valueJsonTemplate(propertyKey, defaultValue) {
+    return `{{ value_json['${propertyKey}'] | default(${defaultValue}) }}`;
+}
+function buildAvailability(baseTopic) {
+    return [{
+            topic: `${baseTopic}/${constants_1.HA_AVAILABILITY_TOPIC_SUFFIX}`,
+            payload_available: "false",
+            payload_not_available: "true"
+        }];
+}
+function buildOrigin() {
+    return {
+        name: "daikin2mqtt",
+        sw: constants_1.APP_VERSION
+    };
+}
 const daikinModeToHA = {
     "heating": "heat",
     "cooling": "cool",
@@ -46,7 +66,7 @@ function generateHADiscovery(data, modules, device) {
                     if (!discoveryConfigs["sensor"]) {
                         discoveryConfigs["sensor"] = {};
                     }
-                    const objectId = key.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+                    const objectId = toObjectId(key);
                     discoveryConfigs["sensor"][`${deviceId}_${objectId}`] = sensorConfig;
                 }
             }
@@ -57,7 +77,7 @@ function generateHADiscovery(data, modules, device) {
                     if (!discoveryConfigs[componentType]) {
                         discoveryConfigs[componentType] = {};
                     }
-                    const objectId = key.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+                    const objectId = toObjectId(key);
                     discoveryConfigs[componentType][`${deviceId}_${objectId}`] = switchConfig;
                 }
             }
@@ -83,11 +103,7 @@ function generateClimateDiscovery(device, gatewayClass, deviceId, deviceName, se
     const haConfig = {
         name: deviceName,
         unique_id: `daikin_${deviceId}_climate`,
-        availability: [{
-                topic: `${global.config.mqtt.topic}/system/bridge/authorization_timeout`,
-                payload_available: "false",
-                payload_not_available: "true"
-            }],
+        availability: buildAvailability(global.config.mqtt.topic),
         device: {
             identifiers: [serialNumber || deviceId],
             name: deviceName,
@@ -95,10 +111,7 @@ function generateClimateDiscovery(device, gatewayClass, deviceId, deviceName, se
             model: modelInfo,
             sw_version: firmwareVersion
         },
-        origin: {
-            name: "daikin2mqtt",
-            sw: "1.1.0"
-        },
+        origin: buildOrigin(),
         state_topic: stateTopic,
         command_topic: commandTopic,
         mode_state_topic: stateTopic,
@@ -158,12 +171,11 @@ function generateSensorDiscovery(device, gatewayClass, propertyKey, metadata, de
         unitOfMeasurement = unitOfMeasurement || "kWh";
         isEnergy = true;
     }
-    const valuePath = propertyKey.replace(/^_/, "");
     const haConfig = {
         name: `${deviceName} ${metadata.name}`,
-        unique_id: `daikin_${deviceId}_${propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")}`,
+        unique_id: `daikin_${deviceId}_${toObjectId(propertyKey)}`,
         state_topic: stateTopic,
-        value_template: `{{ value_json.${valuePath} | default(0) }}`,
+        value_template: valueJsonTemplate(propertyKey, "0"),
         device: {
             identifiers: [serialNumber || deviceId],
             name: deviceName,
@@ -171,15 +183,8 @@ function generateSensorDiscovery(device, gatewayClass, propertyKey, metadata, de
             model: modelInfo,
             sw_version: firmwareVersion
         },
-        origin: {
-            name: "daikin2mqtt",
-            sw: "1.1.0"
-        },
-        availability: [{
-                topic: `${baseTopic}/system/bridge/authorization_timeout`,
-                payload_available: "false",
-                payload_not_available: "true"
-            }],
+        origin: buildOrigin(),
+        availability: buildAvailability(baseTopic),
         qos: 0,
         retain: true
     };
@@ -195,12 +200,11 @@ function generateSensorDiscovery(device, gatewayClass, propertyKey, metadata, de
     return haConfig;
 }
 function generateSwitchDiscovery(device, gatewayClass, propertyKey, metadata, deviceId, deviceName, serialNumber, modelInfo, firmwareVersion, stateTopic, commandTopic) {
-    const valuePath = propertyKey.replace(/^_/, "");
     const haConfig = {
         name: `${deviceName} ${metadata.name}`,
-        unique_id: `daikin_${deviceId}_${propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")}`,
+        unique_id: `daikin_${deviceId}_${toObjectId(propertyKey)}`,
         state_topic: stateTopic,
-        state_template: `{{ value_json.${valuePath} | default(false) }}`,
+        value_template: valueJsonTemplate(propertyKey, "false"),
         device: {
             identifiers: [serialNumber || deviceId],
             name: deviceName,
@@ -208,15 +212,8 @@ function generateSwitchDiscovery(device, gatewayClass, propertyKey, metadata, de
             model: modelInfo,
             sw_version: firmwareVersion
         },
-        origin: {
-            name: "daikin2mqtt",
-            sw: "1.1.0"
-        },
-        availability: [{
-                topic: `${global.config.mqtt.topic}/system/bridge/authorization_timeout`,
-                payload_available: "false",
-                payload_not_available: "true"
-            }],
+        origin: buildOrigin(),
+        availability: buildAvailability(global.config.mqtt.topic),
         qos: 0,
         retain: true
     };
@@ -225,6 +222,8 @@ function generateSwitchDiscovery(device, gatewayClass, propertyKey, metadata, de
         haConfig.command_template = `{"${propertyKey}": {% if value == 'ON' %}true{% else %}false{% endif %}}`;
         haConfig.payload_on = "ON";
         haConfig.payload_off = "OFF";
+        haConfig.state_on = "true";
+        haConfig.state_off = "false";
     }
     else {
         haConfig.payload_on = "true";

@@ -7,6 +7,7 @@ export declare class DaikinMobileOAuth implements OAuthProvider {
     private tokenSet;
     private refreshPromise;
     private cookies;
+    private pendingOAuthState;
     constructor(config: MobileClientConfig, onTokenUpdate?: ((tokenSet: TokenSet) => void) | undefined, onError?: ((error: Error) => void) | undefined, onLog?: ((message: string) => void) | undefined);
     authenticate(): Promise<TokenSet>;
     refreshToken(): Promise<TokenSet>;

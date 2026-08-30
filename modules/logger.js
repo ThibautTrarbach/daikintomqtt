@@ -7,9 +7,9 @@ exports.loadLogger = loadLogger;
 const winston_1 = __importDefault(require("winston"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const { combine, timestamp, printf, colorize, align } = winston_1.default.format;
+const { combine, timestamp, printf, align } = winston_1.default.format;
 function loadLogger() {
-    const logDir = path_1.default.join(process.cwd(), 'log');
+    const logDir = path_1.default.join(global.datadir || process.cwd() + '/config', 'log');
     if (!fs_1.default.existsSync(logDir)) {
         fs_1.default.mkdirSync(logDir, { recursive: true });
     }
@@ -26,13 +26,6 @@ function loadLogger() {
             }),
             new winston_1.default.transports.File({
                 filename: path_1.default.join(logDir, 'combined.log'),
-                maxsize: 10485760,
-                maxFiles: 5,
-                tailable: true
-            }),
-            new winston_1.default.transports.File({
-                filename: path_1.default.join(logDir, 'debug.log'),
-                level: 'debug',
                 maxsize: 10485760,
                 maxFiles: 5,
                 tailable: true

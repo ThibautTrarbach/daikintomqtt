@@ -41,8 +41,9 @@ const cron_1 = require("./modules/cron");
 const actionRefresh_1 = require("./modules/actionRefresh");
 const cron_2 = require("./modules/cron");
 const daikin_1 = require("./modules/daikin");
+const mqttLifecycle_1 = require("./modules/mqttLifecycle");
+const tokenPaths_1 = require("./modules/tokenPaths");
 const cache_manager_1 = require("cache-manager");
-const node_path_1 = require("node:path");
 const fs_1 = __importDefault(require("fs"));
 const promises_1 = require("timers/promises");
 (async () => {
@@ -67,12 +68,21 @@ const promises_1 = require("timers/promises");
         const shutdown = async (signal) => {
             global.logger.info(`[main.ts] => ${signal} received, shutting down gracefully...`);
             (0, actionRefresh_1.clearPostActionTimer)();
+            (0, modules_1.clearPendingCommands)();
+            (0, modules_1.clearGatewayCache)();
             (0, cron_2.pausePolling)();
+            (0, cron_1.stopCronTasks)();
             try {
                 await (0, daikin_1.disableDaikinWebSocket)();
             }
             catch (e) {
                 global.logger.debug(`[main.ts] => WebSocket shutdown: ${e instanceof Error ? e.message : String(e)}`);
+            }
+            try {
+                await (0, mqttLifecycle_1.disconnectMqttClient)(true);
+            }
+            catch (e) {
+                global.logger.debug(`[main.ts] => MQTT shutdown: ${e instanceof Error ? e.message : String(e)}`);
             }
             process.exit(0);
         };
@@ -105,7 +115,7 @@ const promises_1 = require("timers/promises");
     if (error?.error === "invalid_grant" || (error instanceof Error && error.message.includes("invalid_grant"))) {
         try {
             log.error('[main.ts] => Invalid token detected, deleting old token. A reconnection will be required.');
-            const tokenPath = (0, node_path_1.resolve)(global.datadir || process.cwd() + "/config", 'daikin-controller-cloud-tokenset');
+            const tokenPath = (0, tokenPaths_1.getTokenFilePath)();
             if (fs_1.default.existsSync(tokenPath)) {
                 fs_1.default.unlinkSync(tokenPath);
                 log.info(`[main.ts] => Token file deleted: ${tokenPath}`);
@@ -117,7 +127,7 @@ const promises_1 = require("timers/promises");
         }
         catch (e) {
             log.error(`[main.ts] => Error deleting token: ${e instanceof Error ? e.message : String(e)}`);
-            log.error(`[main.ts] => Please manually delete the file: ${(0, node_path_1.resolve)(global.datadir || process.cwd() + "/config", 'daikin-controller-cloud-tokenset')}`);
+            log.error(`[main.ts] => Please manually delete the file: ${(0, tokenPaths_1.getTokenFilePath)()}`);
             process.exit(1);
         }
     }

@@ -1,18 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.setMqttRepublishHandler = void 0;
 exports.loadMQTTClient = loadMQTTClient;
 exports.publishToMQTT = publishToMQTT;
 exports.publishConfig = publishConfig;
 const mqtt_1 = require("mqtt");
+const mqttLifecycle_1 = require("./mqttLifecycle");
+Object.defineProperty(exports, "setMqttRepublishHandler", { enumerable: true, get: function () { return mqttLifecycle_1.setMqttRepublishHandler; } });
 async function getOptions() {
     const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
+    const baseTopic = config.mqtt.topic;
     let option = {
         clientId,
         clean: true,
         connectTimeout: config.mqtt.connectTimeout,
-        username: (config.mqtt.username != null) ? config.mqtt.username : undefined,
-        password: (config.mqtt.password != null) ? config.mqtt.password : undefined,
+        username: (config.mqtt.auth === true && config.mqtt.username != null) ? config.mqtt.username : undefined,
+        password: (config.mqtt.auth === true && config.mqtt.password != null) ? config.mqtt.password : undefined,
         reconnectPeriod: config.mqtt.reconnectPeriod,
+        will: {
+            topic: `${baseTopic}/system/bridge/availability`,
+            payload: 'offline',
+            qos: 0,
+            retain: true,
+        },
     };
     return option;
 }
@@ -28,6 +38,8 @@ async function loadMQTTClient() {
         global.mqttClient = (0, mqtt_1.connect)(mqttHost, options);
         mqttClient.on('connect', () => {
             logger.info(`[mqtt.ts] => Connected to MQTT broker: ${mqttHost}`);
+            void publishConfig('availability', 'online');
+            void (0, mqttLifecycle_1.triggerMqttRepublish)();
         });
         mqttClient.on('error', (error) => {
             logger.error(`[mqtt.ts] => MQTT connection error: ${error.message}`);
@@ -67,6 +79,12 @@ async function loadMQTTClient() {
         throw error;
     }
 }
+function shouldSkipPublish(topic, data, cachedData) {
+    if (config.system?.publishOnDelta === false) {
+        return false;
+    }
+    return cachedData === data;
+}
 async function publishToMQTT(topic, data) {
     try {
         if (!global.mqttClient) {
@@ -76,7 +94,7 @@ async function publishToMQTT(topic, data) {
             logger.warn(`[mqtt.ts] => MQTT client not connected, attempting to publish to topic: ${topic}`);
         }
         const cachedData = await cache.get(topic);
-        if (cachedData === data) {
+        if (shouldSkipPublish(topic, data, cachedData)) {
             logger.debug(`[mqtt.ts] => Identical data in cache for ${topic}, publication skipped`);
             return;
         }
@@ -113,6 +131,6 @@ async function publishToMQTT(topic, data) {
     }
 }
 async function publishConfig(key, value) {
-    await publishToMQTT('system/bridge/' + key, value.toString());
+    await publishToMQTT('system/bridge/' + key, String(value));
 }
 //# sourceMappingURL=mqtt.js.map

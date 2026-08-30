@@ -5,20 +5,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadCron = loadCron;
 exports.getNextPollingAt = getNextPollingAt;
+exports.getEffectiveNextPollingAt = getEffectiveNextPollingAt;
 exports.getMergeWithPollWindowMs = getMergeWithPollWindowMs;
 exports.isNightTime = isNightTime;
 exports.getCurrentPollingInterval = getCurrentPollingInterval;
 exports.pausePolling = pausePolling;
 exports.resumePolling = resumePolling;
 exports.isPollingPaused = isPollingPaused;
+exports.stopCronTasks = stopCronTasks;
 const node_cron_1 = __importDefault(require("node-cron"));
 const daikin_1 = require("./daikin");
 const actionRefresh_1 = require("./actionRefresh");
 const requestBudget_1 = require("./requestBudget");
 let nextPollingAt = 0;
+let pausedNextPollingAt = 0;
 let pollingTimer = null;
 let pollingPaused = false;
 let pollingPausedAt = 0;
+const scheduledCronTasks = [];
 function isNightTime() {
     const now = new Date();
     const currentHour = now.getHours();
@@ -48,7 +52,7 @@ async function getCurrentPollingInterval() {
         interval = Math.max(base, isNightTime() ? 60 : 30);
     }
     const multiplier = await (0, requestBudget_1.getPollingIntervalMultiplier)();
-    return Math.min(60, Math.round(interval * multiplier));
+    return Math.round(interval * multiplier);
 }
 async function getTimeUntilNextInterval() {
     const intervalMinutes = await getCurrentPollingInterval();
@@ -88,6 +92,9 @@ function pausePolling() {
     }
     pollingPaused = true;
     pollingPausedAt = Date.now();
+    if (nextPollingAt > 0) {
+        pausedNextPollingAt = nextPollingAt;
+    }
     if (pollingTimer) {
         clearTimeout(pollingTimer);
         pollingTimer = null;
@@ -101,8 +108,15 @@ function resumePolling() {
     }
     pollingPaused = false;
     pollingPausedAt = 0;
+    pausedNextPollingAt = 0;
     logger.debug('[cron.ts] => Polling resumed after post-action debounce');
     void scheduleNextPolling();
+}
+function getEffectiveNextPollingAt() {
+    if (pollingPaused && pausedNextPollingAt > 0) {
+        return pausedNextPollingAt;
+    }
+    return nextPollingAt;
 }
 async function scheduleNextPolling() {
     if (pollingPaused) {
@@ -194,16 +208,16 @@ async function loadCron() {
         logger.info("[cron.ts] => Dynamic polling system started");
         const energyTime = parseEnergyStatsCronTime();
         const energyCron = `${energyTime.minute} ${energyTime.hour} * * *`;
-        node_cron_1.default.schedule(energyCron, runEnergyStatsRefresh);
+        scheduledCronTasks.push(node_cron_1.default.schedule(energyCron, runEnergyStatsRefresh));
         logger.debug(`[cron.ts] => CRON task scheduled for daily energy stats at ${config.system?.energyStatsRefreshTime ?? '23:58'}`);
-        node_cron_1.default.schedule('0 * * * * *', async function () {
+        scheduledCronTasks.push(node_cron_1.default.schedule('0 * * * * *', async function () {
             try {
                 await (0, actionRefresh_1.timeUpdateFallback)();
             }
             catch (error) {
                 logger.error(`[cron.ts] => CRON - Error in post-action fallback: ${error instanceof Error ? error.message : String(error)}`);
             }
-        });
+        }));
         logger.debug("[cron.ts] => CRON task scheduled for post-action fallback every 60s");
         logger.info("[cron.ts] => CRON system initialized successfully");
     }
@@ -217,5 +231,18 @@ async function loadCron() {
 }
 function isPollingPaused() {
     return pollingPaused;
+}
+function stopCronTasks() {
+    if (pollingTimer) {
+        clearTimeout(pollingTimer);
+        pollingTimer = null;
+    }
+    for (const task of scheduledCronTasks) {
+        task.stop();
+    }
+    scheduledCronTasks.length = 0;
+    nextPollingAt = 0;
+    pausedNextPollingAt = 0;
+    pollingPaused = false;
 }
 //# sourceMappingURL=cron.js.map

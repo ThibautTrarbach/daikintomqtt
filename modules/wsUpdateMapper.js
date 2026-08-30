@@ -37,9 +37,10 @@ exports.handleWebSocketDeviceUpdate = handleWebSocketDeviceUpdate;
 exports.wasConfirmedByWebSocket = wasConfirmedByWebSocket;
 exports.recordWebSocketConfirmation = recordWebSocketConfirmation;
 const mqtt_1 = require("./mqtt");
+const constants_1 = require("./constants");
 async function recordWebSocketConfirmation(deviceId) {
     const key = `ws/confirmed/${deviceId}`;
-    await cache.set(key, Date.now(), 120);
+    await cache.set(key, Date.now(), constants_1.WS_CONFIRMATION_TTL_MS);
 }
 async function wasConfirmedByWebSocket(deviceId, actionTs) {
     if (!deviceId) {
@@ -74,13 +75,13 @@ async function handleWebSocketDeviceUpdate(update) {
     const gatewayJson = JSON.stringify(gateway);
     await (0, mqtt_1.publishToMQTT)(update.deviceId, gatewayJson);
     logger.debug(`[wsUpdateMapper.ts] => Published WS update for ${update.deviceId}.${update.characteristicName}`);
-    await cache.set(`device_${update.deviceId}`, device, 10800000);
+    await cache.set(`device_${update.deviceId}`, device, constants_1.DEVICE_CACHE_TTL_MS);
     const cachedDevices = await cache.get('devices');
     if (cachedDevices) {
         const idx = cachedDevices.findIndex((d) => d.getId() === update.deviceId);
         if (idx >= 0) {
             cachedDevices[idx] = device;
-            await cache.set('devices', cachedDevices, 10800000);
+            await cache.set('devices', cachedDevices, constants_1.DEVICE_CACHE_TTL_MS);
         }
     }
 }

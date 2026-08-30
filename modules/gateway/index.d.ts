@@ -1,4 +1,7 @@
 export * from "./Anonymise";
+export * from "./AbstractGateway";
+export * from "./metadataRegistry";
+export * from "./characteristics/catalog";
 export * from "./BaseModules";
 export * from "./SystemBridge";
 export * from "./DynamicGateway";
@@ -10,5 +13,7 @@ export * from "./BRP069A78";
 export * from "./BRP069B4x";
 export * from "./BRP069A4x";
 export * from "./BRP069A61";
-export * from "./BRP069C41";
-export * from "./BRP069C8x";
+export * from "./MonoZoneClimateGateway";
+export * from "./ExtendedMonoZoneClimateGateway";
+export * from "./DualZoneHeatPumpGateway";
+export * from "./MultiZoneClimateGateway";

@@ -102,7 +102,9 @@ class DaikinCloudController extends events_1.EventEmitter {
         if (!Array.isArray(data)) {
             throw new Error('Invalid data received from cloud');
         }
+        const activeIds = new Set();
         data.forEach(d => {
+            activeIds.add(d.id);
             const device = this.#devices.get(d.id);
             if (device) {
                 device.setDescription(d);
@@ -112,6 +114,11 @@ class DaikinCloudController extends events_1.EventEmitter {
                 this.#devices.set(newDevice.getId(), newDevice);
             }
         });
+        for (const deviceId of this.#devices.keys()) {
+            if (!activeIds.has(deviceId)) {
+                this.#devices.delete(deviceId);
+            }
+        }
     }
 }
 exports.DaikinCloudController = DaikinCloudController;

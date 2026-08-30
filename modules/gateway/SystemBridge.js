@@ -13,13 +13,14 @@ exports.SystemBridge = void 0;
 require("reflect-metadata");
 const decorator_1 = require("../decorator");
 const BaseModules_1 = require("./BaseModules");
+const constants_1 = require("../constants");
 class SystemBridge {
     _device = {
         id: "Daikin2MQTT",
         name: "Daikin2MQTT Bridge",
         modelInfo: "Daikin2MQTT",
         serialNumber: "Daikin2MQTT",
-        firmwareVersion: "2.0.4",
+        firmwareVersion: constants_1.APP_VERSION,
         isInErrorState: "false",
         errorCode: ""
     };

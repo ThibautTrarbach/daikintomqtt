@@ -39,6 +39,7 @@ exports.eventValue = eventValue;
 const decorator_1 = require("../decorator");
 const mqtt_1 = require("../mqtt");
 const actionRefresh_1 = require("../actionRefresh");
+const constants_1 = require("../constants");
 const typeEnum = Object.freeze({
     numeric: 0,
     string: 1,
@@ -105,7 +106,7 @@ function convertDaikinDevice(device, gatewayClass) {
                 else
                     multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint).value;
                 let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-                daikinValue = device.getData(value.managementPoint, value.dataPoint, dataPointPath).value || "auto";
+                daikinValue = device.getData(value.managementPoint, value.dataPoint, dataPointPath).value ?? "auto";
             }
             if (value.converter != undefined) {
                 daikinValue = convert(value.converter, daikinValue, 0);
@@ -321,6 +322,20 @@ async function updateDaikinDevice(device, gatewayClass, events) {
     logger.debug(`[BaseModules.ts] => updateDaikinDevice completed for ${deviceId}: success=${result.success}, hasUpdates=${result.hasUpdates}, hasErrors=${result.hasErrors}`);
     return result;
 }
+async function executeSetDataWithRetry(deviceD, deviceId, def, dataPointPath, value) {
+    const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
+    const retryKey = dataPointPath
+        ? `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`
+        : `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`;
+    await rateLimiter.executeWithRetry(async () => {
+        await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, value, { updateLocalData: true });
+    }, retryKey, {
+        maxRetries: 3,
+        baseDelay: 1000,
+        maxDelay: 60000,
+    });
+    await cache.set(`device_${deviceId}`, deviceD, constants_1.DEVICE_CACHE_TTL_MS);
+}
 async function validateData(device, def, value) {
     try {
         const deviceId = device.getId();
@@ -384,16 +399,7 @@ async function validateData(device, def, value) {
         logger.debug(`[BaseModules.ts] => API CALL DETAILS - managementPoint: "${def.managementPoint}", dataPoint: "${def.dataPoint}", dataPointPath: null, value: "${data.value}" (type: ${typeof data.value})`);
         logger.debug(`[BaseModules.ts] => API CALL DETAILS - Current params value: "${params.value}", settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
         try {
-            const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
-            await rateLimiter.executeWithRetry(async () => {
-                logger.debug(`[BaseModules.ts] => Executing setData: deviceD.setData("${def.managementPoint}", "${def.dataPoint}", undefined, ${JSON.stringify(data.value)}, {updateLocalData: true})`);
-                await deviceD.setData(def.managementPoint, def.dataPoint, undefined, data.value, { updateLocalData: true });
-            }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`, {
-                maxRetries: 3,
-                baseDelay: 1000,
-                maxDelay: 60000
-            });
-            await cache.set(`device_${deviceId}`, deviceD, 10800000);
+            await executeSetDataWithRetry(deviceD, deviceId, def, undefined, data.value);
             logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint} and cache updated`);
             return true;
         }
@@ -447,16 +453,7 @@ async function validateDataPath(device, def, dataPointPath, value) {
         logger.debug(`[BaseModules.ts] => API CALL DETAILS - managementPoint: "${def.managementPoint}", dataPoint: "${def.dataPoint}", dataPointPath: "${dataPointPath}", value: "${data.value}" (type: ${typeof data.value})`);
         logger.debug(`[BaseModules.ts] => API CALL DETAILS - Current params value: "${params.value}", settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
         try {
-            const { rateLimiter } = await Promise.resolve().then(() => __importStar(require("../rateLimiter")));
-            await rateLimiter.executeWithRetry(async () => {
-                logger.debug(`[BaseModules.ts] => Executing setData: deviceD.setData("${def.managementPoint}", "${def.dataPoint}", "${dataPointPath}", ${JSON.stringify(data.value)}, {updateLocalData: true})`);
-                await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value, { updateLocalData: true });
-            }, `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`, {
-                maxRetries: 3,
-                baseDelay: 1000,
-                maxDelay: 60000
-            });
-            await cache.set(`device_${deviceId}`, deviceD, 10800000);
+            await executeSetDataWithRetry(deviceD, deviceId, def, dataPointPath, data.value);
             logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath} and cache updated`);
             return true;
         }
@@ -516,28 +513,42 @@ function convert(converter, value, to) {
             if (to == 1)
                 return convertBinary1(value);
             break;
+        case converterEnum.string:
+            if (value === undefined || value === null)
+                return value;
+            return String(value);
         case converterEnum.numeric:
             return parseFloat(value);
         case converterEnum.consumption:
             if (to != 0)
                 return 0;
             return convertConsumption(value);
+        default:
+            return value;
     }
 }
 function convertBinary0(value) {
     switch (value) {
         case 'on':
+        case true:
             return true;
         case 'off':
+        case false:
             return false;
+        default:
+            return value;
     }
 }
 function convertBinary1(value) {
     switch (value) {
         case true:
+        case 'on':
             return 'on';
         case false:
+        case 'off':
             return 'off';
+        default:
+            return value;
     }
 }
 function convertConsumption(values) {

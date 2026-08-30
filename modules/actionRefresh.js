@@ -57,7 +57,7 @@ async function shouldMergePostActionWithPoll() {
     if (getActionRefreshStrategy() !== 'merge_with_poll') {
         return false;
     }
-    const nextPollingAt = (0, cron_1.getNextPollingAt)();
+    const nextPollingAt = (0, cron_1.getEffectiveNextPollingAt)();
     if (nextPollingAt <= 0) {
         return false;
     }
