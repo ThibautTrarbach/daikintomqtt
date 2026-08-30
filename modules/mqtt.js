@@ -7,6 +7,7 @@ exports.publishConfig = publishConfig;
 const mqtt_1 = require("mqtt");
 const mqttLifecycle_1 = require("./mqttLifecycle");
 Object.defineProperty(exports, "setMqttRepublishHandler", { enumerable: true, get: function () { return mqttLifecycle_1.setMqttRepublishHandler; } });
+const shutdown_1 = require("./shutdown");
 async function getOptions() {
     const clientId = `mqtt_${Math.random().toString(16).slice(3)}`;
     const baseTopic = config.mqtt.topic;
@@ -87,8 +88,16 @@ function shouldSkipPublish(topic, data, cachedData) {
 }
 async function publishToMQTT(topic, data) {
     try {
+        if ((0, shutdown_1.isShuttingDown)()) {
+            logger.debug(`[mqtt.ts] => Skipping publish to ${topic} during shutdown`);
+            return;
+        }
         if (!global.mqttClient) {
             throw new Error("MQTT client not initialized");
+        }
+        if (mqttClient.disconnecting) {
+            logger.debug(`[mqtt.ts] => Skipping publish to ${topic}, MQTT client is disconnecting`);
+            return;
         }
         if (!mqttClient.connected) {
             logger.warn(`[mqtt.ts] => MQTT client not connected, attempting to publish to topic: ${topic}`);

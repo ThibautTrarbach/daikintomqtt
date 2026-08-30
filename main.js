@@ -42,6 +42,7 @@ const actionRefresh_1 = require("./modules/actionRefresh");
 const cron_2 = require("./modules/cron");
 const daikin_1 = require("./modules/daikin");
 const mqttLifecycle_1 = require("./modules/mqttLifecycle");
+const shutdown_1 = require("./modules/shutdown");
 const tokenPaths_1 = require("./modules/tokenPaths");
 const cache_manager_1 = require("cache-manager");
 const fs_1 = __importDefault(require("fs"));
@@ -67,6 +68,7 @@ const promises_1 = require("timers/promises");
         global.logger.info("[main.ts] => DaikinToMQTT started successfully!");
         const shutdown = async (signal) => {
             global.logger.info(`[main.ts] => ${signal} received, shutting down gracefully...`);
+            (0, shutdown_1.beginShutdown)();
             (0, actionRefresh_1.clearPostActionTimer)();
             (0, modules_1.clearPendingCommands)();
             (0, modules_1.clearGatewayCache)();
@@ -88,6 +90,17 @@ const promises_1 = require("timers/promises");
         };
         process.on('SIGINT', () => { void shutdown('SIGINT'); });
         process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
+        process.on('unhandledRejection', (reason) => {
+            const message = reason instanceof Error ? reason.message : String(reason);
+            if ((0, shutdown_1.isShuttingDown)() && message.includes('client disconnecting')) {
+                global.logger.debug(`[main.ts] => Ignored unhandled rejection during shutdown: ${message}`);
+                return;
+            }
+            global.logger.error(`[main.ts] => Unhandled rejection: ${message}`);
+            if (reason instanceof Error && reason.stack) {
+                global.logger.debug(`[main.ts] => Stack trace: ${reason.stack}`);
+            }
+        });
     }
     catch (error) {
         if (!global.logger) {

@@ -61,6 +61,7 @@ const paths_1 = require("./paths");
 const constants_2 = require("./constants");
 const mqtt_2 = require("./mqtt");
 const errorHandler_1 = require("./errorHandler");
+const shutdown_1 = require("./shutdown");
 function isAuthFailure(error) {
     if (error instanceof errorHandler_1.AuthenticationError) {
         return true;
@@ -199,12 +200,16 @@ async function loadDaikinAPI() {
     daikinClient.on('websocket_connected', async () => {
         logger.info('[daikin.ts] => WebSocket connected - receiving real-time updates');
         await cache.set('ws/connected', true);
-        await updateSystemBridge();
+        if (!(0, shutdown_1.isShuttingDown)()) {
+            await updateSystemBridge();
+        }
     });
     daikinClient.on('websocket_disconnected', async (info) => {
         logger.info(`[daikin.ts] => WebSocket disconnected${info?.reconnecting ? ' (reconnecting)' : ''}`);
         await cache.set('ws/connected', false);
-        await updateSystemBridge();
+        if (!(0, shutdown_1.isShuttingDown)()) {
+            await updateSystemBridge();
+        }
     });
     daikinClient.on('websocket_device_update', async (update) => {
         try {
@@ -987,9 +992,18 @@ async function updateSystemBridge(rateLimitStatus, devices, authorizationInfo, e
     await (0, mqtt_2.publishConfig)('authorization_timeout', systemBridge.authorizationTimeout ? 'true' : 'false');
 }
 async function publishSystemBridge(systemBridge) {
-    await (0, mqtt_1.publishToMQTT)(instanceId_1.INSTANCE_ID, JSON.stringify(systemBridge));
-    if (config.integration?.jeedom) {
-        await (0, converter_1.makeDefineFile)(systemBridge, null);
+    try {
+        await (0, mqtt_1.publishToMQTT)(instanceId_1.INSTANCE_ID, JSON.stringify(systemBridge));
+        if (config.integration?.jeedom) {
+            await (0, converter_1.makeDefineFile)(systemBridge, null);
+        }
+    }
+    catch (error) {
+        if ((0, shutdown_1.isShuttingDown)()) {
+            logger.debug(`[daikin.ts] => Skipping system bridge publish during shutdown`);
+            return;
+        }
+        throw error;
     }
 }
 function getUnsupportedModules() {
