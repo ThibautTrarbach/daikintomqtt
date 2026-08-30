@@ -40,6 +40,7 @@ const https = __importStar(require("node:https"));
 const http = __importStar(require("node:http"));
 const node_child_process_1 = require("node:child_process");
 const node_url_1 = require("node:url");
+const types_1 = require("./types");
 let transportMode = 'node';
 function configureHttpTransport(mode) {
     const envMode = process.env.DAIKIN_HTTP_TRANSPORT;
@@ -52,10 +53,18 @@ function nodeHttpRequest(url, options, postData) {
     return new Promise((resolve, reject) => {
         const parsed = new node_url_1.URL(url);
         const lib = parsed.protocol === 'https:' ? https : http;
-        const req = lib.request(url, {
+        const reqOptions = {
             method: options.method,
-            headers: options.headers,
-        }, (res) => {
+            headers: {
+                'User-Agent': types_1.DAIKIN_MOBILE_CONFIG.userAgent,
+                ...options.headers,
+                ...(postData ? { 'Content-Length': Buffer.byteLength(postData).toString() } : {}),
+            },
+        };
+        if (parsed.protocol === 'https:') {
+            reqOptions.autoSelectFamily = true;
+        }
+        const req = lib.request(parsed, reqOptions, (res) => {
             const chunks = [];
             res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
             res.on('end', () => {
@@ -79,10 +88,12 @@ function nodeHttpRequest(url, options, postData) {
 function curlHttpRequest(url, options, postData) {
     return new Promise((resolve, reject) => {
         const args = ['-sS', '-X', options.method, '-w', '\n%{http_code}', '--max-time', '30'];
-        if (options.headers) {
-            for (const [key, value] of Object.entries(options.headers)) {
-                args.push('-H', `${key}: ${value}`);
-            }
+        const headers = {
+            'User-Agent': types_1.DAIKIN_MOBILE_CONFIG.userAgent,
+            ...options.headers,
+        };
+        for (const [key, value] of Object.entries(headers)) {
+            args.push('-H', `${key}: ${value}`);
         }
         if (postData !== undefined) {
             args.push('-d', postData);

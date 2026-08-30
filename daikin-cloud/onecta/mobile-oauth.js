@@ -198,14 +198,19 @@ class DaikinMobileOAuth {
         const oidcBase = `${types_1.DAIKIN_MOBILE_CONFIG.gigyaBaseUrl}/oidc/op/v1.0/${types_1.DAIKIN_MOBILE_CONFIG.apiKey}`;
         const url = `${oidcBase}/authorize?${params}`;
         const response = await this.httpsRequest(url, { method: 'GET' });
-        if (response.statusCode === 302 && response.headers.location) {
+        const redirectStatus = response.statusCode >= 300 && response.statusCode < 400;
+        if (redirectStatus && response.headers.location) {
             const location = String(response.headers.location);
             const contextMatch = location.match(/context=([^&]+)/);
             if (contextMatch) {
                 return decodeURIComponent(contextMatch[1]);
             }
         }
-        throw new Error('Failed to get OIDC context');
+        const { hostname } = new URL(url);
+        const snippet = response.body.trim().slice(0, 200);
+        throw new Error(`Failed to get OIDC context: ${hostname} returned HTTP ${response.statusCode}`
+            + (response.headers.location ? ` (Location: ${String(response.headers.location).slice(0, 120)})` : '')
+            + (snippet ? `: ${snippet}` : ' with an empty body'));
     }
     async initGigyaSdk(context) {
         const proxyUrl = `https://id.daikin.eu/cdc/onecta/oidc/proxy.html?context=${encodeURIComponent(context)}&client_id=${types_1.DAIKIN_MOBILE_CONFIG.clientId}&mode=login&scope=${encodeURIComponent(types_1.DAIKIN_MOBILE_CONFIG.scope)}&gig_skipConsent=true`;

@@ -38,5 +38,6 @@ export declare const DAIKIN_MOBILE_CONFIG: {
     idpTokenEndpoint: string;
     scope: string;
     apiBaseUrl: string;
+    userAgent: string;
 };
 export type { AuthMode };
