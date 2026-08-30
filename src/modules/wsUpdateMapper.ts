@@ -3,6 +3,24 @@ import { DaikinCloudDevice } from '../daikin-cloud';
 import { publishToMQTT } from './mqtt';
 import { DEVICE_CACHE_TTL_MS, WS_CONFIRMATION_TTL_MS } from './constants';
 
+function resolveEmbeddedId(device: DaikinCloudDevice, update: WebSocketDeviceUpdate): string {
+	const points = device.managementPoints;
+	if (update.embeddedId in points) {
+		return update.embeddedId;
+	}
+	if (update.managementPointId && update.managementPointId in points) {
+		return update.managementPointId;
+	}
+	if (update.managementPointId) {
+		for (const id of Object.keys(points)) {
+			if (id === update.managementPointId || id.startsWith(update.managementPointId)) {
+				return id;
+			}
+		}
+	}
+	return update.embeddedId;
+}
+
 async function recordWebSocketConfirmation(deviceId: string): Promise<void> {
 	const key = `ws/confirmed/${deviceId}`;
 	await cache.set(key, Date.now(), WS_CONFIRMATION_TTL_MS);
@@ -33,9 +51,13 @@ async function handleWebSocketDeviceUpdate(update: WebSocketDeviceUpdate): Promi
 		return;
 	}
 
-	const applied = device.applyWebSocketUpdate(update.embeddedId, update.characteristicName, update.data);
+	const embeddedId = resolveEmbeddedId(device, update);
+	const applied = device.applyWebSocketUpdate(embeddedId, update.characteristicName, update.data);
 	if (!applied) {
-		logger.debug(`[wsUpdateMapper.ts] => Could not apply WS update ${update.characteristicName} on ${update.deviceId}`);
+		logger.debug(
+			`[wsUpdateMapper.ts] => Could not apply WS update ${update.characteristicName} on ${update.deviceId}`
+			+ ` (embeddedId=${embeddedId}, ref=${update.data.ref ?? 'none'})`,
+		);
 		return;
 	}
 

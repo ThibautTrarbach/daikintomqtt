@@ -235,19 +235,107 @@ export class DaikinCloudDevice extends EventEmitter<DaikinCloudDeviceEvents> {
 
     /**
      * Apply a partial WebSocket update to the in-memory device structure.
+     * Supports both simple characteristics ({ value }) and traversed nested maps
+     * (sensoryData, temperatureControl, fanControl, …) used by getData(dataPointPath).
      */
-    applyWebSocketUpdate(embeddedId: string, characteristicName: string, data: { value: unknown }): boolean {
+    applyWebSocketUpdate(
+        embeddedId: string,
+        characteristicName: string,
+        data: { value: unknown; ref?: string },
+    ): boolean {
         const mp = this.managementPoints[embeddedId];
         if (!mp) {
             return false;
         }
         const dp = mp[characteristicName];
-        if (!dp) {
+        if (!dp || typeof dp !== 'object' || dp === null) {
             return false;
         }
-        if (typeof dp === 'object' && dp !== null && 'value' in dp) {
+
+        if (this.#isTraversedDatapointMap(dp)) {
+            if (typeof data.value !== 'object' || data.value === null) {
+                return false;
+            }
+            const changed = this.#mergeTraversedWebSocketValue(
+                dp as Record<string, unknown>,
+                data.value as Record<string, unknown>,
+                data.ref,
+            );
+            if (changed) {
+                this.emit('updated');
+            }
+            return changed;
+        }
+
+        if ('value' in dp) {
             (dp as { value: unknown }).value = data.value;
             this.emit('updated');
+            return true;
+        }
+
+        return false;
+    }
+
+    #isTraversedDatapointMap(dp: object): boolean {
+        return Object.keys(dp).some((key) => key.startsWith('/'));
+    }
+
+    #isDatapointLeaf(obj: unknown): boolean {
+        if (typeof obj !== 'object' || obj === null) {
+            return false;
+        }
+        const keys = Object.keys(obj);
+        return keys.includes('value') || keys.includes('settable') || keys.includes('unit');
+    }
+
+    #mergeTraversedWebSocketValue(
+        target: Record<string, unknown>,
+        incoming: Record<string, unknown>,
+        ref?: string,
+    ): boolean {
+        if (ref) {
+            const path = ref.startsWith('/') ? ref : `/${ref}`;
+            return this.#mergeLeafAtPath(target, path, incoming);
+        }
+
+        let changed = false;
+        const walk = (obj: Record<string, unknown>, prefix: string): void => {
+            for (const [key, val] of Object.entries(obj)) {
+                if (val === null || val === undefined) {
+                    continue;
+                }
+                const path = `${prefix}/${key}`;
+                if (this.#isDatapointLeaf(val)) {
+                    if (this.#mergeLeafAtPath(target, path, val as Record<string, unknown>)) {
+                        changed = true;
+                    }
+                } else if (typeof val === 'object') {
+                    walk(val as Record<string, unknown>, path);
+                }
+            }
+        };
+        walk(incoming, '');
+        return changed;
+    }
+
+    #mergeLeafAtPath(
+        target: Record<string, unknown>,
+        path: string,
+        leaf: Record<string, unknown>,
+    ): boolean {
+        const existing = target[path];
+        if (existing && typeof existing === 'object' && existing !== null && 'value' in existing) {
+            if ('value' in leaf && (existing as { value: unknown }).value !== leaf.value) {
+                (existing as { value: unknown }).value = leaf.value;
+                if ('unit' in leaf) {
+                    (existing as Record<string, unknown>).unit = leaf.unit;
+                }
+                return true;
+            }
+            return false;
+        }
+        if (!existing && 'value' in leaf) {
+            target[path] = { ...leaf };
             return true;
         }
         return false;
