@@ -2,6 +2,7 @@ import * as https from 'node:https';
 import * as http from 'node:http';
 import { spawn } from 'node:child_process';
 import { URL } from 'node:url';
+import { DAIKIN_MOBILE_CONFIG } from './types';
 
 export type HttpTransportMode = 'node' | 'curl';
 
@@ -30,12 +31,20 @@ function nodeHttpRequest(
 	return new Promise((resolve, reject) => {
 		const parsed = new URL(url);
 		const lib = parsed.protocol === 'https:' ? https : http;
-		const req = lib.request(
-			url,
-			{
-				method: options.method,
-				headers: options.headers,
+		const reqOptions: https.RequestOptions & { autoSelectFamily?: boolean } = {
+			method: options.method,
+			headers: {
+				'User-Agent': DAIKIN_MOBILE_CONFIG.userAgent,
+				...options.headers,
+				...(postData ? { 'Content-Length': Buffer.byteLength(postData).toString() } : {}),
 			},
+		};
+		if (parsed.protocol === 'https:') {
+			reqOptions.autoSelectFamily = true;
+		}
+		const req = lib.request(
+			parsed,
+			reqOptions,
 			(res) => {
 				const chunks: Buffer[] = [];
 				res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
@@ -66,10 +75,12 @@ function curlHttpRequest(
 ): Promise<HttpResponse> {
 	return new Promise((resolve, reject) => {
 		const args = ['-sS', '-X', options.method, '-w', '\n%{http_code}', '--max-time', '30'];
-		if (options.headers) {
-			for (const [key, value] of Object.entries(options.headers)) {
-				args.push('-H', `${key}: ${value}`);
-			}
+		const headers = {
+			'User-Agent': DAIKIN_MOBILE_CONFIG.userAgent,
+			...options.headers,
+		};
+		for (const [key, value] of Object.entries(headers)) {
+			args.push('-H', `${key}: ${value}`);
 		}
 		if (postData !== undefined) {
 			args.push('-d', postData);
