@@ -174,12 +174,20 @@ async function loadDaikinAPI() {
 
 	daikinClient.on('rate_limit_status', async (rateLimitStatus) => {
 		logger.debug(`[daikin.ts] => EVENT - Daikin Rate Limit Status - START`)
-		// Store in cache for later retrieval
-		await cache.set('rate/limitMinute', rateLimitStatus.limitMinute)
-		await cache.set('rate/remainingMinute', rateLimitStatus.remainingMinute)
-		await cache.set('rate/limitDay', rateLimitStatus.limitDay)
-		await cache.set('rate/remainingDay', rateLimitStatus.remainingDay)
-		
+		// Merge partial header updates (common when WebSocket is active: some HTTP responses omit minute headers)
+		if (rateLimitStatus.limitMinute !== undefined) {
+			await cache.set('rate/limitMinute', rateLimitStatus.limitMinute);
+		}
+		if (rateLimitStatus.remainingMinute !== undefined) {
+			await cache.set('rate/remainingMinute', rateLimitStatus.remainingMinute);
+		}
+		if (rateLimitStatus.limitDay !== undefined) {
+			await cache.set('rate/limitDay', rateLimitStatus.limitDay);
+		}
+		if (rateLimitStatus.remainingDay !== undefined) {
+			await cache.set('rate/remainingDay', rateLimitStatus.remainingDay);
+		}
+
 		// Update the rate limiter
 		const {rateLimiter} = await import("./rateLimiter");
 		rateLimiter.updateRateLimit(rateLimitStatus);
