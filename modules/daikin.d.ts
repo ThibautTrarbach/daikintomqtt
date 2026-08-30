@@ -1,5 +1,5 @@
 import { SystemBridge } from "./gateway";
-import { DaikinCloudDevice } from "daikin-controller-cloud/dist/device";
+import { DaikinCloudDevice } from "../daikin-cloud";
 declare function loadDaikinAPI(): Promise<void>;
 declare function startDaikinAPI(): Promise<void>;
 declare function subscribeDevices(devices: DaikinCloudDevice[]): Promise<void>;

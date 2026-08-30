@@ -1,4 +1,4 @@
-import { DaikinCloudDevice } from "daikin-controller-cloud/dist/device";
+import { DaikinCloudDevice } from "../../daikin-cloud";
 interface HomeAssistantDevice {
     identifiers: string[];
     name: string;

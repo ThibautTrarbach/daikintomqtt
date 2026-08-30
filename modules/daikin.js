@@ -48,7 +48,7 @@ const node_path_1 = require("node:path");
 const gateway_1 = require("./gateway");
 const converter_1 = require("./converter");
 const mqtt_1 = require("./mqtt");
-const daikin_controller_cloud_1 = require("daikin-controller-cloud");
+const daikin_cloud_1 = require("../daikin-cloud");
 const fs_1 = __importDefault(require("fs"));
 const instanceId_1 = require("./instanceId");
 async function loadDaikinAPI() {
@@ -56,14 +56,16 @@ async function loadDaikinAPI() {
         logger.error('[daikin.ts] => Please set the clientID and clientSecret in the settings files');
         process.exit(0);
     }
-    const daikinClient = new daikin_controller_cloud_1.DaikinCloudController({
+    const daikinClient = new daikin_cloud_1.DaikinCloudController({
         oidcClientId: config.daikin.clientID,
         oidcClientSecret: config.daikin.clientSecret,
         oidcCallbackServerBindAddr: '0.0.0.0',
         oidcCallbackServerPort: config.daikin.clientPort,
         oidcCallbackServerExternalAddress: config.daikin.clientURL,
         oidcTokenSetFilePath: (0, node_path_1.resolve)(datadir, 'daikin-controller-cloud-tokenset'),
-        oidcAuthorizationTimeoutS: 120
+        oidcAuthorizationTimeoutS: 120,
+        useMock: config.daikin.useMock ?? false,
+        mockId: config.daikin.mockId ?? undefined,
     });
     daikinClient.on('authorization_request', async (url) => {
         logger.info(`[daikin.ts] =>
@@ -238,6 +240,7 @@ async function subscribeDevices(devices) {
         if (!err)
             logger.info("[daikin.ts] => Subscribe to " + systemBridgeSetTopic);
     });
+    const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
     mqttClient.on('message', async function (topic, message) {
         try {
             const topicString = topic.toString();
@@ -270,7 +273,22 @@ async function subscribeDevices(devices) {
                 }
                 return;
             }
-            for (let dev of devices) {
+            if (topicString === refreshTopicPath) {
+                logger.info("[daikin.ts] => Refresh command received, updating all devices");
+                try {
+                    await sendDevice(null, true, "mqtt_refresh_legacy");
+                    await updateSystemBridge();
+                }
+                catch (refreshError) {
+                    logger.error(`[daikin.ts] => Error during legacy refresh: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+                }
+                return;
+            }
+            const cachedDevices = await cache.get('devices');
+            const devicesList = (cachedDevices !== undefined && cachedDevices !== null)
+                ? cachedDevices
+                : await getDevices();
+            for (let dev of devicesList) {
                 const deviceId = dev.getId();
                 if (!topicString.includes(deviceId))
                     continue;
