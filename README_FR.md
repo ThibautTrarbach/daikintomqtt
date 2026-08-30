@@ -195,6 +195,10 @@ yarn build
 npm run build
 ```
 
+## Changelog
+
+Consultez [CHANGELOG_FR.md](CHANGELOG_FR.md) pour la liste détaillée des modifications.
+
 ## Support & aide
 Si vous avez besoin d'aide, vous pouvez consulter les issues ouvertes sur GitHub. N'hésitez pas à proposer des Pull Requests si vous corrigez un problème, ajoutez un nouvel appareil ou si vous voulez simplement partager le projet.
 

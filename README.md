@@ -164,5 +164,9 @@ yarn build
 npm run build
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a detailed list of changes.
+
 ## Support & help
 If you need assistance you can check [opened issues](https://github.com/ThibautTrarbach/daikintomqtt/issues). Feel free to help with Pull Requests when you were able to fix things or add new devices or just share the love on social media.
