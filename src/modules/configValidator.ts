@@ -161,12 +161,23 @@ function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 	}
 
 	if (system.energyStatsRefreshTime !== undefined) {
-		if (!/^\d{1,2}:\d{2}$/.test(system.energyStatsRefreshTime)) {
+		const match = /^(\d{1,2}):(\d{2})$/.exec(system.energyStatsRefreshTime.trim());
+		if (!match) {
 			errors.push({
 				field: 'system.energyStatsRefreshTime',
 				message: 'energyStatsRefreshTime must be in HH:MM format (e.g. 23:58)',
 				value: system.energyStatsRefreshTime
 			});
+		} else {
+			const hour = parseInt(match[1], 10);
+			const minute = parseInt(match[2], 10);
+			if (hour > 23 || minute > 59) {
+				errors.push({
+					field: 'system.energyStatsRefreshTime',
+					message: 'energyStatsRefreshTime hour must be 0-23 and minute 0-59',
+					value: system.energyStatsRefreshTime
+				});
+			}
 		}
 	}
 
@@ -319,6 +330,22 @@ function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 			field: 'daikin.enableWebSocket',
 			message: 'enableWebSocket must be a boolean',
 			value: daikin.enableWebSocket,
+		});
+	}
+
+	if (daikin.useMock !== undefined && typeof daikin.useMock !== 'boolean') {
+		errors.push({
+			field: 'daikin.useMock',
+			message: 'useMock must be a boolean',
+			value: daikin.useMock,
+		});
+	}
+
+	if (daikin.mockId !== undefined && daikin.mockId !== null && typeof daikin.mockId !== 'string') {
+		errors.push({
+			field: 'daikin.mockId',
+			message: 'mockId must be a string or null',
+			value: daikin.mockId,
 		});
 	}
 

@@ -1,12 +1,14 @@
-import cron from "node-cron";
+import cron, { ScheduledTask } from "node-cron";
 import {sendDevice} from "./daikin";
 import {timeUpdateFallback, initActionRefreshOnBoot} from "./actionRefresh";
 import {canRefresh, getPollingIntervalMultiplier, incrementSkippedRefreshCount} from "./requestBudget";
 
 let nextPollingAt = 0;
+let pausedNextPollingAt = 0;
 let pollingTimer: NodeJS.Timeout | null = null;
 let pollingPaused = false;
 let pollingPausedAt = 0;
+const scheduledCronTasks: ScheduledTask[] = [];
 
 /**
  * Determines if we are currently in night period
@@ -52,7 +54,7 @@ async function getCurrentPollingInterval(): Promise<number> {
 	}
 
 	const multiplier = await getPollingIntervalMultiplier();
-	return Math.min(60, Math.round(interval * multiplier));
+	return Math.round(interval * multiplier);
 }
 
 /**
@@ -106,6 +108,9 @@ function pausePolling(): void {
 	}
 	pollingPaused = true;
 	pollingPausedAt = Date.now();
+	if (nextPollingAt > 0) {
+		pausedNextPollingAt = nextPollingAt;
+	}
 	if (pollingTimer) {
 		clearTimeout(pollingTimer);
 		pollingTimer = null;
@@ -120,8 +125,16 @@ function resumePolling(): void {
 	}
 	pollingPaused = false;
 	pollingPausedAt = 0;
+	pausedNextPollingAt = 0;
 	logger.debug('[cron.ts] => Polling resumed after post-action debounce');
 	void scheduleNextPolling();
+}
+
+function getEffectiveNextPollingAt(): number {
+	if (pollingPaused && pausedNextPollingAt > 0) {
+		return pausedNextPollingAt;
+	}
+	return nextPollingAt;
 }
 
 async function scheduleNextPolling() {
@@ -220,17 +233,17 @@ async function loadCron() {
 		
 		const energyTime = parseEnergyStatsCronTime();
 		const energyCron = `${energyTime.minute} ${energyTime.hour} * * *`;
-		cron.schedule(energyCron, runEnergyStatsRefresh);
+		scheduledCronTasks.push(cron.schedule(energyCron, runEnergyStatsRefresh));
 		logger.debug(`[cron.ts] => CRON task scheduled for daily energy stats at ${config.system?.energyStatsRefreshTime ?? '23:58'}`);
 		
 		// Safety net every 60s for post-action refresh after restart
-		cron.schedule('0 * * * * *', async function () {
+		scheduledCronTasks.push(cron.schedule('0 * * * * *', async function () {
 			try {
 				await timeUpdateFallback();
 			} catch (error) {
 				logger.error(`[cron.ts] => CRON - Error in post-action fallback: ${error instanceof Error ? error.message : String(error)}`);
 			}
-		});
+		}));
 		logger.debug("[cron.ts] => CRON task scheduled for post-action fallback every 60s");
 		
 		logger.info("[cron.ts] => CRON system initialized successfully");
@@ -247,13 +260,29 @@ function isPollingPaused(): boolean {
 	return pollingPaused;
 }
 
+function stopCronTasks(): void {
+	if (pollingTimer) {
+		clearTimeout(pollingTimer);
+		pollingTimer = null;
+	}
+	for (const task of scheduledCronTasks) {
+		task.stop();
+	}
+	scheduledCronTasks.length = 0;
+	nextPollingAt = 0;
+	pausedNextPollingAt = 0;
+	pollingPaused = false;
+}
+
 export {
 	loadCron,
 	getNextPollingAt,
+	getEffectiveNextPollingAt,
 	getMergeWithPollWindowMs,
 	isNightTime,
 	getCurrentPollingInterval,
 	pausePolling,
 	resumePolling,
 	isPollingPaused,
+	stopCronTasks,
 }

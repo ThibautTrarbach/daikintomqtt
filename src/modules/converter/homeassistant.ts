@@ -2,6 +2,30 @@ import {ModulesDescriptionMetadata} from "../../types";
 import {typeEnum} from "../gateway";
 import {Gateways} from "../../types";
 import {DaikinCloudDevice} from "../../daikin-cloud";
+import {APP_VERSION, HA_AVAILABILITY_TOPIC_SUFFIX} from "../constants";
+
+function toObjectId(propertyKey: string): string {
+	return propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+}
+
+function valueJsonTemplate(propertyKey: string, defaultValue: string): string {
+	return `{{ value_json['${propertyKey}'] | default(${defaultValue}) }}`;
+}
+
+function buildAvailability(baseTopic: string) {
+	return [{
+		topic: `${baseTopic}/${HA_AVAILABILITY_TOPIC_SUFFIX}`,
+		payload_available: "false",
+		payload_not_available: "true"
+	}];
+}
+
+function buildOrigin() {
+	return {
+		name: "daikin2mqtt",
+		sw: APP_VERSION
+	};
+}
 
 // Mapping des modes Daikin vers les modes Home Assistant
 const daikinModeToHA: { [key: string]: string } = {
@@ -113,7 +137,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 					if (!discoveryConfigs["sensor"]) {
 						discoveryConfigs["sensor"] = {};
 					}
-					const objectId = key.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+					const objectId = toObjectId(key);
 					discoveryConfigs["sensor"][`${deviceId}_${objectId}`] = sensorConfig;
 				}
 			} else if (propertyMetadata.type === typeEnum.binary) {
@@ -136,7 +160,7 @@ function generateHADiscovery(data: object, modules: object, device: DaikinCloudD
 					if (!discoveryConfigs[componentType]) {
 						discoveryConfigs[componentType] = {};
 					}
-					const objectId = key.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
+					const objectId = toObjectId(key);
 					discoveryConfigs[componentType][`${deviceId}_${objectId}`] = switchConfig;
 				}
 			}
@@ -180,11 +204,7 @@ function generateClimateDiscovery(
 	const haConfig: HomeAssistantDiscoveryConfig = {
 		name: deviceName,
 		unique_id: `daikin_${deviceId}_climate`,
-		availability: [{
-			topic: `${global.config.mqtt.topic}/system/bridge/authorization_timeout`,
-			payload_available: "false",
-			payload_not_available: "true"
-		}],
+		availability: buildAvailability(global.config.mqtt.topic),
 		device: {
 			identifiers: [serialNumber || deviceId],
 			name: deviceName,
@@ -192,10 +212,7 @@ function generateClimateDiscovery(
 			model: modelInfo,
 			sw_version: firmwareVersion
 		},
-		origin: {
-			name: "daikin2mqtt",
-			sw: "1.1.0"
-		},
+		origin: buildOrigin(),
 		// Topics
 		state_topic: stateTopic,
 		command_topic: commandTopic,
@@ -282,13 +299,11 @@ function generateSensorDiscovery(
 		isEnergy = true;
 	}
 
-	const valuePath = propertyKey.replace(/^_/, "");
-
 	const haConfig: HomeAssistantDiscoveryConfig = {
 		name: `${deviceName} ${metadata.name}`,
-		unique_id: `daikin_${deviceId}_${propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")}`,
+		unique_id: `daikin_${deviceId}_${toObjectId(propertyKey)}`,
 		state_topic: stateTopic,
-		value_template: `{{ value_json.${valuePath} | default(0) }}`,
+		value_template: valueJsonTemplate(propertyKey, "0"),
 		device: {
 			identifiers: [serialNumber || deviceId],
 			name: deviceName,
@@ -296,15 +311,8 @@ function generateSensorDiscovery(
 			model: modelInfo,
 			sw_version: firmwareVersion
 		},
-		origin: {
-			name: "daikin2mqtt",
-			sw: "1.1.0"
-		},
-		availability: [{
-			topic: `${baseTopic}/system/bridge/authorization_timeout`,
-			payload_available: "false",
-			payload_not_available: "true"
-		}],
+		origin: buildOrigin(),
+		availability: buildAvailability(baseTopic),
 		qos: 0,
 		retain: true
 	};
@@ -341,13 +349,11 @@ function generateSwitchDiscovery(
 	stateTopic: string,
 	commandTopic: string
 ): HomeAssistantDiscoveryConfig | null {
-	const valuePath = propertyKey.replace(/^_/, "");
-
 	const haConfig: HomeAssistantDiscoveryConfig = {
 		name: `${deviceName} ${metadata.name}`,
-		unique_id: `daikin_${deviceId}_${propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "")}`,
+		unique_id: `daikin_${deviceId}_${toObjectId(propertyKey)}`,
 		state_topic: stateTopic,
-		state_template: `{{ value_json.${valuePath} | default(false) }}`,
+		value_template: valueJsonTemplate(propertyKey, "false"),
 		device: {
 			identifiers: [serialNumber || deviceId],
 			name: deviceName,
@@ -355,15 +361,8 @@ function generateSwitchDiscovery(
 			model: modelInfo,
 			sw_version: firmwareVersion
 		},
-		origin: {
-			name: "daikin2mqtt",
-			sw: "1.1.0"
-		},
-		availability: [{
-			topic: `${global.config.mqtt.topic}/system/bridge/authorization_timeout`,
-			payload_available: "false",
-			payload_not_available: "true"
-		}],
+		origin: buildOrigin(),
+		availability: buildAvailability(global.config.mqtt.topic),
 		qos: 0,
 		retain: true
 	};
@@ -374,6 +373,8 @@ function generateSwitchDiscovery(
 		haConfig.command_template = `{"${propertyKey}": {% if value == 'ON' %}true{% else %}false{% endif %}}`;
 		haConfig.payload_on = "ON";
 		haConfig.payload_off = "OFF";
+		haConfig.state_on = "true";
+		haConfig.state_off = "false";
 	} else {
 		// Sinon c'est un binary_sensor
 		haConfig.payload_on = "true";

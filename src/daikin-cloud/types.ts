@@ -35,9 +35,9 @@ export interface MobileClientConfig {
 }
 
 export const DAIKIN_MOBILE_CONFIG = {
-	apiKey: process.env.DAIKIN_API_KEY || '3_xRB3jaQ62bVjqXU1omaEsPDVYC0Twi1zfq1zHPu_5HFT0zWkDvZJS97Yw1loJnTm',
-	clientId: process.env.DAIKIN_CLIENT_ID || 'FjS6T5oZHvzpZENIDybFRdtK',
-	clientSecret: process.env.DAIKIN_CLIENT_SECRET || '_yWGLBGUnQFrN-u7uIOAZhSBsJOfcnBs0IS87wTgUvUmnLnEOs4NQmaKagqZBpQpG0XYl07KeCx8XHHKxAn24w',
+	apiKey: process.env.DAIKIN_API_KEY ?? '',
+	clientId: process.env.DAIKIN_CLIENT_ID ?? '',
+	clientSecret: process.env.DAIKIN_CLIENT_SECRET ?? '',
 	redirectUri: process.env.DAIKIN_REDIRECT_URI || 'daikinunified://cdc/',
 	gigyaBaseUrl: process.env.DAIKIN_GIGYA_BASE_URL || 'https://cdc.daikin.eu',
 	idpTokenEndpoint: process.env.DAIKIN_IDP_TOKEN_ENDPOINT || 'https://idp.onecta.daikineurope.com/v1/oidc/token',

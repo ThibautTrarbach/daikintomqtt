@@ -1,10 +1,11 @@
 import type { WebSocketDeviceUpdate } from '../daikin-cloud';
 import { DaikinCloudDevice } from '../daikin-cloud';
 import { publishToMQTT } from './mqtt';
+import { DEVICE_CACHE_TTL_MS, WS_CONFIRMATION_TTL_MS } from './constants';
 
 async function recordWebSocketConfirmation(deviceId: string): Promise<void> {
 	const key = `ws/confirmed/${deviceId}`;
-	await cache.set(key, Date.now(), 120);
+	await cache.set(key, Date.now(), WS_CONFIRMATION_TTL_MS);
 }
 
 async function wasConfirmedByWebSocket(deviceId: string | undefined, actionTs: number): Promise<boolean> {
@@ -50,14 +51,14 @@ async function handleWebSocketDeviceUpdate(update: WebSocketDeviceUpdate): Promi
 	await publishToMQTT(update.deviceId, gatewayJson);
 	logger.debug(`[wsUpdateMapper.ts] => Published WS update for ${update.deviceId}.${update.characteristicName}`);
 
-	await cache.set(`device_${update.deviceId}`, device, 10800000);
+	await cache.set(`device_${update.deviceId}`, device, DEVICE_CACHE_TTL_MS);
 
 	const cachedDevices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
 	if (cachedDevices) {
 		const idx = cachedDevices.findIndex((d) => d.getId() === update.deviceId);
 		if (idx >= 0) {
 			cachedDevices[idx] = device;
-			await cache.set('devices', cachedDevices, 10800000);
+			await cache.set('devices', cachedDevices, DEVICE_CACHE_TTL_MS);
 		}
 	}
 }

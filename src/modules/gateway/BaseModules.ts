@@ -3,6 +3,7 @@ import {Gateways, ModulePropertyMetadata, DevicesInformation} from "../../types"
 import {DaikinCloudDevice} from "../../daikin-cloud";
 import {publishToMQTT} from "../mqtt";
 import {schedulePostActionRefresh} from "../actionRefresh";
+import { DEVICE_CACHE_TTL_MS } from "../constants";
 
 // Generic type information for module properties
 const typeEnum = Object.freeze({
@@ -82,7 +83,7 @@ function convertDaikinDevice(device: any, gatewayClass: Gateways) {
 				else multipleValue = device.getData(value.multipleValue.managementPoint, value.multipleValue.dataPoint).value
 
 				let dataPointPath = value.dataPointPath.replace("#value#", multipleValue);
-				daikinValue = device.getData(value.managementPoint, value.dataPoint, dataPointPath).value || "auto"
+				daikinValue = device.getData(value.managementPoint, value.dataPoint, dataPointPath).value ?? "auto"
 			}
 
 			if (value.converter != undefined) {
@@ -318,7 +319,7 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 			// The key from metadata is the private property name (with underscore, e.g., "_onOffModeMain")
 			// But eventValue assigns via setter (without underscore, e.g., "onOffModeMain")
 			// The setter updates the private property, so we can read it directly
-			let propertyValue = gatewayClass[key];
+			let propertyValue = (gatewayClass as unknown as Record<string, unknown>)[key];
 			logger.debug(`[BaseModules.ts] => Initial read of ${key}: ${propertyValue} (type: ${typeof propertyValue})`);
 			
 			// If value is undefined and key starts with underscore, the setter might have been used
@@ -385,6 +386,35 @@ async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gatew
 	logger.debug(`[BaseModules.ts] => updateDaikinDevice completed for ${deviceId}: success=${result.success}, hasUpdates=${result.hasUpdates}, hasErrors=${result.hasErrors}`);
 	
 	return result;
+}
+
+/**
+ * Executes a cloud setData call with rate-limited retries and cache update.
+ */
+async function executeSetDataWithRetry(
+	deviceD: DaikinCloudDevice,
+	deviceId: string,
+	def: ModulePropertyMetadata,
+	dataPointPath: string | undefined,
+	value: unknown,
+): Promise<void> {
+	const { rateLimiter } = await import("../rateLimiter");
+	const retryKey = dataPointPath
+		? `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`
+		: `setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`;
+
+	await rateLimiter.executeWithRetry(
+		async () => {
+			await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, value, { updateLocalData: true });
+		},
+		retryKey,
+		{
+			maxRetries: 3,
+			baseDelay: 1000,
+			maxDelay: 60000,
+		},
+	);
+	await cache.set(`device_${deviceId}`, deviceD, DEVICE_CACHE_TTL_MS);
 }
 
 /**
@@ -482,22 +512,7 @@ async function validateData(device: DaikinCloudDevice, def: ModulePropertyMetada
 		logger.debug(`[BaseModules.ts] => API CALL DETAILS - Current params value: "${params.value}", settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
 		
 		try {
-			// Use rate limiter to handle automatic retries (max total duration enforced by RateLimiter)
-			const {rateLimiter} = await import("../rateLimiter");
-			await rateLimiter.executeWithRetry(
-				async () => {
-					logger.debug(`[BaseModules.ts] => Executing setData: deviceD.setData("${def.managementPoint}", "${def.dataPoint}", undefined, ${JSON.stringify(data.value)}, {updateLocalData: true})`);
-					await deviceD.setData(def.managementPoint, def.dataPoint, undefined, data.value, {updateLocalData: true});
-				},
-				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}`,
-				{
-					maxRetries: 3,
-					baseDelay: 1000,
-					maxDelay: 60000
-				}
-			);
-			// Update cache with the device that has local data updated
-			await cache.set(`device_${deviceId}`, deviceD, 10800000);
+			await executeSetDataWithRetry(deviceD, deviceId, def, undefined, data.value);
 			logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint} and cache updated`);
 			return true; // API call was made successfully
 		} catch (setError) {
@@ -571,22 +586,7 @@ async function validateDataPath(device: DaikinCloudDevice, def: ModulePropertyMe
 		logger.debug(`[BaseModules.ts] => API CALL DETAILS - Current params value: "${params.value}", settable: ${params.settable}, values: ${params.values ? JSON.stringify(params.values) : 'N/A'}`);
 		
 		try {
-			// Use rate limiter to handle automatic retries (action valable max 1h via rateLimiter)
-			const {rateLimiter} = await import("../rateLimiter");
-			await rateLimiter.executeWithRetry(
-				async () => {
-					logger.debug(`[BaseModules.ts] => Executing setData: deviceD.setData("${def.managementPoint}", "${def.dataPoint}", "${dataPointPath}", ${JSON.stringify(data.value)}, {updateLocalData: true})`);
-					await deviceD.setData(def.managementPoint, def.dataPoint, dataPointPath, data.value, {updateLocalData: true});
-				},
-				`setData-${deviceId}-${def.managementPoint}-${def.dataPoint}-${dataPointPath}`,
-				{
-					maxRetries: 3,
-					baseDelay: 1000,
-					maxDelay: 60000
-				}
-			);
-			// Update cache with the device that has local data updated
-			await cache.set(`device_${deviceId}`, deviceD, 10800000);
+			await executeSetDataWithRetry(deviceD, deviceId, def, dataPointPath, data.value);
 			logger.debug(`[BaseModules.ts] => Update successful for ${deviceId} - ${def.managementPoint}/${def.dataPoint}/${dataPointPath} and cache updated`);
 			return true; // API call was made successfully
 		} catch (setError) {
@@ -659,31 +659,44 @@ function convert(converter: number, value: any, to: number) {
 			if (to == 0) return convertBinary0(value);
 			if (to == 1) return convertBinary1(value);
 			break;
+		case converterEnum.string:
+			if (value === undefined || value === null) return value;
+			return String(value);
 		case converterEnum.numeric:
 			return parseFloat(value);
 		case converterEnum.consumption:
 			if (to != 0) return 0;
 			return convertConsumption(value);
+		default:
+			return value;
 	}
 }
 
 // Converts "on"/"off" into boolean
-function convertBinary0(value: string) {
+function convertBinary0(value: string | boolean) {
 	switch (value) {
 		case 'on':
-			return true
+		case true:
+			return true;
 		case 'off':
-			return false
+		case false:
+			return false;
+		default:
+			return value;
 	}
 }
 
 // Converts boolean into "on"/"off"
-function convertBinary1(value: boolean) {
+function convertBinary1(value: boolean | string) {
 	switch (value) {
 		case true:
-			return 'on'
+		case 'on':
+			return 'on';
 		case false:
-			return 'off'
+		case 'off':
+			return 'off';
+		default:
+			return value;
 	}
 }
 

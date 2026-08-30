@@ -9,6 +9,9 @@ function loadTokenFromFile(filePath: string): TokenSet | null {
 			const data = fs.readFileSync(filePath, 'utf8');
 			const parsed = JSON.parse(data) as TokenSet;
 			if (parsed && typeof parsed.access_token === 'string') {
+				if (parsed.expires_in && !parsed.expires_at) {
+					parsed.expires_at = Math.floor(Date.now() / 1000) + parsed.expires_in;
+				}
 				return parsed;
 			}
 		}

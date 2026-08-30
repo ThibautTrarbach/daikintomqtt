@@ -1,16 +1,24 @@
 import {connect} from "mqtt";
 import {IClientOptions} from "mqtt/types/lib/client";
+import {setMqttRepublishHandler, triggerMqttRepublish} from "./mqttLifecycle";
 
 async function getOptions() {
 	const clientId = `mqtt_${Math.random().toString(16).slice(3)}`
+	const baseTopic = config.mqtt.topic;
 
 	let option: IClientOptions = {
 		clientId,
 		clean: true,
 		connectTimeout: config.mqtt.connectTimeout,
-		username: (config.mqtt.username != null) ? config.mqtt.username : undefined,
-		password: (config.mqtt.password != null) ? config.mqtt.password : undefined,
+		username: (config.mqtt.auth === true && config.mqtt.username != null) ? config.mqtt.username : undefined,
+		password: (config.mqtt.auth === true && config.mqtt.password != null) ? config.mqtt.password : undefined,
 		reconnectPeriod: config.mqtt.reconnectPeriod,
+		will: {
+			topic: `${baseTopic}/system/bridge/availability`,
+			payload: 'offline',
+			qos: 0,
+			retain: true,
+		},
 	};
 
 	return option;
@@ -33,6 +41,8 @@ async function loadMQTTClient() {
 		// Handle MQTT events
 		mqttClient.on('connect', () => {
 			logger.info(`[mqtt.ts] => Connected to MQTT broker: ${mqttHost}`);
+			void publishConfig('availability', 'online');
+			void triggerMqttRepublish();
 		});
 
 		mqttClient.on('error', (error) => {
@@ -80,6 +90,13 @@ async function loadMQTTClient() {
 	}
 }
 
+function shouldSkipPublish(topic: string, data: string, cachedData: unknown): boolean {
+	if (config.system?.publishOnDelta === false) {
+		return false;
+	}
+	return cachedData === data;
+}
+
 async function publishToMQTT(topic: string, data: string): Promise<void> {
 	try {
 		if (!global.mqttClient) {
@@ -92,7 +109,7 @@ async function publishToMQTT(topic: string, data: string): Promise<void> {
 
 		// Check cache to avoid unnecessary publications
 		const cachedData = await cache.get(topic);
-		if (cachedData === data) {
+		if (shouldSkipPublish(topic, data, cachedData)) {
 			logger.debug(`[mqtt.ts] => Identical data in cache for ${topic}, publication skipped`);
 			return;
 		}
@@ -134,11 +151,13 @@ async function publishToMQTT(topic: string, data: string): Promise<void> {
 	}
 }
 
-async function publishConfig(key: string, value: any) {
-	await publishToMQTT('system/bridge/'+key, value.toString())
+async function publishConfig(key: string, value: string | boolean) {
+	await publishToMQTT('system/bridge/'+key, String(value))
 }
+
 export {
 	loadMQTTClient,
 	publishToMQTT,
-	publishConfig
+	publishConfig,
+	setMqttRepublishHandler,
 }

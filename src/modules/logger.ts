@@ -1,11 +1,10 @@
 import winston from "winston";
 import fs from "fs";
 import path from "path";
-const { combine, timestamp, printf, colorize, align } = winston.format;
+const { combine, timestamp, printf, align } = winston.format;
 
 function loadLogger() {
-	// Create log directory if it doesn't exist
-	const logDir = path.join(process.cwd(), 'log');
+	const logDir = path.join(global.datadir || process.cwd() + '/config', 'log');
 	if (!fs.existsSync(logDir)) {
 		fs.mkdirSync(logDir, { recursive: true });
 	}
@@ -17,20 +16,13 @@ function loadLogger() {
 			new winston.transports.File({
 				filename: path.join(logDir, 'error.log'),
 				level: 'error',
-				maxsize: 10485760, // 10MB
+				maxsize: 10485760,
 				maxFiles: 5,
 				tailable: true
 			}),
 			new winston.transports.File({
 				filename: path.join(logDir, 'combined.log'),
-				maxsize: 10485760, // 10MB
-				maxFiles: 5,
-				tailable: true
-			}),
-			new winston.transports.File({
-				filename: path.join(logDir, 'debug.log'),
-				level: 'debug',
-				maxsize: 10485760, // 10MB
+				maxsize: 10485760,
 				maxFiles: 5,
 				tailable: true
 			}),
@@ -43,9 +35,7 @@ function loadLogger() {
 		],
 	});
 
-	// Always add console in development, or if config is not yet loaded
-	// Config will be updated after loading in config.ts
-	const shouldAddConsole = process.env.NODE_ENV !== 'production' || 
+	const shouldAddConsole = process.env.NODE_ENV !== 'production' ||
 	                         (typeof global.config !== 'undefined' && global.config?.integration?.jeedom);
 
 	if (shouldAddConsole) {

@@ -2,6 +2,7 @@ import "reflect-metadata";
 import {modulesDataDescription} from "../decorator";
 import {typeEnum} from "./BaseModules";
 import {ClassModule, DevicesInformation} from "../../types";
+import { APP_VERSION } from "../constants";
 
 export class SystemBridge implements ClassModule {
 	private _device: DevicesInformation = {
@@ -9,7 +10,7 @@ export class SystemBridge implements ClassModule {
 		name: "Daikin2MQTT Bridge",
 		modelInfo: "Daikin2MQTT",
 		serialNumber: "Daikin2MQTT",
-		firmwareVersion: "2.0.4",
+		firmwareVersion: APP_VERSION,
 		isInErrorState: "false",
 		errorCode: ""
 	}

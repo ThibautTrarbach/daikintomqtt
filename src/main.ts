@@ -4,13 +4,16 @@ import {
 	loadLogger,
 	loadMQTTClient,
 	startDaikinAPI,
+	clearPendingCommands,
+	clearGatewayCache,
 } from "./modules";
-import {loadCron} from "./modules/cron";
+import {loadCron, stopCronTasks} from "./modules/cron";
 import {clearPostActionTimer} from "./modules/actionRefresh";
 import {pausePolling} from "./modules/cron";
 import {disableDaikinWebSocket} from "./modules/daikin";
+import {disconnectMqttClient} from "./modules/mqttLifecycle";
+import {getTokenFilePath} from "./modules/tokenPaths";
 import {createCache} from "cache-manager";
-import {resolve} from "node:path";
 import fs from "fs";
 import { setTimeout } from "timers/promises";
 
@@ -54,11 +57,19 @@ import { setTimeout } from "timers/promises";
 		const shutdown = async (signal: string) => {
 			global.logger.info(`[main.ts] => ${signal} received, shutting down gracefully...`);
 			clearPostActionTimer();
+			clearPendingCommands();
+			clearGatewayCache();
 			pausePolling();
+			stopCronTasks();
 			try {
 				await disableDaikinWebSocket();
 			} catch (e) {
 				global.logger.debug(`[main.ts] => WebSocket shutdown: ${e instanceof Error ? e.message : String(e)}`);
+			}
+			try {
+				await disconnectMqttClient(true);
+			} catch (e) {
+				global.logger.debug(`[main.ts] => MQTT shutdown: ${e instanceof Error ? e.message : String(e)}`);
 			}
 			process.exit(0);
 		};
@@ -95,7 +106,7 @@ import { setTimeout } from "timers/promises";
 	if ((error as any)?.error === "invalid_grant" || (error instanceof Error && error.message.includes("invalid_grant"))) {
 		try {
 			log.error('[main.ts] => Invalid token detected, deleting old token. A reconnection will be required.');
-			const tokenPath = resolve(global.datadir || process.cwd() + "/config", 'daikin-controller-cloud-tokenset');
+			const tokenPath = getTokenFilePath();
 			
 			if (fs.existsSync(tokenPath)) {
 				fs.unlinkSync(tokenPath);
@@ -107,7 +118,7 @@ import { setTimeout } from "timers/promises";
 			process.exit(1);
 		} catch (e) {
 			log.error(`[main.ts] => Error deleting token: ${e instanceof Error ? e.message : String(e)}`);
-			log.error(`[main.ts] => Please manually delete the file: ${resolve(global.datadir || process.cwd() + "/config", 'daikin-controller-cloud-tokenset')}`);
+			log.error(`[main.ts] => Please manually delete the file: ${getTokenFilePath()}`);
 			process.exit(1);
 		}
 	} 
@@ -146,6 +157,5 @@ import { setTimeout } from "timers/promises";
 		process.exit(1);
 	}
 })
-
 
 

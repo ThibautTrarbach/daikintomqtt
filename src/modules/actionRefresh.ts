@@ -1,4 +1,4 @@
-import { getNextPollingAt, getMergeWithPollWindowMs, pausePolling, resumePolling } from './cron';
+import { getNextPollingAt, getEffectiveNextPollingAt, getMergeWithPollWindowMs, pausePolling, resumePolling } from './cron';
 import { canRefresh, incrementSkippedRefreshCount } from './requestBudget';
 import { wasConfirmedByWebSocket } from './wsUpdateMapper';
 
@@ -22,7 +22,7 @@ async function shouldMergePostActionWithPoll(): Promise<boolean> {
 		return false;
 	}
 
-	const nextPollingAt = getNextPollingAt();
+	const nextPollingAt = getEffectiveNextPollingAt();
 	if (nextPollingAt <= 0) {
 		return false;
 	}

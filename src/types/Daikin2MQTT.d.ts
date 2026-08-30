@@ -73,7 +73,6 @@ export interface ConfigHomeAssistant {
 
 export interface ConfigDaikin {
 	authMode?: 'developer_portal' | 'mobile_app'
-	modeProxy?: boolean
 	clientSecret?: string
 	clientID?: string
 	clientURL?: string

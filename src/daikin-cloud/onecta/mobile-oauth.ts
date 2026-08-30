@@ -28,6 +28,7 @@ export class DaikinMobileOAuth implements OAuthProvider {
 	private tokenSet: TokenSet | null = null;
 	private refreshPromise: Promise<TokenSet> | null = null;
 	private cookies = '';
+	private pendingOAuthState: string | null = null;
 
 	constructor(
 		private readonly config: MobileClientConfig,
@@ -36,6 +37,9 @@ export class DaikinMobileOAuth implements OAuthProvider {
 		private readonly onLog?: (message: string) => void,
 	) {
 		this.tokenSet = loadTokenFromFile(config.tokenFilePath);
+		if (this.tokenSet?.expires_in && !this.tokenSet.expires_at) {
+			this.tokenSet.expires_at = Math.floor(Date.now() / 1000) + this.tokenSet.expires_in;
+		}
 	}
 
 	async authenticate(): Promise<TokenSet> {
@@ -82,7 +86,15 @@ export class DaikinMobileOAuth implements OAuthProvider {
 	}
 
 	isAuthenticated(): boolean {
-		return this.tokenSet !== null && !!this.tokenSet.access_token;
+		if (!this.tokenSet?.access_token) {
+			return false;
+		}
+		const now = Math.floor(Date.now() / 1000);
+		const expiresAt = this.tokenSet.expires_at;
+		if (expiresAt !== undefined && expiresAt < now + 10) {
+			return !!this.tokenSet.refresh_token;
+		}
+		return true;
 	}
 
 	getTokenSet(): TokenSet | null {
@@ -133,9 +145,14 @@ export class DaikinMobileOAuth implements OAuthProvider {
 		if (tokenSet.expires_in && !tokenSet.expires_at) {
 			tokenSet.expires_at = Math.floor(Date.now() / 1000) + tokenSet.expires_in;
 		}
-		this.tokenSet = tokenSet;
-		saveTokenToFile(this.config.tokenFilePath, tokenSet);
-		this.onTokenUpdate?.(tokenSet);
+		const merged = {
+			...(this.tokenSet ?? {}),
+			...tokenSet,
+			refresh_token: tokenSet.refresh_token ?? this.tokenSet?.refresh_token,
+		} as TokenSet;
+		this.tokenSet = merged;
+		saveTokenToFile(this.config.tokenFilePath, merged);
+		this.onTokenUpdate?.(merged);
 	}
 
 	private generatePKCE(): PKCEPair {
@@ -178,6 +195,7 @@ export class DaikinMobileOAuth implements OAuthProvider {
 	}
 
 	private async getOidcContext(pkce: PKCEPair): Promise<string> {
+		this.pendingOAuthState = crypto.randomBytes(16).toString('hex');
 		const params = new URLSearchParams({
 			client_id: DAIKIN_MOBILE_CONFIG.clientId,
 			redirect_uri: DAIKIN_MOBILE_CONFIG.redirectUri,
@@ -185,7 +203,7 @@ export class DaikinMobileOAuth implements OAuthProvider {
 			scope: DAIKIN_MOBILE_CONFIG.scope,
 			code_challenge: pkce.challenge,
 			code_challenge_method: 'S256',
-			state: crypto.randomBytes(16).toString('hex'),
+			state: this.pendingOAuthState,
 		});
 
 		const oidcBase = `${DAIKIN_MOBILE_CONFIG.gigyaBaseUrl}/oidc/op/v1.0/${DAIKIN_MOBILE_CONFIG.apiKey}`;
@@ -297,9 +315,13 @@ export class DaikinMobileOAuth implements OAuthProvider {
 
 		if (response.statusCode === 302 && response.headers.location) {
 			const location = String(response.headers.location);
+			const stateMatch = location.match(/[?&]state=([^&]+)/);
+			if (this.pendingOAuthState && stateMatch && decodeURIComponent(stateMatch[1]) !== this.pendingOAuthState) {
+				throw new Error('OAuth state mismatch — possible CSRF attack');
+			}
 			const codeMatch = location.match(/code=([^&]+)/);
 			if (codeMatch) {
-				return codeMatch[1];
+				return decodeURIComponent(codeMatch[1]);
 			}
 			const errorMatch = location.match(/error=([^&]+)/);
 			if (errorMatch) {
