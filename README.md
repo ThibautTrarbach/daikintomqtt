@@ -47,7 +47,13 @@ By default Daikin2MQTT expects its configuration in the `config` directory locat
 
 - `system`
   - `logLevel`: log level (`error`, `warn`, `info`, `debug`, ...)
-  - `actionRefreshMode` / `actionRefreshDelaySeconds` and `polling.*`: control how and how often data is refreshed
+  - `actionRefreshMode`: post-action refresh mode (`1` deferred cloud, `2` optimistic only, `3` hybrid recommended)
+  - `actionRefreshDelaySeconds`: delay before cloud confirmation GET (modes 1 and 3, default `60`)
+  - `actionRefreshStrategy`: `merge_with_poll` (default), `timer`, or `disabled`
+  - `mergeWithPollWindowMinutes`: window to merge post-action refresh with polling (default `5`)
+  - `commandCoalesceMs`: merge rapid MQTT commands per device (default `400`)
+  - `energyStatsRefreshTime`: daily energy stats refresh time (`HH:MM`, default `23:58`)
+  - `polling.*`: day/night intervals (default `15` / `30` minutes)
 - `integration`
   - `jeedom`: enable/disable Jeedom integration
   - `homeassistant`
@@ -109,6 +115,18 @@ You can change the data directory (configuration, tokens, generated files) by se
 - MQTT: Daikin2MQTT publishes the state of your Daikin devices and subscribes to topics for commands under the base topic defined in `mqtt.topic` (default `daikinToMQTT`).
 - Home Assistant: when `integration.homeassistant.enabled` is `true`, MQTT Discovery configuration is generated automatically and published on startup.
 - Jeedom: when `integration.jeedom` is `true`, the payload format is adapted for the Jeedom integration.
+
+## Daikin API quota (200 requests/day)
+
+The Onecta API limits each application to **200 requests/day** and **20/minute**.
+
+| Operation | API cost |
+|-----------|----------|
+| Polling / refresh | **1 GET** returns all account devices |
+| Command | **1 PATCH** per changed property |
+| Energy stats refresh (`energyStatsRefreshTime`) | **1 GET** reserved for kWh counters |
+
+Built-in optimizations: immediate optimistic MQTT publish, `merge_with_poll` strategy, command coalescing, adaptive polling when quota is low, and priority end-of-day energy refresh.
 
 ## Supported devices
 

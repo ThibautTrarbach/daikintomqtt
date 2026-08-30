@@ -2,6 +2,7 @@ import {PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../deco
 import {Gateways, ModulePropertyMetadata} from "../../types";
 import {DaikinCloudDevice} from "../../daikin-cloud";
 import {publishToMQTT} from "../mqtt";
+import {schedulePostActionRefresh} from "../actionRefresh";
 
 // Generic type information for module properties
 const typeEnum = Object.freeze({
@@ -136,6 +137,41 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 }
 
 /**
+ * Resolves metadata property keys that correspond to incoming MQTT event keys.
+ */
+function resolveMetadataKeysFromEvents(gatewayClass: Gateways, events: object): Set<string> {
+	const normalizedEventKeys = new Set(
+		Object.keys(events).map((key) => (key.startsWith('_') ? key.substring(1) : key))
+	);
+	const data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
+	const matched = new Set<string>();
+
+	Object.entries(data).forEach(([metaKey]) => {
+		const withoutUnderscore = metaKey.startsWith('_') ? metaKey.substring(1) : metaKey;
+		if (normalizedEventKeys.has(withoutUnderscore) || normalizedEventKeys.has(metaKey)) {
+			matched.add(metaKey);
+		}
+	});
+
+	return matched;
+}
+
+/**
+ * Rebuilds gateway state from device cache and publishes optimistic MQTT update.
+ */
+async function publishOptimisticUpdate(device: DaikinCloudDevice, gatewayClass: Gateways): Promise<void> {
+	const deviceId = device.getId();
+	const cachedDevice = await cache.get(`device_${deviceId}`) as DaikinCloudDevice | undefined;
+	const sourceDevice = cachedDevice ?? device;
+
+	await cache.set(`device_${deviceId}`, sourceDevice, 10800000);
+	convertDaikinDevice(sourceDevice, gatewayClass);
+	const payload = JSON.stringify(gatewayClass);
+	await publishToMQTT(deviceId, payload);
+	logger.debug(`[BaseModules.ts] => Optimistic MQTT update published for device ${deviceId}`);
+}
+
+/**
  * Applies incoming MQTT event values to the gateway instance,
  * pushes the changes to the cloud, then handles post-action behavior
  * (optimistic update and/or delayed refresh) based on configuration.
@@ -170,43 +206,28 @@ async function eventValue(device: any, gatewayClass: Gateways, events: object) {
 		logger.debug(`[BaseModules.ts] => After assignment - ${propertyKey}: ${assignedValue}, ${privateKey}: ${privateValue}`);
 	})
 
-	const updateResult = await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass);
+	const updateResult = await updateDaikinDevice(device as DaikinCloudDevice, gatewayClass, events);
 	
 	logger.debug(`[BaseModules.ts] => eventValue - updateResult for ${deviceId}: success=${updateResult.success}, hasUpdates=${updateResult.hasUpdates}, hasErrors=${updateResult.hasErrors}`);
 
-	// Handle post-action behavior based on the configured refresh mode
 	try {
-		const mode = config.system?.actionRefreshMode ?? 1;
-		const now = Math.floor(Date.now() / 1000);
-		const deviceId = (device as DaikinCloudDevice).getId();
+		const mode = config.system?.actionRefreshMode ?? 3;
 
-		// Modes 2 and 3: immediate optimistic update (cache + MQTT) - ONLY if all API updates succeeded
-		if ((mode === 2 || mode === 3) && updateResult.success) {
+		if (updateResult.success && updateResult.hasUpdates) {
 			try {
-				await cache.set(`device_${deviceId}`, device, 10800000);
-				const payload = JSON.stringify(gatewayClass);
-				await publishToMQTT(deviceId, payload);
-				logger.debug(`[BaseModules.ts] => Post-action optimistic update published for device ${deviceId} (mode=${mode})`);
+				await publishOptimisticUpdate(device as DaikinCloudDevice, gatewayClass);
 			} catch (e) {
-				logger.error(`[BaseModules.ts] => Error during optimistic post-action update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
+				logger.error(`[BaseModules.ts] => Error during optimistic update for device ${deviceId}: ${e instanceof Error ? e.message : String(e)}`);
 			}
-		} else if ((mode === 2 || mode === 3) && !updateResult.success) {
-			if (updateResult.hasErrors) {
-				logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because API update failed`);
-			} else if (!updateResult.hasUpdates) {
-				// No updates were necessary (all values identical), so no need for optimistic update
-				logger.debug(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} (mode=${mode}) because no updates were necessary`);
-			}
+		} else if (updateResult.hasErrors) {
+			logger.warn(`[BaseModules.ts] => Skipping optimistic update for device ${deviceId} because API update failed`);
 		}
 
-		// Modes 1 and 3: schedule a delayed full refresh via timeUpdate
-		if (mode === 1 || mode === 3) {
-			await cache.set('needRefresh', now);
-			logger.debug(`[BaseModules.ts] => Post-action refresh scheduled (mode=${mode}) at ${new Date(now * 1000).toISOString()}`);
-		} else {
-			// Mode 2: ensure there is no pending delayed refresh
+		if ((mode === 1 || mode === 3) && updateResult.hasUpdates && updateResult.success) {
+			await schedulePostActionRefresh(deviceId);
+		} else if (mode === 2) {
 			await cache.del('needRefresh');
-			logger.debug("[BaseModules.ts] => Post-action refresh disabled (mode=2), any pending refresh cleared");
+			await cache.del('postActionDeviceId');
 		}
 	} catch (postActionError) {
 		logger.error(`[BaseModules.ts] => Error handling post-action behavior: ${postActionError instanceof Error ? postActionError.message : String(postActionError)}`);
@@ -229,16 +250,18 @@ interface UpdateResult {
  * 
  * Note: operationMode is processed before onOffMode to ensure proper API ordering.
  */
-async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways): Promise<UpdateResult> {
+async function updateDaikinDevice(device: DaikinCloudDevice, gatewayClass: Gateways, events?: object): Promise<UpdateResult> {
 	const deviceId = device.getId();
 	logger.debug(`[BaseModules.ts] => updateDaikinDevice called for device ${deviceId}`);
 	
 	let data: object = Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gatewayClass);
 	let allSucceeded = true;
-	let atLeastOneUpdate = false; // Track if at least one API call was made
+	let atLeastOneUpdate = false;
+
+	const changedKeys = events ? resolveMetadataKeysFromEvents(gatewayClass, events) : null;
 	
 	// Separate entries into operationMode, onOffMode, and others
-	const entries = Object.entries(data);
+	const entries = Object.entries(data).filter(([key]) => !changedKeys || changedKeys.has(key));
 	const operationModeEntry = entries.find(([key, value]) => value.dataPoint === "operationMode" && !value.dataPointPath);
 	const onOffModeEntry = entries.find(([key, value]) => value.dataPoint === "onOffMode" && !value.dataPointPath);
 	const otherEntries = entries.filter(([key, value]) => {

@@ -16,6 +16,47 @@ import {publishToMQTT} from "./mqtt";
 import {DaikinCloudController, DaikinCloudDevice} from "../daikin-cloud";
 import fs from "fs";
 import {INSTANCE_ID} from "./instanceId";
+import {canRefresh, getBudgetStatus, getSkippedRefreshCount} from "./requestBudget";
+
+interface PendingCommand {
+	payload: Record<string, unknown>;
+	timer: NodeJS.Timeout;
+}
+
+const pendingCommands = new Map<string, PendingCommand>();
+
+function getCommandCoalesceMs(): number {
+	return config.system?.commandCoalesceMs ?? 400;
+}
+
+async function queueDeviceCommand(device: DaikinCloudDevice, eventData: Record<string, unknown>): Promise<void> {
+	const deviceId = device.getId();
+	const existing = pendingCommands.get(deviceId);
+	const merged = existing ? { ...existing.payload, ...eventData } : { ...eventData };
+
+	if (existing?.timer) {
+		clearTimeout(existing.timer);
+	}
+
+	const timer = setTimeout(async () => {
+		pendingCommands.delete(deviceId);
+		const gateway = getModels(device);
+		if (gateway === undefined) {
+			logger.warn(`[daikin.ts] => No gateway found for coalesced command on device ${deviceId}`);
+			return;
+		}
+
+		try {
+			await eventValue(device, gateway, merged);
+			logger.debug(`[daikin.ts] => Coalesced command processed for device: ${deviceId}`);
+		} catch (eventError) {
+			logger.error(`[daikin.ts] => Error processing coalesced event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
+		}
+	}, getCommandCoalesceMs());
+
+	pendingCommands.set(deviceId, { payload: merged, timer });
+	logger.debug(`[daikin.ts] => Command queued for device ${deviceId} (${getCommandCoalesceMs()}ms coalesce)`);
+}
 
 /**
  * Initializes the Daikin Cloud client (OIDC) and registers core event handlers
@@ -350,8 +391,7 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 					}
 					
 					try {
-						await eventValue(dev, gateway, eventData);
-						logger.debug(`[daikin.ts] => Command processed successfully for device: ${deviceId}`);
+						await queueDeviceCommand(dev, eventData);
 					} catch (eventError) {
 						logger.error(`[daikin.ts] => Error processing event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
 						if (eventError instanceof Error && eventError.stack) {
@@ -376,7 +416,12 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
  * If devices are not provided, they are retrieved via getDevices (cache or cloud).
  * Also records periodic refresh timestamps and updates the system bridge.
  */
-async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: boolean = false, reason: string = "unspecified") {
+async function sendDevice(
+	devices: DaikinCloudDevice[] | null = null,
+	cron: boolean = false,
+	reason: string = "unspecified",
+	onlyDeviceIds?: string[]
+) {
 	try {
 		if (devices == null) {
 			logger.debug(`[daikin.ts] => Retrieving devices${cron ? ' (forced from cloud)' : ' (from cache if available)'} for sendDevice (reason: ${reason})`);
@@ -388,9 +433,13 @@ async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: bool
 			return;
 		}
 
-		logger.debug(`[daikin.ts] => Sending ${devices.length} device(s) to MQTT`);
+		const devicesToPublish = onlyDeviceIds?.length
+			? devices.filter((dev) => onlyDeviceIds.includes(dev.getId()))
+			: devices;
+
+		logger.debug(`[daikin.ts] => Sending ${devicesToPublish.length} device(s) to MQTT (reason: ${reason})`);
 		
-		for (let dev of devices) {
+		for (let dev of devicesToPublish) {
 			const deviceId = dev.getId();
 			try {
 				// Use cache.set() instead of direct indexing
@@ -439,87 +488,6 @@ async function sendDevice(devices: DaikinCloudDevice[] | null = null, cron: bool
 			logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
 		}
 		throw error;
-	}
-}
-
-/**
- * Periodically checks whether a post-action refresh is required based on:
- *  - configured actionRefreshMode and delay
- *  - timestamp of the last action
- *  - timestamp of the last periodic refresh (to avoid duplicate refreshes).
- */
-async function timeUpdate() {
-	try {
-		logger.debug("[daikin.ts] => Checking refresh after command => START");
-
-		const mode = config.system?.actionRefreshMode ?? 1;
-
-		// Mode 2: no post-action refresh, only optimistic updates
-		if (mode === 2) {
-			logger.debug("[daikin.ts] => Post-action refresh disabled (mode=2), skipping timeUpdate");
-			return;
-		}
-
-		// Delay in seconds depending on the mode, configurable via system.actionRefreshDelaySeconds
-		const defaultDelay = 45;
-		const delaySeconds = config.system?.actionRefreshDelaySeconds ?? defaultDelay;
-
-		const now = Math.floor(Date.now() / 1000);
-		logger.debug(`[daikin.ts] => Current timestamp: ${now} (${new Date(now * 1000).toISOString()}) - mode=${mode}, delay=${delaySeconds}s`);
-
-		const lastActionTs = await cache.get('needRefresh');
-		
-		if (lastActionTs === undefined || lastActionTs === null) {
-			logger.debug("[daikin.ts] => No refresh pending");
-			return;
-		}
-		
-		if (typeof lastActionTs !== "number") {
-			logger.warn(`[daikin.ts] => Invalid timestamp type in cache: ${typeof lastActionTs}, removing`);
-			await cache.del('needRefresh');
-			return;
-		}
-		
-		logger.debug(`[daikin.ts] => Cached last action timestamp: ${lastActionTs} (${new Date(lastActionTs * 1000).toISOString()})`);
-
-		// If a periodic refresh happened after the last action, skip the post-action refresh
-		const lastPeriodicRefreshTs = await cache.get('lastPeriodicRefreshTs');
-		if (typeof lastPeriodicRefreshTs === "number") {
-			logger.debug(`[daikin.ts] => Last periodic refresh timestamp: ${lastPeriodicRefreshTs} (${new Date(lastPeriodicRefreshTs * 1000).toISOString()})`);
-			if (lastPeriodicRefreshTs >= lastActionTs) {
-				logger.info("[daikin.ts] => Skipping post-action refresh because a periodic refresh occurred after the last action");
-				await cache.del('needRefresh');
-				return;
-			}
-		}
-
-		const elapsed = now - lastActionTs;
-		logger.debug(`[daikin.ts] => Elapsed time since last action: ${elapsed}s`);
-		
-		if (elapsed >= delaySeconds) {
-			logger.info("[daikin.ts] => Refresh needed after command, updating devices");
-			await cache.del('needRefresh');
-			
-			try {
-				await sendDevice(null, true, "post_action_refresh");
-				logger.debug("[daikin.ts] => Refresh after command completed successfully");
-			} catch (refreshError) {
-				logger.error(`[daikin.ts] => Error during refresh after command: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
-				if (refreshError instanceof Error && refreshError.stack) {
-					logger.debug(`[daikin.ts] => Stack trace: ${refreshError.stack}`);
-				}
-			}
-		} else {
-			const remainingSeconds = delaySeconds - elapsed;
-			logger.debug(`[daikin.ts] => Refresh not yet needed, ${remainingSeconds} second(s) remaining`);
-		}
-		
-		logger.debug("[daikin.ts] => Checking refresh after command => FINISH");
-	} catch (error) {
-		logger.error(`[daikin.ts] => Error in timeUpdate: ${error instanceof Error ? error.message : String(error)}`);
-		if (error instanceof Error && error.stack) {
-			logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
-		}
 	}
 }
 
@@ -642,6 +610,14 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 		const devices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
 		
 		if (devices === undefined || force) {
+			if (force && !(await canRefresh(reason))) {
+				if (devices && devices.length > 0) {
+					logger.warn(`[daikin.ts] => Refresh blocked by API budget (${reason}), using cache (${devices.length} device(s))`);
+					return devices;
+				}
+				throw new Error(`API refresh blocked by budget (${reason})`);
+			}
+
 			logger.info(`[daikin.ts] => API CALL - getDevices (reason: ${reason}) - ${force ? 'forced retrieval' : 'cache invalid or empty'}, retrieving information from Daikin cloud`);
 			
 			if (!global.daikinClient) {
@@ -693,6 +669,22 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				}
 				
 				logger.info(`[daikin.ts] => ${freshDevices.length} device(s) retrieved from cloud`);
+
+				if (reason === 'cron_forced_23h58_stats') {
+					let electricalCount = 0;
+					for (const dev of freshDevices) {
+						try {
+							const mp = dev.managementPoints;
+							const hasElectrical = Object.values(mp).some((point: any) =>
+								point && (point.consumptionData || point.electrical)
+							);
+							if (hasElectrical) electricalCount++;
+						} catch {
+							// ignore per-device parse errors
+						}
+					}
+					logger.info(`[daikin.ts] => Energy stats refresh: ${electricalCount}/${freshDevices.length} device(s) with electrical data`);
+				}
 				
 				// Cache with TTL of 3 hours (10800000 milliseconds)
 				await cache.set('devices', freshDevices, 10800000);
@@ -927,6 +919,11 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 	systemBridge.unsupportedModulesCount = unsupportedModules.length;
 	systemBridge.unsupportedModulesList = JSON.stringify(unsupportedModules);
 
+	systemBridge.apiBudgetStatus = await getBudgetStatus();
+	systemBridge.skippedRefreshCount = await getSkippedRefreshCount();
+	const { getNextPollingAt } = await import('./cron');
+	systemBridge.nextPollingAt = getNextPollingAt();
+
 	// Publish system module
 	await publishSystemBridge(systemBridge);
 }
@@ -979,7 +976,6 @@ export {
 	sendDevice,
 	startDaikinAPI,
 	getDevices,
-	timeUpdate,
 	updateSystemBridge
 }
 

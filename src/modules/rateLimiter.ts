@@ -53,7 +53,7 @@ class RateLimiter {
 			limitMinute: rateLimitStatus.limitMinute || 0,
 			remainingMinute: rateLimitStatus.remainingMinute || 0,
 			limitDay: rateLimitStatus.limitDay || 0,
-			remainingDay: rateLimitStatus.remainingMinute || 0,
+			remainingDay: rateLimitStatus.remainingDay || 0,
 			lastUpdate: Date.now()
 		};
 

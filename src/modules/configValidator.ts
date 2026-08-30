@@ -129,6 +129,47 @@ function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 		}
 	}
 
+	if (system.actionRefreshStrategy !== undefined) {
+		const validStrategies = ['timer', 'merge_with_poll', 'disabled'];
+		if (!validStrategies.includes(system.actionRefreshStrategy)) {
+			errors.push({
+				field: 'system.actionRefreshStrategy',
+				message: `Action refresh strategy must be one of: ${validStrategies.join(', ')}`,
+				value: system.actionRefreshStrategy
+			});
+		}
+	}
+
+	if (system.mergeWithPollWindowMinutes !== undefined) {
+		if (typeof system.mergeWithPollWindowMinutes !== 'number' || system.mergeWithPollWindowMinutes <= 0) {
+			errors.push({
+				field: 'system.mergeWithPollWindowMinutes',
+				message: 'mergeWithPollWindowMinutes must be a positive number (minutes)',
+				value: system.mergeWithPollWindowMinutes
+			});
+		}
+	}
+
+	if (system.commandCoalesceMs !== undefined) {
+		if (typeof system.commandCoalesceMs !== 'number' || system.commandCoalesceMs < 0) {
+			errors.push({
+				field: 'system.commandCoalesceMs',
+				message: 'commandCoalesceMs must be a non-negative number (milliseconds)',
+				value: system.commandCoalesceMs
+			});
+		}
+	}
+
+	if (system.energyStatsRefreshTime !== undefined) {
+		if (!/^\d{1,2}:\d{2}$/.test(system.energyStatsRefreshTime)) {
+			errors.push({
+				field: 'system.energyStatsRefreshTime',
+				message: 'energyStatsRefreshTime must be in HH:MM format (e.g. 23:58)',
+				value: system.energyStatsRefreshTime
+			});
+		}
+	}
+
 	return errors;
 }
 

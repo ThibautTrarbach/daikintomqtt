@@ -118,6 +118,29 @@ export class SystemBridge implements ClassModule {
 	})
 	private _authorizationTimeout?: boolean;
 
+	@modulesDataDescription({
+		name: 'API Budget Status',
+		settable: false,
+		type: typeEnum.string
+	})
+	private _apiBudgetStatus?: string;
+
+	@modulesDataDescription({
+		name: 'Next Polling At',
+		settable: false,
+		type: typeEnum.numeric,
+		unite: 'ms'
+	})
+	private _nextPollingAt?: number;
+
+	@modulesDataDescription({
+		name: 'Skipped Refresh Count',
+		settable: false,
+		type: typeEnum.numeric,
+		unite: 'count'
+	})
+	private _skippedRefreshCount?: number;
+
 	constructor() {
 		// Default initialization
 		this._rateLimitMinute = 0;
@@ -132,6 +155,9 @@ export class SystemBridge implements ClassModule {
 		this._authorizationUrl = "";
 		this._authorizationRequest = false;
 		this._authorizationTimeout = false;
+		this._apiBudgetStatus = 'ok';
+		this._nextPollingAt = 0;
+		this._skippedRefreshCount = 0;
 	}
 
 	// Getters to access properties
@@ -229,6 +255,30 @@ export class SystemBridge implements ClassModule {
 
 	set authorizationTimeout(value: boolean | undefined) {
 		this._authorizationTimeout = value;
+	}
+
+	get apiBudgetStatus(): string | undefined {
+		return this._apiBudgetStatus;
+	}
+
+	set apiBudgetStatus(value: string | undefined) {
+		this._apiBudgetStatus = value;
+	}
+
+	get nextPollingAt(): number | undefined {
+		return this._nextPollingAt;
+	}
+
+	set nextPollingAt(value: number | undefined) {
+		this._nextPollingAt = value;
+	}
+
+	get skippedRefreshCount(): number | undefined {
+		return this._skippedRefreshCount;
+	}
+
+	set skippedRefreshCount(value: number | undefined) {
+		this._skippedRefreshCount = value;
 	}
 }
 

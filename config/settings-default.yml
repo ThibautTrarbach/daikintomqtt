@@ -4,12 +4,20 @@ system:
   # 1 = full refresh delayed by actionRefreshDelaySeconds after the action
   # 2 = optimistic update (cache + MQTT) without cloud refresh after the action
   # 3 = hybrid (optimistic update + full refresh actionRefreshDelaySeconds after the last action)
-  actionRefreshMode: 1
+  actionRefreshMode: 3
   # Delay (in seconds) before full refresh in modes 1 and 3
-  actionRefreshDelaySeconds: 45
+  actionRefreshDelaySeconds: 60
+  # Post-action refresh strategy: timer | merge_with_poll | disabled
+  actionRefreshStrategy: merge_with_poll
+  # Merge post-action GET with upcoming poll if within this many minutes
+  mergeWithPollWindowMinutes: 5
+  # Coalesce rapid MQTT commands per device (ms)
+  commandCoalesceMs: 400
+  # Daily energy consumption stats refresh (HH:MM)
+  energyStatsRefreshTime: "23:58"
   polling:
-    dayInterval: 10 # Refresh interval in minutes during the day
-    nightInterval: 20 # Refresh interval in minutes during the night
+    dayInterval: 15 # Refresh interval in minutes during the day
+    nightInterval: 30 # Refresh interval in minutes during the night
     nightStart: 22 # Night period start hour (0-23)
     nightEnd: 7 # Night period end hour (0-23)
 integration:

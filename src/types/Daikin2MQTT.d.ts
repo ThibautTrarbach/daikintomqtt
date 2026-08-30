@@ -21,6 +21,25 @@ export interface ConfigSystem {
 	 * Delay in seconds before full refresh in modes 1 and 3
 	 */
 	actionRefreshDelaySeconds?: number
+	/**
+	 * Post-action cloud refresh strategy:
+	 * - timer: dedicated GET after actionRefreshDelaySeconds
+	 * - merge_with_poll: skip dedicated GET if a poll is due within mergeWithPollWindowMinutes
+	 * - disabled: no cloud GET after action (optimistic only)
+	 */
+	actionRefreshStrategy?: 'timer' | 'merge_with_poll' | 'disabled'
+	/**
+	 * Window in minutes to merge post-action refresh with upcoming poll (merge_with_poll strategy)
+	 */
+	mergeWithPollWindowMinutes?: number
+	/**
+	 * Debounce window in ms to coalesce rapid MQTT commands per device
+	 */
+	commandCoalesceMs?: number
+	/**
+	 * Daily energy stats refresh time (HH:MM, 24h)
+	 */
+	energyStatsRefreshTime?: string
 }
 
 export interface ConfigPolling {

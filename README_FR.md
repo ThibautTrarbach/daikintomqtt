@@ -47,7 +47,13 @@ Par défaut, Daikin2MQTT attend sa configuration dans le répertoire `config` si
 
 - `system`
   - `logLevel` : niveau de log (`error`, `warn`, `info`, `debug`, …)
-  - `actionRefreshMode` / `actionRefreshDelaySeconds` et `polling.*` : contrôlent la façon dont les données sont rafraîchies (délai, jour/nuit, etc.)
+  - `actionRefreshMode` : mode de rafraîchissement après action (`1` = cloud différé, `2` = optimiste seul, `3` = hybride recommandé)
+  - `actionRefreshDelaySeconds` : délai avant GET cloud de confirmation (modes 1 et 3, défaut `60`)
+  - `actionRefreshStrategy` : `merge_with_poll` (défaut), `timer` ou `disabled`
+  - `mergeWithPollWindowMinutes` : fenêtre pour fusionner le refresh post-action avec le polling (défaut `5`)
+  - `commandCoalesceMs` : regroupement des commandes MQTT rapides par équipement (défaut `400`)
+  - `energyStatsRefreshTime` : heure du refresh quotidien des compteurs kWh (`HH:MM`, défaut `23:58`)
+  - `polling.*` : intervalles jour/nuit (défaut `15` / `30` minutes)
 - `integration`
   - `jeedom` : active/désactive l'intégration Jeedom
   - `homeassistant`
@@ -109,6 +115,25 @@ Vous pouvez changer le répertoire de données (configuration, jetons, fichiers 
 - **MQTT** : Daikin2MQTT publie l'état de vos appareils Daikin et s'abonne aux topics de commandes sous le topic racine défini dans `mqtt.topic` (par défaut `daikinToMQTT`).
 - **Home Assistant** : lorsque `integration.homeassistant.enabled` est à `true`, la configuration MQTT Discovery est générée automatiquement et publiée au démarrage.
 - **Jeedom** : lorsque `integration.jeedom` est à `true`, le format des messages est adapté à l'intégration Jeedom.
+
+## Quota API Daikin (200 requêtes/jour)
+
+L'API Onecta limite chaque application à **200 requêtes/jour** et **20/minute**.
+
+| Opération | Coût API |
+|-----------|----------|
+| Polling / refresh | **1 GET** = tous les équipements du compte |
+| Commande | **1 PATCH** par propriété modifiée |
+| Refresh énergie (`energyStatsRefreshTime`) | **1 GET** réservé pour les compteurs kWh |
+
+**Bonnes pratiques intégrées dans le daemon :**
+- Publication **optimiste** immédiate sur MQTT après chaque commande réussie (UI réactive sans attendre le cloud)
+- Stratégie `merge_with_poll` : évite un GET dédié si un polling est prévu dans les prochaines minutes
+- **Coalescence** des commandes MQTT rapides (scénarios Jeedom) : un seul refresh post-action par rafale
+- Polling adaptatif quand le quota journalier est bas (via `API Budget Status` sur le pont système)
+- Le refresh de fin de journée (`23:58` par défaut) est **prioritaire** pour les statistiques de consommation
+
+Estimation avec les défauts (polling 15 min, ~10 commandes/jour) : ~110 requêtes/jour.
 
 ## Appareils supportés
 
