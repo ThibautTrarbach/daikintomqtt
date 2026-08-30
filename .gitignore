@@ -11,3 +11,5 @@ tokenset.json
 /dist
 
 tsconfig.tsbuildinfo
+/.daikin-api-docs/
+/.playwright-daikin/

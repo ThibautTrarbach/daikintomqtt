@@ -1,6 +1,6 @@
 import {PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../decorator";
 import {Gateways, ModulePropertyMetadata} from "../../types";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {DaikinCloudDevice} from "../../daikin-cloud";
 import {publishToMQTT} from "../mqtt";
 
 // Generic type information for module properties

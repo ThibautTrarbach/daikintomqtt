@@ -2,7 +2,7 @@ import {PROPERTY_METADATA_CMD} from "../decorator";
 import {generateCMD} from "./jeedom";
 import {generateHADiscovery} from "./homeassistant";
 import {publishToMQTT} from "../mqtt";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {DaikinCloudDevice} from "../../daikin-cloud";
 
 async function makeDefineFile(moduleClass: any, device: DaikinCloudDevice | null) {
 	try {

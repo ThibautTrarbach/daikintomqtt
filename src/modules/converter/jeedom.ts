@@ -1,6 +1,6 @@
 import {ModulesDescriptionMetadata} from "../../types";
 import {typeEnum} from "../gateway";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {DaikinCloudDevice} from "../../daikin-cloud";
 
 function generateCMD(data: object, modules: object, device: DaikinCloudDevice | null) {
 	let cmd: any[] = [];

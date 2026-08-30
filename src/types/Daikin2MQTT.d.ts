@@ -46,6 +46,8 @@ export interface ConfigDaikin {
 	clientID: string
 	clientURL: string
 	clientPort: number
+	useMock?: boolean
+	mockId?: string | null
 }
 
 export interface ConfigMQTT {

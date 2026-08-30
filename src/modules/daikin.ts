@@ -13,8 +13,7 @@ import {
 } from "./gateway";
 import {makeDefineFile} from "./converter";
 import {publishToMQTT} from "./mqtt";
-import {DaikinCloudController} from "daikin-controller-cloud";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {DaikinCloudController, DaikinCloudDevice} from "../daikin-cloud";
 import fs from "fs";
 import {INSTANCE_ID} from "./instanceId";
 
@@ -44,7 +43,9 @@ async function loadDaikinAPI() {
 		/* path of file used to cache the OIDC tokenset */
 		oidcTokenSetFilePath: resolve(datadir, 'daikin-controller-cloud-tokenset'),
 		/* time to wait for the user to go through the authorization grant flow before giving up (in seconds) */
-		oidcAuthorizationTimeoutS: 120
+		oidcAuthorizationTimeoutS: 120,
+		useMock: config.daikin.useMock ?? false,
+		mockId: config.daikin.mockId ?? undefined,
 	});
 
 	daikinClient.on('authorization_request', async (url) => {
@@ -277,6 +278,8 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 		if (!err) logger.info("[daikin.ts] => Subscribe to " + systemBridgeSetTopic)
 	})
 
+	const refreshTopicPath = config.mqtt.topic + "/system/bridge/refresh/set";
+
 	mqttClient.on('message', async function (topic, message) {
 		try {
 			const topicString = topic.toString();
@@ -313,8 +316,24 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 				return;
 			}
 
+			if (topicString === refreshTopicPath) {
+				logger.info("[daikin.ts] => Refresh command received, updating all devices");
+				try {
+					await sendDevice(null, true, "mqtt_refresh_legacy");
+					await updateSystemBridge();
+				} catch (refreshError) {
+					logger.error(`[daikin.ts] => Error during legacy refresh: ${refreshError instanceof Error ? refreshError.message : String(refreshError)}`);
+				}
+				return;
+			}
+
+			const cachedDevices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
+			const devicesList = (cachedDevices !== undefined && cachedDevices !== null)
+				? cachedDevices
+				: await getDevices();
+
 			// Process messages for devices
-			for (let dev of devices) {
+			for (let dev of devicesList) {
 				const deviceId = dev.getId();
 				if (!topicString.includes(deviceId)) continue;
 				

@@ -1,7 +1,7 @@
 import {ModulesDescriptionMetadata} from "../../types";
 import {typeEnum} from "../gateway";
 import {Gateways} from "../../types";
-import {DaikinCloudDevice} from "daikin-controller-cloud/dist/device";
+import {DaikinCloudDevice} from "../../daikin-cloud";
 
 // Mapping des modes Daikin vers les modes Home Assistant
 const daikinModeToHA: { [key: string]: string } = {

@@ -22,6 +22,8 @@ daikin:
   clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud
   clientURL: ""
   clientPort: 8765
+  useMock: false # Use Daikin Mock API instead of production
+  mockId: null # Mock device ID, e.g. air-to-air-dx23
 mqtt:
   host: "127.0.0.1" # MQTT broker IP address
   port: 1883 # MQTT broker port
