@@ -1,5 +1,5 @@
 import {PROPERTY_METADATA_DAIKIN, PROPERTY_METADATA_DAIKIN_DEVICE} from "../decorator";
-import {Gateways, ModulePropertyMetadata} from "../../types";
+import {Gateways, ModulePropertyMetadata, DevicesInformation} from "../../types";
 import {DaikinCloudDevice} from "../../daikin-cloud";
 import {publishToMQTT} from "../mqtt";
 import {schedulePostActionRefresh} from "../actionRefresh";
@@ -133,6 +133,29 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 		})
 		// @ts-ignore
 		gatewayClass[key1]['id'] = device.getId();
+
+		const extraDeviceFields: Array<[keyof DevicesInformation, string, string]> = [
+			['timeZone', 'gateway', 'timeZone'],
+			['wifiConnectionSSID', 'gateway', 'wifiConnectionSSID'],
+			['wifiConnectionStrength', 'gateway', 'wifiConnectionStrength'],
+		];
+		for (const [field, mp, dp] of extraDeviceFields) {
+			try {
+				const extra = device.getData(mp, dp, undefined);
+				if (extra?.value !== undefined && extra?.value !== null) {
+					// @ts-ignore
+					gatewayClass[key1][field] = String(extra.value);
+				}
+			} catch {
+				// optional fields
+			}
+		}
+		try {
+			// @ts-ignore
+			gatewayClass[key1]['isCloudConnectionUp'] = device.isCloudConnectionUp() ? 'true' : 'false';
+		} catch {
+			// optional
+		}
 	})
 }
 

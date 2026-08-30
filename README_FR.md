@@ -143,8 +143,19 @@ Estimation avec les défauts (polling 15 min, ~10 commandes/jour) : ~110 requêt
 - BRP069A78
 - BRP069B4x
 - BRP069C4x
+- BRP069C41
+- BRP069C8x
 
-Si votre modèle n'est pas listé, il est généralement possible d'ajouter le support en ouvrant une issue.
+Les modèles non listés peuvent être pris en charge automatiquement via **DynamicGateway** (`system.dynamicFallback: true` par défaut) : toutes les caractéristiques settable de l'API Onecta sont exposées en MQTT sans fichier gateway dédié.
+
+## DynamicGateway
+
+- `system.dynamicFallback` : active le mapping automatique pour les modèles inconnus (défaut `true`)
+- `system.exposeReadOnly` : publie aussi les capteurs en lecture seule (défaut `true`)
+- Nommage MQTT : `_{embeddedId}_{dataPoint}_{chemin}` (ex. `_climateControlMainZone_onOffMode`)
+- Commandes spéciales : `_triggerFirmwareUpdate`, `_setPresetAway`, `_{zone}_scheduleEnabled`
+
+Si votre modèle n'est pas listé et que `dynamicFallback` est à `false`, un dump anonymisé est généré dans `config/newConfig/` pour faciliter l'ajout d'un support statique.
 
 ## Logs & dépannage
 

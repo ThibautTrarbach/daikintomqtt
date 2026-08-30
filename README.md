@@ -136,8 +136,19 @@ Built-in optimizations: immediate optimistic MQTT publish, `merge_with_poll` str
 - BRP069A78
 - BRP069B4x
 - BRP069C4x
+- BRP069C41
+- BRP069C8x
 
-If it's not listed, support can be added (fairly) easily by opening an issue.
+Unknown models are supported automatically via **DynamicGateway** when `system.dynamicFallback` is `true` (default).
+
+## DynamicGateway
+
+- `system.dynamicFallback`: auto-map API characteristics for unknown models (default `true`)
+- `system.exposeReadOnly`: publish read-only sensors in dynamic mode (default `true`)
+- MQTT keys: `_{embeddedId}_{dataPoint}_{path}` (e.g. `_climateControlMainZone_onOffMode`)
+- Special commands: `_triggerFirmwareUpdate`, `_setPresetAway`, `_{zone}_scheduleEnabled`
+
+If your model is not listed and `dynamicFallback` is `false`, an anonymized dump is saved under `config/newConfig/` to help add static support.
 
 ## Logs & troubleshooting
 

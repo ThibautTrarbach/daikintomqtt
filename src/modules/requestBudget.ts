@@ -73,9 +73,16 @@ async function canRefresh(reason: string): Promise<boolean> {
 		return false;
 	}
 
-	if (reason === 'cron_polling' && remaining <= LOW_THRESHOLD) {
-		logger.info(`[requestBudget.ts] => Low daily quota (${remaining}), skipping polling refresh`);
-		return false;
+	if (reason === 'cron_polling') {
+		const reserved = getReservedDailyGets();
+		if (remaining <= reserved) {
+			logger.info(`[requestBudget.ts] => Daily quota (${remaining}) at or below energy reserve (${reserved}), skipping polling refresh`);
+			return false;
+		}
+		if (remaining <= LOW_THRESHOLD) {
+			logger.info(`[requestBudget.ts] => Low daily quota (${remaining}), skipping polling refresh`);
+			return false;
+		}
 	}
 
 	return true;

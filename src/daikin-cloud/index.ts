@@ -43,6 +43,13 @@ export class DaikinCloudController extends EventEmitter<DaikinCloudControllerEve
     }
 
     /**
+     * Low-level API request (used for schedule PUT and other non-PATCH operations)
+     */
+    async requestResource(path: string, opts?: Parameters<OnectaClient['requestResource']>[1]) {
+        return this.#client.requestResource(path, opts);
+    }
+
+    /**
      * Get pure Device Data from the Daikin cloud devices
      * @returns {Promise<Object>} pure Device details
      */

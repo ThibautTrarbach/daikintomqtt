@@ -222,6 +222,13 @@ export class DaikinCloudDevice extends EventEmitter<DaikinCloudDeviceEvents> {
             throw new Error('Value (' + value + ') must not be bigger then ' + def.maxValue);
         }
 
+        if (typeof def.stepValue === 'number' && typeof value === 'number') {
+            const remainder = Math.abs((value - (typeof def.minValue === 'number' ? def.minValue : 0)) % def.stepValue);
+            if (remainder > 0.0001 && Math.abs(remainder - def.stepValue) > 0.0001) {
+                throw new Error('Value (' + value + ') must be a multiple of step ' + def.stepValue);
+            }
+        }
+
         // TODO add more validations for stepValue(number)
     }
 

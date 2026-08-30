@@ -1,4 +1,4 @@
-import {BRP069A4x, BRP069A61, BRP069A62, BRP069A78, BRP069B4x, BRP069C41, BRP069C4x} from "../modules/gateway";
+import {BRP069A4x, BRP069A61, BRP069A62, BRP069A78, BRP069B4x, BRP069C41, BRP069C4x, BRP069C8x, DynamicGateway} from "../modules/gateway";
 
 export interface Daikin2MQTT {
 	system: ConfigSystem
@@ -40,6 +40,18 @@ export interface ConfigSystem {
 	 * Daily energy stats refresh time (HH:MM, 24h)
 	 */
 	energyStatsRefreshTime?: string
+	/**
+	 * Use DynamicGateway for unknown device models (auto-map API characteristics)
+	 */
+	dynamicFallback?: boolean
+	/**
+	 * Publish read-only characteristics in DynamicGateway mode
+	 */
+	exposeReadOnly?: boolean
+	/**
+	 * Publish MQTT only when device state hash changed
+	 */
+	publishOnDelta?: boolean
 }
 
 export interface ConfigPolling {
@@ -128,6 +140,10 @@ export interface DevicesInformation {
 	firmwareVersion: string,
 	isInErrorState: string,
 	errorCode: string
+	timeZone?: string
+	wifiConnectionSSID?: string
+	wifiConnectionStrength?: string
+	isCloudConnectionUp?: string
 }
 
 export interface ClassModule {
@@ -142,7 +158,8 @@ export type Gateways =
 	BRP069A4x |
 	BRP069C41 |
 	BRP069A61 |
-	BRP069C8x
+	BRP069C8x |
+	DynamicGateway
 
 
 

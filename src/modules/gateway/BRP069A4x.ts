@@ -72,6 +72,26 @@ export class BRP069A4x implements ClassModule{
     private _isInModeConflict?: boolean;
     @modulesDaikinAcces({
         managementPoint: "climateControl",
+        dataPoint: "isInWarningState"
+    })
+    @modulesDataDescription({
+        name: 'Warning State',
+        settable: false,
+        type: typeEnum.binary
+    })
+    private _isInWarningState?: boolean;
+    @modulesDaikinAcces({
+        managementPoint: "climateControl",
+        dataPoint: "isInCautionState"
+    })
+    @modulesDataDescription({
+        name: 'Caution State',
+        settable: false,
+        type: typeEnum.binary
+    })
+    private _isInCautionState?: boolean;
+    @modulesDaikinAcces({
+        managementPoint: "climateControl",
         dataPoint: "operationMode"
     })
     @modulesDataDescription({
@@ -101,12 +121,12 @@ export class BRP069A4x implements ClassModule{
     private _onOffMode?: boolean;
     @modulesDaikinAcces({
         managementPoint: "climateControl",
-        dataPoint: "isPowerfulModeActive",
+        dataPoint: "powerfulMode",
         converter: converterEnum.binary
     })
     @modulesDataDescription({
         name: 'Powerful Mode',
-        settable: false,
+        settable: true,
         generic_type: "ENERGY_STATE",
         type: typeEnum.binary
     })
@@ -125,6 +145,23 @@ export class BRP069A4x implements ClassModule{
         unite: '°C'
     })
     private _roomTemperature?: number;
+    @modulesDaikinAcces({
+        managementPoint: "climateControl",
+        dataPoint: "sensoryData",
+        dataPointPath: "/outdoorTemperature"
+    })
+    @modulesDataDescription({
+        name: 'Outdoor Temperature',
+        settable: false,
+        type: typeEnum.numeric,
+        minMaxValue: {
+            managementPoint: "climateControl",
+            dataPoint: "sensoryData",
+            dataPointPath: "/outdoorTemperature"
+        },
+        unite: '°C'
+    })
+    private _outdoorTemperature?: number;
     // Room humidity
     @modulesDaikinAcces({
         managementPoint: "climateControl",
@@ -350,6 +387,12 @@ export class BRP069A4x implements ClassModule{
     set isInModeConflict(value: boolean) {
         this._isInModeConflict = value;
     }
+    set isInWarningState(value: boolean) {
+        this._isInWarningState = value;
+    }
+    set isInCautionState(value: boolean) {
+        this._isInCautionState = value;
+    }
     set operationMode(value: string) {
         this._operationMode = value;
     }
@@ -361,6 +404,9 @@ export class BRP069A4x implements ClassModule{
     }
     set roomTemperature(value: number) {
         this._roomTemperature = value;
+    }
+    set outdoorTemperature(value: number) {
+        this._outdoorTemperature = value;
     }
     set roomHumidity(value: number) {
         this._roomHumidity = value;

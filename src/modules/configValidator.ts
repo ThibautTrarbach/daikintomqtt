@@ -170,6 +170,30 @@ function validateSystemConfig(system: ConfigSystem): ValidationError[] {
 		}
 	}
 
+	if (system.dynamicFallback !== undefined && typeof system.dynamicFallback !== 'boolean') {
+		errors.push({
+			field: 'system.dynamicFallback',
+			message: 'dynamicFallback must be a boolean',
+			value: system.dynamicFallback
+		});
+	}
+
+	if (system.exposeReadOnly !== undefined && typeof system.exposeReadOnly !== 'boolean') {
+		errors.push({
+			field: 'system.exposeReadOnly',
+			message: 'exposeReadOnly must be a boolean',
+			value: system.exposeReadOnly
+		});
+	}
+
+	if (system.publishOnDelta !== undefined && typeof system.publishOnDelta !== 'boolean') {
+		errors.push({
+			field: 'system.publishOnDelta',
+			message: 'publishOnDelta must be a boolean',
+			value: system.publishOnDelta
+		});
+	}
+
 	return errors;
 }
 

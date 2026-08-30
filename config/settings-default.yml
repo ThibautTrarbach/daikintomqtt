@@ -15,6 +15,12 @@ system:
   commandCoalesceMs: 400
   # Daily energy consumption stats refresh (HH:MM)
   energyStatsRefreshTime: "23:58"
+  # Use DynamicGateway for unknown models (auto-map API characteristics)
+  dynamicFallback: true
+  # Publish read-only characteristics in DynamicGateway mode
+  exposeReadOnly: true
+  # Skip MQTT publish when payload unchanged (default: true via cache)
+  publishOnDelta: true
   polling:
     dayInterval: 15 # Refresh interval in minutes during the day
     nightInterval: 30 # Refresh interval in minutes during the night

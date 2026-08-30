@@ -8,6 +8,8 @@ import {
 	BRP069B4x,
 	BRP069C41,
 	BRP069C4x, BRP069C8x,
+	DynamicGateway,
+	applyGatewayEvents,
 	eventValue,
 	SystemBridge
 } from "./gateway";
@@ -47,7 +49,7 @@ async function queueDeviceCommand(device: DaikinCloudDevice, eventData: Record<s
 		}
 
 		try {
-			await eventValue(device, gateway, merged);
+			await applyGatewayEvents(device, gateway, merged);
 			logger.debug(`[daikin.ts] => Coalesced command processed for device: ${deviceId}`);
 		} catch (eventError) {
 			logger.error(`[daikin.ts] => Error processing coalesced event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
@@ -412,6 +414,44 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 }
 
 /**
+ * Refreshes a single device from cloud (GET /v1/gateway-devices/{id}) and publishes MQTT state.
+ */
+async function refreshSingleDevice(deviceId: string, reason: string): Promise<boolean> {
+	try {
+		const devices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
+		if (!devices?.length) {
+			return false;
+		}
+
+		const device = devices.find((dev) => dev.getId() === deviceId);
+		if (!device) {
+			return false;
+		}
+
+		if (!(await canRefresh(reason))) {
+			return false;
+		}
+
+		logger.info(`[daikin.ts] => Partial refresh for device ${deviceId} (reason: ${reason})`);
+		await device.updateData();
+		await cache.set('devices', devices, 10800000);
+		await cache.set(`device_${deviceId}`, device, 10800000);
+
+		const gateway = getModels(device);
+		if (gateway === undefined) {
+			return false;
+		}
+
+		await publishToMQTT(deviceId, JSON.stringify(gateway));
+		await updateSystemBridge(null, devices);
+		return true;
+	} catch (error) {
+		logger.warn(`[daikin.ts] => Partial refresh failed for ${deviceId}, falling back to full refresh: ${error instanceof Error ? error.message : String(error)}`);
+		return false;
+	}
+}
+
+/**
  * Publishes the full state of all devices to MQTT.
  * If devices are not provided, they are retrieved via getDevices (cache or cloud).
  * Also records periodic refresh timestamps and updates the system bridge.
@@ -423,6 +463,13 @@ async function sendDevice(
 	onlyDeviceIds?: string[]
 ) {
 	try {
+		if (reason === 'post_action_refresh' && onlyDeviceIds?.length === 1) {
+			const partialOk = await refreshSingleDevice(onlyDeviceIds[0], reason);
+			if (partialOk) {
+				return;
+			}
+		}
+
 		if (devices == null) {
 			logger.debug(`[daikin.ts] => Retrieving devices${cron ? ' (forced from cloud)' : ' (from cache if available)'} for sendDevice (reason: ${reason})`);
 			devices = await getDevices(cron, reason);
@@ -520,6 +567,10 @@ function getModels(devices: any) {
 		}
 
 		if (!value) {
+			if (config.system?.dynamicFallback !== false) {
+				logger.info(`[daikin.ts] => Using DynamicGateway for device without modelInfo`);
+				return new DynamicGateway(devices);
+			}
 			logger.warn(`[daikin.ts] => No modelInfo found for device ${devices.getId ? devices.getId() : 'unknown'}`);
 			anonymise(devices, 'unknown');
 			return undefined;
@@ -545,6 +596,10 @@ function getModels(devices: any) {
 			case 'BRP069C8x':
 				return new BRP069C8x(devices);
 			default:
+			if (config.system?.dynamicFallback !== false) {
+				logger.info(`[daikin.ts] => Using DynamicGateway for model: ${value}`);
+				return new DynamicGateway(devices);
+			}
 			logger.warn(`[daikin.ts] => Unsupported model: ${value}`);
 			anonymise(devices, value);
 			return undefined;

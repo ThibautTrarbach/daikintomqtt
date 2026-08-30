@@ -1,6 +1,9 @@
 export * from "./Anonymise"
 export * from "./BaseModules"
 export * from "./SystemBridge"
+export * from "./DynamicGateway"
+export * from "./CharacteristicWriter"
+export * from "./ScheduleManager"
 
 export * from "./BRP069C4x"
 export * from "./BRP069A62"
