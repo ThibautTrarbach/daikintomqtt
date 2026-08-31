@@ -1,0 +1,11 @@
+export type ApiBudgetStatus = 'ok' | 'low' | 'critical' | 'exhausted';
+declare const PRIORITY_REFRESH_REASONS: Set<string>;
+declare function getAuthMode(): 'developer_portal' | 'mobile_app';
+declare function getBudgetStatus(): Promise<ApiBudgetStatus>;
+declare function canRefresh(reason: string): Promise<boolean>;
+declare function getPollingIntervalMultiplier(): Promise<number>;
+declare function getDefaultDailyQuotaLimit(): number;
+declare function incrementSkippedRefreshCount(): Promise<number>;
+declare function getSkippedRefreshCount(): Promise<number>;
+declare function getReservedDailyGets(): number;
+export { canRefresh, getBudgetStatus, getPollingIntervalMultiplier, getSkippedRefreshCount, incrementSkippedRefreshCount, getReservedDailyGets, getDefaultDailyQuotaLimit, getAuthMode as getConfiguredAuthMode, PRIORITY_REFRESH_REASONS, };

@@ -1,3 +1,3 @@
-import { DaikinCloudDevice } from "daikin-controller-cloud/dist/device";
-declare function generateCMD(data: object, modules: object, device: DaikinCloudDevice): any[];
+import { DaikinCloudDevice } from "../../daikin-cloud";
+declare function generateCMD(data: object, modules: Record<string, unknown>, device: DaikinCloudDevice | null): any[];
 export { generateCMD };

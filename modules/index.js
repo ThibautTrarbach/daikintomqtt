@@ -19,4 +19,5 @@ __exportStar(require("./daikin"), exports);
 __exportStar(require("./mqtt"), exports);
 __exportStar(require("./logger"), exports);
 __exportStar(require("./decorator"), exports);
+__exportStar(require("./instanceId"), exports);
 //# sourceMappingURL=index.js.map
