@@ -1,11 +1,12 @@
 import fs from "fs";
 import path from "path";
+import { getNewConfigDir } from "../paths";
 
-function anonymise(dev: any, value: string) {
+function anonymise(dev: any, value: string | undefined) {
 	let fileName = value ?? dev.getId();
 
 	let data = recurse(dev)
-	const configFolder = path.join(datadir, '/newConfig')
+	const configFolder = getNewConfigDir()
 	const configFile = path.join(configFolder, fileName + '.json')
 
 	if (!fs.existsSync(configFolder)) fs.mkdirSync(configFolder)
