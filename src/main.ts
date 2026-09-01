@@ -3,6 +3,7 @@ import {
 	loadGlobalConfig,
 	loadLogger,
 	loadMQTTClient,
+	cleanStaleMqttTopics,
 	startDaikinAPI,
 	clearPendingCommands,
 	clearGatewayCache,
@@ -40,6 +41,8 @@ import { setTimeout } from "timers/promises";
 		// Connect to MQTT
 		global.logger.info("[main.ts] => Connecting to MQTT broker");
 		await loadMQTTClient();
+		global.logger.info("[main.ts] => Cleaning stale retained MQTT topics");
+		await cleanStaleMqttTopics();
 
 		// Connect to Daikin
 		global.logger.info("[main.ts] => Connecting to Daikin API");
