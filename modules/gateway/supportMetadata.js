@@ -17,7 +17,7 @@ const requestBudget_1 = require("../requestBudget");
 const Anonymise_1 = require("./Anonymise");
 const apiCoverageAudit_1 = require("./apiCoverageAudit");
 const SUPPORT_CMD_TYPE_STRING = 1;
-exports.GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikinRCCloud/issues/new';
+exports.GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikintomqtt/issues/new';
 exports.REDACTED = '[redacted]';
 const MAX_DEBUG_REPORT_SIZE = 16 * 1024;
 const SUPPORT_CMD_KEYS = [
@@ -111,7 +111,7 @@ function buildDebugReport(device, context, coverage, managementPointsList, suppo
         `configCoverage: ${coverage.configCoverage}`,
         `configCoverageDetail: ${coverage.configCoverageDetail}`,
         `firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
-        `serialNumber: ${readGatewayField(device, 'gateway', 'serialNumber')}`,
+        `serialNumber: ${exports.REDACTED}`,
         `daemonVersion: ${getDaemonVersion()}`,
         `authMode: ${(0, requestBudget_1.getConfiguredAuthMode)()}`,
         `detectedAt: ${new Date().toISOString()}`,

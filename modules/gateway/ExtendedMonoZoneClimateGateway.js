@@ -81,13 +81,17 @@ const C4X_OPTS = {
 };
 class BRP069A4x extends AbstractGateway_1.AbstractGateway {
     constructor(device) {
-        super(device, buildExtendedMonoZoneCharacteristics(A4X_OPTS), (0, catalog_1.standardGatewayDeviceInfo)(MP));
+        const chars = buildExtendedMonoZoneCharacteristics(A4X_OPTS);
+        appendDeviceSpecificCharacteristics(device, chars);
+        super(device, chars, (0, catalog_1.standardGatewayDeviceInfo)(MP));
     }
 }
 exports.BRP069A4x = BRP069A4x;
 class BRP069B4x extends AbstractGateway_1.AbstractGateway {
     constructor(device) {
-        super(device, buildExtendedMonoZoneCharacteristics(B4X_OPTS), (0, catalog_1.standardGatewayDeviceInfo)(MP));
+        const chars = buildExtendedMonoZoneCharacteristics(B4X_OPTS);
+        appendDeviceSpecificCharacteristics(device, chars);
+        super(device, chars, (0, catalog_1.standardGatewayDeviceInfo)(MP));
     }
 }
 exports.BRP069B4x = BRP069B4x;

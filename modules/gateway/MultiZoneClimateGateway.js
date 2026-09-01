@@ -50,12 +50,16 @@ function buildMainZoneCharacteristics() {
         }),
         (0, catalog_1.temperatureControlRoom)(MAIN_MP, `${prefix} Temperature Control`, '_temperatureControlMain'),
         (0, catalog_1.temperatureControlLeavingWater)(MAIN_MP, `${prefix} Leaving Water Control`, '_temperatureControlWaterMain'),
+        (0, catalog_1.temperatureControlLeavingWaterOffset)(MAIN_MP, `${prefix} Leaving Water Offset Control`, '_temperatureControlWaterOffsetMain'),
         ...(0, catalog_1.consumptionPack)(MAIN_MP, `${prefix} `, 'Main'),
     ];
 }
 function buildTankZoneCharacteristics() {
     const prefix = 'Water Tank -';
     return [
+        (0, catalog_1.stringField)(TANK_MP, 'name', `${prefix} Name`, {
+            propertyKey: '_nameTank',
+        }),
         (0, catalog_1.stringField)(TANK_MP, 'errorCode', `${prefix} Error Code`, {
             propertyKey: '_errorCodeTank',
         }),
@@ -91,6 +95,9 @@ function buildTankZoneCharacteristics() {
             generic_type: 'ENERGY_STATE',
             propertyKey: '_powerfulModeTank',
         }),
+        (0, catalog_1.stateBool)(TANK_MP, 'isPowerfulModeActive', `${prefix} Powerful Mode Active`, {
+            propertyKey: '_isPowerfulModeActiveTank',
+        }),
         (0, catalog_1.sensoryTemperature)(TANK_MP, '/tankTemperature', `${prefix} Tank Temperature`, '_tankTemperatureTank'),
         (0, catalog_1.stringField)(TANK_MP, 'setpointMode', `${prefix} Setpoint Mode`, {
             propertyKey: '_setpointModeTank',
@@ -107,9 +114,26 @@ function buildMultiZoneCharacteristics() {
         ...buildTankZoneCharacteristics(),
     ];
 }
+function appendMultiZoneDeviceSpecificCharacteristics(device, chars) {
+    chars.push(...(0, catalog_1.gatewayDiagnosticsPack)());
+    const infoOnlyUnits = [
+        ['indoorUnitHydro', 'Indoor Unit Hydro'],
+        ['userInterface', 'User Interface'],
+    ];
+    for (const [managementPoint, label] of infoOnlyUnits) {
+        if (managementPoint in device.managementPoints) {
+            chars.push(...(0, catalog_1.auxiliaryUnitInfoPack)(managementPoint, label));
+        }
+    }
+    if ('outdoorUnit' in device.managementPoints) {
+        chars.push(...(0, catalog_1.auxiliaryUnitPack)('outdoorUnit', 'Outdoor Unit'));
+    }
+}
 class BRP069A78 extends AbstractGateway_1.AbstractGateway {
     constructor(device) {
-        super(device, buildMultiZoneCharacteristics(), (0, catalog_1.multiZoneDeviceInfo)());
+        const chars = buildMultiZoneCharacteristics();
+        appendMultiZoneDeviceSpecificCharacteristics(device, chars);
+        super(device, chars, (0, catalog_1.multiZoneDeviceInfo)());
     }
 }
 exports.BRP069A78 = BRP069A78;
