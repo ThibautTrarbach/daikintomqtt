@@ -2,7 +2,7 @@ import {
 	consumptionEnum,
 	converterEnum,
 	typeEnum,
-} from '../BaseModules';
+} from '../typeConstants';
 import { CharacteristicDefinition } from '../metadataRegistry';
 import { ModuleDeviceMetadata, ModulePropertyMetadata } from '../../../types';
 

@@ -2,7 +2,7 @@ import "reflect-metadata";
 import {DaikinCloudDevice} from "../../daikin-cloud";
 import {PROPERTY_METADATA_CMD, PROPERTY_METADATA_DAIKIN} from "../decorator";
 import {ClassModule, DevicesInformation, ModulePropertyMetadata, ModulesDescriptionMetadata} from "../../types";
-import {converterEnum, typeEnum} from "./BaseModules";
+import {converterEnum, typeEnum} from "./typeConstants";
 import {registerDeviceMetadata} from "./metadataRegistry";
 import {standardGatewayDeviceInfo} from "./characteristics/catalog";
 

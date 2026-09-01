@@ -1,7 +1,7 @@
 import { DaikinCloudDevice } from '../../daikin-cloud';
 import { ClassModule } from '../../types';
 import { AbstractGateway } from './AbstractGateway';
-import { converterEnum } from './BaseModules';
+import { converterEnum } from './typeConstants';
 import { CharacteristicDefinition } from './metadataRegistry';
 import {
 	consumptionPack,

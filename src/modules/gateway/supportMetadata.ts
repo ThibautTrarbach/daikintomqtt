@@ -7,11 +7,13 @@ import {DaikinCloudDevice} from '../../daikin-cloud';
 import {getConfiguredAuthMode} from '../requestBudget';
 import {anonymise} from './Anonymise';
 import {auditApiCoverage, ConfigCoverage, CoverageAuditResult} from './apiCoverageAudit';
-import {typeEnum} from './BaseModules';
+
+const SUPPORT_CMD_TYPE_STRING = 1;
 
 export type SupportStatus = 'full' | 'partial' | 'unsupported';
 
 export const GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikinRCCloud/issues/new';
+export const REDACTED = '[redacted]';
 
 const SUPPORT_CMD_KEYS = [
 	'_supportStatus',
@@ -25,11 +27,26 @@ const SUPPORT_CMD_KEYS = [
 	'_githubIssueUrl',
 ] as const;
 
+type SupportCmdKey = typeof SUPPORT_CMD_KEYS[number];
+type SupportCommandValues = Partial<Record<SupportCmdKey, string>>;
+
 export interface SupportEnrichmentContext {
 	supportStatus: SupportStatus;
 	gatewayModelRaw?: string;
 	gatewayModelResolved?: string | null;
 }
+
+const SUPPORT_CMD_DEFS: Array<{ key: SupportCmdKey; name: string }> = [
+	{ key: '_supportStatus', name: 'Support Status' },
+	{ key: '_configCoverage', name: 'Config Coverage' },
+	{ key: '_configCoverageDetail', name: 'Config Coverage Detail' },
+	{ key: '_supportMessage', name: 'Support Message' },
+	{ key: '_debugReport', name: 'Debug Report' },
+	{ key: '_unmappedDatapoints', name: 'Unmapped Datapoints' },
+	{ key: '_unitModels', name: 'Unit Models' },
+	{ key: '_managementPointsList', name: 'Management Points' },
+	{ key: '_githubIssueUrl', name: 'GitHub Issue URL' },
+];
 
 function readGatewayField(device: DaikinCloudDevice, managementPoint: string, field: string): string {
 	try {
@@ -38,6 +55,18 @@ function readGatewayField(device: DaikinCloudDevice, managementPoint: string, fi
 	} catch {
 		return '';
 	}
+}
+
+export function redactSensitiveValue(): string {
+	return REDACTED;
+}
+
+export function isSupportValueEmpty(value: string): boolean {
+	const trimmed = value.trim();
+	if (trimmed === '' || trimmed === '{}' || trimmed === '[]') {
+		return true;
+	}
+	return false;
 }
 
 export function extractUnitModels(device: DaikinCloudDevice): Record<string, string> {
@@ -49,6 +78,24 @@ export function extractUnitModels(device: DaikinCloudDevice): Record<string, str
 		const label = modelInfo || name;
 		if (label) {
 			unitModels[embeddedId] = label;
+		}
+	}
+
+	return unitModels;
+}
+
+export function sanitizeUnitModelsForReport(device: DaikinCloudDevice): Record<string, string> {
+	const unitModels: Record<string, string> = {};
+
+	for (const embeddedId of Object.keys(device.managementPoints)) {
+		const modelInfo = readGatewayField(device, embeddedId, 'modelInfo');
+		if (modelInfo) {
+			unitModels[embeddedId] = modelInfo;
+			continue;
+		}
+		const name = readGatewayField(device, embeddedId, 'name');
+		if (name) {
+			unitModels[embeddedId] = REDACTED;
 		}
 	}
 
@@ -69,12 +116,13 @@ export function buildDebugReport(
 	device: DaikinCloudDevice,
 	context: SupportEnrichmentContext,
 	coverage: CoverageAuditResult,
-	unitModels: Record<string, string>,
 	managementPointsList: string[],
 ): string {
+	const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
 	const lines = [
 		'=== DaikinToMQTT Debug Report ===',
-		`deviceId: ${device.getId()}`,
+		`deviceId: ${REDACTED}`,
+		`deviceName: ${REDACTED}`,
 		`gatewayModelRaw: ${context.gatewayModelRaw ?? 'unknown'}`,
 		`gatewayModelResolved: ${context.gatewayModelResolved ?? 'none'}`,
 		`supportStatus: ${context.supportStatus}`,
@@ -83,7 +131,7 @@ export function buildDebugReport(
 		`firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
 		`serialNumber: ${readGatewayField(device, 'gateway', 'serialNumber')}`,
 		`managementPoints: ${managementPointsList.join(', ')}`,
-		`unitModels: ${JSON.stringify(unitModels)}`,
+		`unitModels: ${JSON.stringify(sanitizedUnitModels)}`,
 		`daemonVersion: ${getDaemonVersion()}`,
 		`authMode: ${getConfiguredAuthMode()}`,
 		`detectedAt: ${new Date().toISOString()}`,
@@ -117,55 +165,99 @@ export function needsSupportReporting(supportStatus: SupportStatus, configCovera
 	return supportStatus !== 'full' || configCoverage === 'incomplete';
 }
 
-function appendSupportMetadata(
+function getActiveSupportCommandKeys(gateway: Gateways): Set<SupportCmdKey> {
+	const cmdMetadata = (Reflect.getMetadata(PROPERTY_METADATA_CMD, gateway) as Record<string, unknown>) || {};
+	const active = new Set<SupportCmdKey>();
+	for (const key of SUPPORT_CMD_KEYS) {
+		if (key in cmdMetadata) {
+			active.add(key);
+		}
+	}
+	return active;
+}
+
+function buildActiveSupportKeys(values: SupportCommandValues): Set<SupportCmdKey> {
+	const active = new Set<SupportCmdKey>();
+	for (const def of SUPPORT_CMD_DEFS) {
+		const value = values[def.key];
+		if (value !== undefined && !isSupportValueEmpty(value)) {
+			active.add(def.key);
+		}
+	}
+	return active;
+}
+
+function supportCommandSetsEqual(a: Set<SupportCmdKey>, b: Set<SupportCmdKey>): boolean {
+	if (a.size !== b.size) {
+		return false;
+	}
+	for (const key of a) {
+		if (!b.has(key)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+export function syncSupportMetadata(
 	gateway: Gateways,
-	values: Record<string, string>,
-): void {
-	const cmdMetadata = (Reflect.getMetadata(PROPERTY_METADATA_CMD, gateway) as Record<string, ModulesDescriptionMetadata>) || {};
-	const daikinMetadata = (Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gateway) as Record<string, ModulePropertyMetadata>) || {};
+	values: SupportCommandValues,
+): boolean {
+	const before = getActiveSupportCommandKeys(gateway);
+	const after = buildActiveSupportKeys(values);
 
-	const supportDefs: Array<{ key: string; name: string; value: string }> = [
-		{ key: '_supportStatus', name: 'Support Status', value: values._supportStatus },
-		{ key: '_configCoverage', name: 'Config Coverage', value: values._configCoverage },
-		{ key: '_configCoverageDetail', name: 'Config Coverage Detail', value: values._configCoverageDetail },
-		{ key: '_supportMessage', name: 'Support Message', value: values._supportMessage },
-		{ key: '_debugReport', name: 'Debug Report', value: values._debugReport },
-		{ key: '_unmappedDatapoints', name: 'Unmapped Datapoints', value: values._unmappedDatapoints },
-		{ key: '_unitModels', name: 'Unit Models', value: values._unitModels },
-		{ key: '_managementPointsList', name: 'Management Points', value: values._managementPointsList },
-		{ key: '_githubIssueUrl', name: 'GitHub Issue URL', value: values._githubIssueUrl },
-	];
+	const cmdMetadata = {
+		...((Reflect.getMetadata(PROPERTY_METADATA_CMD, gateway) as Record<string, ModulesDescriptionMetadata>) || {}),
+	};
+	const daikinMetadata = {
+		...((Reflect.getMetadata(PROPERTY_METADATA_DAIKIN, gateway) as Record<string, ModulePropertyMetadata>) || {}),
+	};
+	const gatewayRecord = gateway as unknown as Record<string, unknown>;
 
-	for (const def of supportDefs) {
+	for (const key of SUPPORT_CMD_KEYS) {
+		delete cmdMetadata[key];
+		delete daikinMetadata[key];
+		delete gatewayRecord[key];
+	}
+
+	for (const def of SUPPORT_CMD_DEFS) {
+		const value = values[def.key];
+		if (value === undefined || isSupportValueEmpty(value)) {
+			continue;
+		}
 		cmdMetadata[def.key] = {
 			name: def.name,
 			settable: false,
-			type: typeEnum.string,
+			type: SUPPORT_CMD_TYPE_STRING,
 			visible: true,
 		};
 		daikinMetadata[def.key] = {
 			managementPoint: 'gateway',
 			dataPoint: '__support__',
 		};
-		(gateway as unknown as Record<string, unknown>)[def.key] = def.value;
+		gatewayRecord[def.key] = value;
 	}
 
 	Reflect.defineMetadata(PROPERTY_METADATA_CMD, cmdMetadata, gateway);
 	Reflect.defineMetadata(PROPERTY_METADATA_DAIKIN, daikinMetadata, gateway);
+
+	return !supportCommandSetsEqual(before, after);
 }
 
 export function enrichDeviceSupport(
 	device: DaikinCloudDevice,
 	gateway: Gateways,
 	context: SupportEnrichmentContext,
-): void {
+): boolean {
 	const coverage = auditApiCoverage(device, gateway);
 	const unitModels = extractUnitModels(device);
+	const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
 	const managementPointsList = Object.keys(device.managementPoints);
 	const gatewayModelRaw = context.gatewayModelRaw ?? (readGatewayField(device, 'gateway', 'modelInfo') || readGatewayField(device, '0', 'modelInfo'));
 
-	const debugReport = buildDebugReport(device, context, coverage, unitModels, managementPointsList);
+	const debugReport = buildDebugReport(device, context, coverage, managementPointsList);
 	const supportMessage = buildSupportMessage(context, coverage);
+	const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
 
 	const deviceInfo = (gateway as { _device?: DevicesInformation })._device;
 	if (deviceInfo) {
@@ -182,22 +274,26 @@ export function enrichDeviceSupport(
 		deviceInfo.githubIssueUrl = GITHUB_ISSUE_URL;
 	}
 
-	if (needsSupportReporting(context.supportStatus, coverage.configCoverage)) {
-		appendSupportMetadata(gateway, {
-			_supportStatus: context.supportStatus,
-			_configCoverage: coverage.configCoverage,
-			_configCoverageDetail: coverage.configCoverageDetail,
-			_supportMessage: supportMessage,
-			_debugReport: debugReport,
-			_unmappedDatapoints: coverage.unmappedDatapoints.join(', '),
-			_unitModels: JSON.stringify(unitModels),
-			_managementPointsList: managementPointsList.join(', '),
-			_githubIssueUrl: GITHUB_ISSUE_URL,
-		});
+	const supportValues: SupportCommandValues = reporting ? {
+		_supportStatus: context.supportStatus,
+		_configCoverage: coverage.configCoverage,
+		_configCoverageDetail: coverage.configCoverageDetail,
+		_supportMessage: supportMessage,
+		_debugReport: debugReport,
+		_unmappedDatapoints: coverage.unmappedDatapoints.join(', '),
+		_unitModels: JSON.stringify(sanitizedUnitModels),
+		_managementPointsList: managementPointsList.join(', '),
+		_githubIssueUrl: GITHUB_ISSUE_URL,
+	} : {};
 
+	const supportCommandsChanged = syncSupportMetadata(gateway, supportValues);
+
+	if (reporting) {
 		const anonymiseKey = gatewayModelRaw || device.getId();
 		anonymise(device, anonymiseKey);
 	}
+
+	return supportCommandsChanged;
 }
 
 export {SUPPORT_CMD_KEYS};
