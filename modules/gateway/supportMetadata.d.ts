@@ -3,7 +3,7 @@ import { Gateways } from '../../types';
 import { DaikinCloudDevice } from '../../daikin-cloud';
 import { ConfigCoverage, CoverageAuditResult } from './apiCoverageAudit';
 export type SupportStatus = 'full' | 'partial' | 'unsupported';
-export declare const GITHUB_ISSUE_URL = "https://github.com/ThibautTrarbach/daikinRCCloud/issues/new";
+export declare const GITHUB_ISSUE_URL = "https://github.com/ThibautTrarbach/daikintomqtt/issues/new";
 export declare const REDACTED = "[redacted]";
 declare const SUPPORT_CMD_KEYS: readonly ["_supportStatus", "_configCoverage", "_configCoverageDetail", "_supportMessage", "_debugReport", "_unmappedDatapoints", "_unitModels", "_managementPointsList", "_githubIssueUrl"];
 type SupportCmdKey = typeof SUPPORT_CMD_KEYS[number];
