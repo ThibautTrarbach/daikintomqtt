@@ -14,6 +14,7 @@ export type SupportStatus = 'full' | 'partial' | 'unsupported';
 
 export const GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikinRCCloud/issues/new';
 export const REDACTED = '[redacted]';
+const MAX_DEBUG_REPORT_SIZE = 16 * 1024;
 
 const SUPPORT_CMD_KEYS = [
 	'_supportStatus',
@@ -117,6 +118,7 @@ export function buildDebugReport(
 	context: SupportEnrichmentContext,
 	coverage: CoverageAuditResult,
 	managementPointsList: string[],
+	supportMessage: string,
 ): string {
 	const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
 	const lines = [
@@ -130,22 +132,33 @@ export function buildDebugReport(
 		`configCoverageDetail: ${coverage.configCoverageDetail}`,
 		`firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
 		`serialNumber: ${readGatewayField(device, 'gateway', 'serialNumber')}`,
-		`managementPoints: ${managementPointsList.join(', ')}`,
-		`unitModels: ${JSON.stringify(sanitizedUnitModels)}`,
 		`daemonVersion: ${getDaemonVersion()}`,
 		`authMode: ${getConfiguredAuthMode()}`,
 		`detectedAt: ${new Date().toISOString()}`,
 	];
 
+	if (supportMessage) {
+		lines.push(`supportMessage: ${supportMessage}`);
+	}
+
+	lines.push(`managementPoints: ${managementPointsList.join(', ')}`);
+	lines.push(`unitModels: ${JSON.stringify(sanitizedUnitModels)}`);
+
 	if (coverage.unmappedDatapoints.length > 0) {
-		lines.push('unmappedDatapoints:');
-		for (const point of coverage.unmappedDatapoints) {
-			lines.push(`  - ${point}`);
+		lines.push(`unmappedDatapoints: ${coverage.unmappedDatapoints.join(', ')}`);
+		if (coverage.totalUnmappedCount > coverage.unmappedDatapoints.length) {
+			lines.push(`unmappedDatapointsTruncated: showing ${coverage.unmappedDatapoints.length}/${coverage.totalUnmappedCount}`);
 		}
 	}
 
-	lines.push(`githubIssueUrl: ${GITHUB_ISSUE_URL}`);
-	return lines.join('\n').slice(0, 2048);
+	const footer = `githubIssueUrl: ${GITHUB_ISSUE_URL}`;
+	const body = lines.join('\n');
+	const maxBodySize = MAX_DEBUG_REPORT_SIZE - footer.length - 1;
+	if (body.length <= maxBodySize) {
+		return `${body}\n${footer}`;
+	}
+
+	return `${body.slice(0, maxBodySize - 14)}\n...[truncated]\n${footer}`;
 }
 
 function buildSupportMessage(context: SupportEnrichmentContext, coverage: CoverageAuditResult): string {
@@ -255,8 +268,8 @@ export function enrichDeviceSupport(
 	const managementPointsList = Object.keys(device.managementPoints);
 	const gatewayModelRaw = context.gatewayModelRaw ?? (readGatewayField(device, 'gateway', 'modelInfo') || readGatewayField(device, '0', 'modelInfo'));
 
-	const debugReport = buildDebugReport(device, context, coverage, managementPointsList);
 	const supportMessage = buildSupportMessage(context, coverage);
+	const debugReport = buildDebugReport(device, context, coverage, managementPointsList, supportMessage);
 	const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
 
 	const deviceInfo = (gateway as { _device?: DevicesInformation })._device;

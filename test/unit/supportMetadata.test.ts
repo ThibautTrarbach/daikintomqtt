@@ -26,6 +26,7 @@ const { PROPERTY_METADATA_CMD } = require('../../src/modules/decorator') as type
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
 	REDACTED,
+	GITHUB_ISSUE_URL,
 	buildDebugReport,
 	isSupportValueEmpty,
 	sanitizeUnitModelsForReport,
@@ -99,8 +100,10 @@ function run(): void {
 			apiCount: 2,
 			configCoverageDetail: '1/2 datapoints mapped',
 			unmappedDatapoints: ['climateControl/somePoint'],
+			totalUnmappedCount: 1,
 		},
 		['gateway', 'climateControl'],
+		'Needs support',
 	);
 	assert.equal(report.includes(DEVICE_UUID), false);
 	assert.equal(report.includes(GATEWAY_NAME), false);
@@ -110,6 +113,38 @@ function run(): void {
 	assert.equal(report.includes(`deviceName: ${REDACTED}`), true);
 	assert.equal(report.includes('"gateway":"BRP069C4x"'), true);
 	assert.equal(report.includes(`"climateControl":"${REDACTED}"`), true);
+	assert.equal(report.includes('supportMessage: Needs support'), true);
+	assert.equal(report.includes(`githubIssueUrl: ${GITHUB_ISSUE_URL}`), true);
+	assert.equal(report.includes('unmappedDatapoints: climateControl/somePoint'), true);
+
+	const longUnmapped = Array.from({ length: 42 }, (_, index) =>
+		`climateControl/fanControl//operationModes/heating/fanSpeed/modes/fixed/${index}`,
+	);
+	const longReport = buildDebugReport(
+		device,
+		{
+			supportStatus: 'full',
+			gatewayModelRaw: 'BRP069C4x',
+			gatewayModelResolved: 'BRP069C4x',
+		},
+		{
+			configCoverage: 'incomplete',
+			mappedCount: 8,
+			apiCount: 50,
+			configCoverageDetail: '8/50 datapoints mapped',
+			unmappedDatapoints: longUnmapped,
+			totalUnmappedCount: 55,
+		},
+		['gateway', 'climateControl'],
+		'Static gateway configuration is incomplete for this API variant. Please open a GitHub issue with the debug report below.',
+	);
+	assert.ok(longReport.length > 2048, 'long report should exceed the previous 2048-byte cap');
+	assert.equal(longReport.includes(`githubIssueUrl: ${GITHUB_ISSUE_URL}`), true);
+	assert.equal(longReport.includes('supportMessage: Static gateway configuration is incomplete'), true);
+	assert.equal(longReport.includes('unmappedDatapointsTruncated: showing 42/55'), true);
+	for (const point of longUnmapped) {
+		assert.equal(longReport.includes(point), true, `missing unmapped datapoint in report: ${point}`);
+	}
 
 	const gateway = createGatewayStub();
 	const changedOnAdd = syncSupportMetadata(gateway as never, {

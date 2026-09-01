@@ -12,6 +12,7 @@ export interface CoverageAuditResult {
 	apiCount: number;
 	configCoverageDetail: string;
 	unmappedDatapoints: string[];
+	totalUnmappedCount: number;
 }
 
 const SYNTHETIC_DATAPOINTS = new Set(['__firmwareUpdate__', '__awayPreset__', '__scheduleEnable__']);
@@ -117,8 +118,9 @@ export function auditApiCoverage(device: DaikinCloudDevice, gateway: Gateways): 
 	}
 
 	const apiCount = apiDatapoints.length;
-	const mappedCount = apiCount - unmapped.length;
-	const configCoverage: ConfigCoverage = unmapped.length === 0 ? 'complete' : 'incomplete';
+	const totalUnmappedCount = unmapped.length;
+	const mappedCount = apiCount - totalUnmappedCount;
+	const configCoverage: ConfigCoverage = totalUnmappedCount === 0 ? 'complete' : 'incomplete';
 	const configCoverageDetail = `${mappedCount}/${apiCount} datapoints mapped`;
 
 	return {
@@ -127,5 +129,6 @@ export function auditApiCoverage(device: DaikinCloudDevice, gateway: Gateways): 
 		apiCount,
 		configCoverageDetail,
 		unmappedDatapoints: unmapped.slice(0, 50),
+		totalUnmappedCount,
 	};
 }
