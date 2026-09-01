@@ -368,12 +368,14 @@ function gatewayDiagnosticsPack() {
 function auxiliaryUnitPack(managementPoint, labelPrefix) {
     const chars = [];
     if (managementPoint === 'indoorUnit') {
-        chars.push(stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+        chars.push(stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_indoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_indoorUnitSerialNumber' }), stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
             propertyKey: '_indoorUnitSoftwareVersion',
         }));
     }
     if (managementPoint === 'outdoorUnit') {
-        chars.push(stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }), stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }), stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }), stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }));
+        chars.push(stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_outdoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_outdoorUnitSerialNumber' }), stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+            propertyKey: '_outdoorUnitSoftwareVersion',
+        }), stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }), stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }), stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }), stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }));
     }
     return chars;
 }
