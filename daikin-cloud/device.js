@@ -66,7 +66,7 @@ class DaikinCloudDevice extends events_1.EventEmitter {
         return new Date(this.desc.lastUpdateReceived || this.desc.timestamp);
     }
     isCloudConnectionUp() {
-        return !!this.desc.isCloudConnectionUp.value;
+        return !!this.desc?.isCloudConnectionUp?.value;
     }
     getData(managementPoint, dataPoint, dataPointPath) {
         if (!managementPoint) {
