@@ -33,38 +33,20 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.consumptionEnum = exports.converterEnum = exports.typeEnum = void 0;
+exports.typeEnum = exports.converterEnum = exports.consumptionEnum = void 0;
 exports.convertDaikinDevice = convertDaikinDevice;
 exports.eventValue = eventValue;
 const decorator_1 = require("../decorator");
 const mqtt_1 = require("../mqtt");
 const actionRefresh_1 = require("../actionRefresh");
 const constants_1 = require("../constants");
-const typeEnum = Object.freeze({
-    numeric: 0,
-    string: 1,
-    binary: 2,
-});
-exports.typeEnum = typeEnum;
-const converterEnum = Object.freeze({
-    numeric: 0,
-    string: 1,
-    binary: 2,
-    consumption: 3
-});
-exports.converterEnum = converterEnum;
+const typeConstants_1 = require("./typeConstants");
+Object.defineProperty(exports, "consumptionEnum", { enumerable: true, get: function () { return typeConstants_1.consumptionEnum; } });
+Object.defineProperty(exports, "converterEnum", { enumerable: true, get: function () { return typeConstants_1.converterEnum; } });
+Object.defineProperty(exports, "typeEnum", { enumerable: true, get: function () { return typeConstants_1.typeEnum; } });
 function isDeviceMetadataField(value) {
     return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;
 }
-const consumptionEnum = Object.freeze({
-    heatingDay: 0,
-    heatingWeek: 1,
-    heatingMonth: 2,
-    coolingDay: 3,
-    coolingWeek: 4,
-    coolingMonth: 5
-});
-exports.consumptionEnum = consumptionEnum;
 function convertDaikinDevice(device, gatewayClass) {
     let data = Reflect.getMetadata(decorator_1.PROPERTY_METADATA_DAIKIN, gatewayClass) || {};
     createDeviceInfo(device, gatewayClass);
@@ -163,6 +145,26 @@ function createDeviceInfo(device, gatewayClass) {
             ['wifiConnectionStrength', 'gateway', 'wifiConnectionStrength'],
         ];
         for (const [field, mp, dp] of extraDeviceFields) {
+            try {
+                const extra = device.getData(mp, dp, undefined);
+                if (extra?.value !== undefined && extra?.value !== null) {
+                    gatewayClass[key1][field] = String(extra.value);
+                }
+            }
+            catch {
+            }
+        }
+        if (!gatewayClass[key1].wifiConnectionSSID) {
+            try {
+                const ssid = device.getData('gateway', 'ssid', undefined);
+                if (ssid?.value !== undefined && ssid?.value !== null) {
+                    gatewayClass[key1].wifiConnectionSSID = String(ssid.value);
+                }
+            }
+            catch {
+            }
+        }
+        for (const [field, mp, dp] of [['ipAddress', 'gateway', 'ipAddress'], ['macAddress', 'gateway', 'macAddress']]) {
             try {
                 const extra = device.getData(mp, dp, undefined);
                 if (extra?.value !== undefined && extra?.value !== null) {
@@ -517,19 +519,19 @@ function checkData(params, value) {
 }
 function convert(converter, value, to) {
     switch (converter) {
-        case converterEnum.binary:
+        case typeConstants_1.converterEnum.binary:
             if (to == 0)
                 return convertBinary0(value);
             if (to == 1)
                 return convertBinary1(value);
             break;
-        case converterEnum.string:
+        case typeConstants_1.converterEnum.string:
             if (value === undefined || value === null)
                 return value;
             return String(value);
-        case converterEnum.numeric:
+        case typeConstants_1.converterEnum.numeric:
             return parseFloat(value);
-        case converterEnum.consumption:
+        case typeConstants_1.converterEnum.consumption:
             if (to != 0)
                 return 0;
             return convertConsumption(value);
@@ -595,37 +597,37 @@ function getConsumptionData(values, consumptionT, unit) {
     }
     let result = [];
     switch (consumptionT) {
-        case consumptionEnum.heatingDay:
+        case typeConstants_1.consumptionEnum.heatingDay:
             if (!values.heating || !values.heating.d) {
                 return [];
             }
             result = values.heating.d.slice(12);
             break;
-        case consumptionEnum.heatingWeek:
+        case typeConstants_1.consumptionEnum.heatingWeek:
             if (!values.heating || !values.heating.w) {
                 return [];
             }
             result = values.heating.w.slice(7);
             break;
-        case consumptionEnum.heatingMonth:
+        case typeConstants_1.consumptionEnum.heatingMonth:
             if (!values.heating || !values.heating.m) {
                 return [];
             }
             result = values.heating.m.slice(12);
             break;
-        case consumptionEnum.coolingDay:
+        case typeConstants_1.consumptionEnum.coolingDay:
             if (!values.cooling || !values.cooling.d) {
                 return [];
             }
             result = values.cooling.d.slice(12);
             break;
-        case consumptionEnum.coolingWeek:
+        case typeConstants_1.consumptionEnum.coolingWeek:
             if (!values.cooling || !values.cooling.w) {
                 return [];
             }
             result = values.cooling.w.slice(7);
             break;
-        case consumptionEnum.coolingMonth:
+        case typeConstants_1.consumptionEnum.coolingMonth:
             if (!values.cooling || !values.cooling.m) {
                 return [];
             }

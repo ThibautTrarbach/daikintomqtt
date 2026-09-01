@@ -18,6 +18,7 @@ __exportStar(require("./Anonymise"), exports);
 __exportStar(require("./AbstractGateway"), exports);
 __exportStar(require("./metadataRegistry"), exports);
 __exportStar(require("./characteristics/catalog"), exports);
+__exportStar(require("./typeConstants"), exports);
 __exportStar(require("./BaseModules"), exports);
 __exportStar(require("./SystemBridge"), exports);
 __exportStar(require("./DynamicGateway"), exports);

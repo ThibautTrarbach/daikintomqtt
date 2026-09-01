@@ -13,8 +13,11 @@ exports.temperatureControlRoom = temperatureControlRoom;
 exports.temperatureControlLeavingWater = temperatureControlLeavingWater;
 exports.temperatureControlDhw = temperatureControlDhw;
 exports.fanClimatePack = fanClimatePack;
+exports.powerfulModeClimate = powerfulModeClimate;
+exports.gatewayDiagnosticsPack = gatewayDiagnosticsPack;
+exports.auxiliaryUnitPack = auxiliaryUnitPack;
 exports.zoneStatusPack = zoneStatusPack;
-const BaseModules_1 = require("../BaseModules");
+const typeConstants_1 = require("../typeConstants");
 function standardGatewayDeviceInfo(managementPoint, nameDataPoint = 'name') {
     return {
         name: { managementPoint, dataPoint: nameDataPoint },
@@ -46,12 +49,12 @@ function multiZoneDeviceInfo() {
 }
 function consumptionPack(managementPoint, prefix, suffix = '') {
     const defs = [
-        { key: `_heatingConsumptionD${suffix}`, label: `${prefix}Heating Consumption Day`, consumptionT: BaseModules_1.consumptionEnum.heatingDay },
-        { key: `_heatingConsumptionW${suffix}`, label: `${prefix}Heating Consumption Week`, consumptionT: BaseModules_1.consumptionEnum.heatingWeek },
-        { key: `_heatingConsumptionM${suffix}`, label: `${prefix}Heating Consumption Month`, consumptionT: BaseModules_1.consumptionEnum.heatingMonth },
-        { key: `_coolingConsumptionD${suffix}`, label: `${prefix}Cooling Consumption Day`, consumptionT: BaseModules_1.consumptionEnum.coolingDay },
-        { key: `_coolingConsumptionW${suffix}`, label: `${prefix}Cooling Consumption Week`, consumptionT: BaseModules_1.consumptionEnum.coolingWeek },
-        { key: `_coolingConsumptionM${suffix}`, label: `${prefix}Cooling Consumption Month`, consumptionT: BaseModules_1.consumptionEnum.coolingMonth },
+        { key: `_heatingConsumptionD${suffix}`, label: `${prefix}Heating Consumption Day`, consumptionT: typeConstants_1.consumptionEnum.heatingDay },
+        { key: `_heatingConsumptionW${suffix}`, label: `${prefix}Heating Consumption Week`, consumptionT: typeConstants_1.consumptionEnum.heatingWeek },
+        { key: `_heatingConsumptionM${suffix}`, label: `${prefix}Heating Consumption Month`, consumptionT: typeConstants_1.consumptionEnum.heatingMonth },
+        { key: `_coolingConsumptionD${suffix}`, label: `${prefix}Cooling Consumption Day`, consumptionT: typeConstants_1.consumptionEnum.coolingDay },
+        { key: `_coolingConsumptionW${suffix}`, label: `${prefix}Cooling Consumption Week`, consumptionT: typeConstants_1.consumptionEnum.coolingWeek },
+        { key: `_coolingConsumptionM${suffix}`, label: `${prefix}Cooling Consumption Month`, consumptionT: typeConstants_1.consumptionEnum.coolingMonth },
     ];
     return defs.map(({ key, label, consumptionT }) => ({
         propertyKey: key,
@@ -60,12 +63,12 @@ function consumptionPack(managementPoint, prefix, suffix = '') {
             dataPoint: 'consumptionData',
             dataPointPath: '/electrical',
             consumptionT,
-            converter: BaseModules_1.converterEnum.consumption,
+            converter: typeConstants_1.converterEnum.consumption,
         },
         description: {
             name: label,
             settable: false,
-            type: BaseModules_1.typeEnum.numeric,
+            type: typeConstants_1.typeEnum.numeric,
             minValue: 0,
             maxValue: 3000,
             unite: 'kWh',
@@ -79,12 +82,12 @@ function stateBool(managementPoint, dataPoint, label, opts = {}) {
         daikin: {
             managementPoint,
             dataPoint,
-            ...(opts.settable ? { converter: BaseModules_1.converterEnum.binary } : {}),
+            ...(opts.settable ? { converter: typeConstants_1.converterEnum.binary } : {}),
         },
         description: {
             name: label,
             settable: opts.settable ?? false,
-            type: BaseModules_1.typeEnum.binary,
+            type: typeConstants_1.typeEnum.binary,
             ...(opts.generic_type ? { generic_type: opts.generic_type } : {}),
         },
     };
@@ -101,7 +104,7 @@ function stringField(managementPoint, dataPoint, label, opts = {}) {
         description: {
             name: label,
             settable: opts.settable ?? false,
-            type: BaseModules_1.typeEnum.string,
+            type: typeConstants_1.typeEnum.string,
             ...(opts.values ? { values: opts.values } : {}),
         },
     };
@@ -117,7 +120,7 @@ function sensoryTemperature(managementPoint, dataPointPath, label, propertyKey, 
         description: {
             name: label,
             settable: false,
-            type: BaseModules_1.typeEnum.numeric,
+            type: typeConstants_1.typeEnum.numeric,
             unite: '°C',
             ...(opts.minValue !== undefined && opts.maxValue !== undefined
                 ? { minValue: opts.minValue, maxValue: opts.maxValue }
@@ -143,7 +146,7 @@ function sensoryHumidity(managementPoint, label, propertyKey = '_roomHumidity') 
         description: {
             name: label,
             settable: false,
-            type: BaseModules_1.typeEnum.numeric,
+            type: typeConstants_1.typeEnum.numeric,
             unite: '%',
             minMaxValue: {
                 managementPoint,
@@ -166,7 +169,7 @@ function temperatureControlRoom(managementPoint, label, propertyKey) {
         dataPoint: 'temperatureControl',
         dataPointPath: '/operationModes/#value#/setpoints/roomTemperature',
         multiple: true,
-        converter: BaseModules_1.converterEnum.numeric,
+        converter: typeConstants_1.converterEnum.numeric,
         multipleValue: { managementPoint, dataPoint: 'operationMode' },
     };
     return {
@@ -175,7 +178,7 @@ function temperatureControlRoom(managementPoint, label, propertyKey) {
         description: {
             name: label,
             settable: true,
-            type: BaseModules_1.typeEnum.numeric,
+            type: typeConstants_1.typeEnum.numeric,
             unite: '°C',
             minMaxValue: {
                 managementPoint,
@@ -193,7 +196,7 @@ function temperatureControlLeavingWater(managementPoint, label, propertyKey) {
         dataPoint: 'temperatureControl',
         dataPointPath: '/operationModes/#value#/setpoints/leavingWaterTemperature',
         multiple: true,
-        converter: BaseModules_1.converterEnum.numeric,
+        converter: typeConstants_1.converterEnum.numeric,
         multipleValue: { managementPoint, dataPoint: 'operationMode' },
     };
     return {
@@ -202,7 +205,7 @@ function temperatureControlLeavingWater(managementPoint, label, propertyKey) {
         description: {
             name: label,
             settable: true,
-            type: BaseModules_1.typeEnum.numeric,
+            type: typeConstants_1.typeEnum.numeric,
             unite: '°C',
             minMaxValue: {
                 managementPoint,
@@ -223,12 +226,12 @@ function temperatureControlDhw(managementPoint, label, propertyKey, opts = {}) {
                 managementPoint,
                 dataPoint: 'temperatureControl',
                 dataPointPath,
-                converter: BaseModules_1.converterEnum.numeric,
+                converter: typeConstants_1.converterEnum.numeric,
             },
             description: {
                 name: label,
                 settable: false,
-                type: BaseModules_1.typeEnum.numeric,
+                type: typeConstants_1.typeEnum.numeric,
                 unite: '°C',
                 minMaxValue: {
                     managementPoint,
@@ -243,7 +246,7 @@ function temperatureControlDhw(managementPoint, label, propertyKey, opts = {}) {
         dataPoint: 'temperatureControl',
         dataPointPath: '/operationModes/#value#/setpoints/domesticHotWaterTemperature',
         multiple: true,
-        converter: BaseModules_1.converterEnum.numeric,
+        converter: typeConstants_1.converterEnum.numeric,
         multipleValue: { managementPoint, dataPoint: 'operationMode' },
     };
     return {
@@ -252,7 +255,7 @@ function temperatureControlDhw(managementPoint, label, propertyKey, opts = {}) {
         description: {
             name: label,
             settable: false,
-            type: BaseModules_1.typeEnum.numeric,
+            type: typeConstants_1.typeEnum.numeric,
             unite: '°C',
             minMaxValue: {
                 managementPoint,
@@ -279,7 +282,7 @@ function fanClimatePack(managementPoint, opts = {}) {
             description: {
                 name: 'Fan Current Mode',
                 settable: true,
-                type: BaseModules_1.typeEnum.string,
+                type: typeConstants_1.typeEnum.string,
                 values: ['auto', 'quiet', 'fixed'],
             },
         },
@@ -290,13 +293,13 @@ function fanClimatePack(managementPoint, opts = {}) {
                 dataPoint: 'fanControl',
                 dataPointPath: '/operationModes/#value#/fanSpeed/modes/fixed',
                 multiple: true,
-                converter: BaseModules_1.converterEnum.numeric,
+                converter: typeConstants_1.converterEnum.numeric,
                 multipleValue,
             },
             description: {
                 name: 'Fan Fixed',
                 settable: true,
-                type: BaseModules_1.typeEnum.numeric,
+                type: typeConstants_1.typeEnum.numeric,
                 minMaxValue: {
                     managementPoint,
                     dataPoint: 'fanControl',
@@ -320,7 +323,7 @@ function fanClimatePack(managementPoint, opts = {}) {
             description: {
                 name: 'Fan Horizontal',
                 settable: true,
-                type: BaseModules_1.typeEnum.string,
+                type: typeConstants_1.typeEnum.string,
                 values: ['stop', 'swing'],
             },
         });
@@ -338,12 +341,41 @@ function fanClimatePack(managementPoint, opts = {}) {
             description: {
                 name: 'Fan Vertical',
                 settable: true,
-                type: BaseModules_1.typeEnum.string,
+                type: typeConstants_1.typeEnum.string,
                 values: ['stop', 'swing', 'windNice'],
             },
         });
     }
     return defs;
+}
+function powerfulModeClimate(managementPoint) {
+    return [
+        stateBool(managementPoint, 'powerfulMode', 'Powerful Mode', { settable: true, generic_type: 'ENERGY_STATE' }),
+        stateBool(managementPoint, 'isPowerfulModeActive', 'Powerful Mode Active', { propertyKey: '_isPowerfulModeActive' }),
+    ];
+}
+function gatewayDiagnosticsPack() {
+    const MP = 'gateway';
+    return [
+        stringField(MP, 'ipAddress', 'Gateway IP Address', { propertyKey: '_gatewayIpAddress' }),
+        stringField(MP, 'macAddress', 'Gateway MAC Address', { propertyKey: '_gatewayMacAddress' }),
+        stringField(MP, 'ssid', 'Gateway SSID', { propertyKey: '_gatewaySsid' }),
+        stateBool(MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', { propertyKey: '_gatewayFirmwareUpdateSupported' }),
+        stateBool(MP, 'isInErrorState', 'Gateway Error State', { propertyKey: '_gatewayIsInErrorState' }),
+        stringField(MP, 'errorCode', 'Gateway Error Code', { propertyKey: '_gatewayErrorCode' }),
+    ];
+}
+function auxiliaryUnitPack(managementPoint, labelPrefix) {
+    const chars = [];
+    if (managementPoint === 'indoorUnit') {
+        chars.push(stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+            propertyKey: '_indoorUnitSoftwareVersion',
+        }));
+    }
+    if (managementPoint === 'outdoorUnit') {
+        chars.push(stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }), stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }), stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }), stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }));
+    }
+    return chars;
 }
 function zoneStatusPack(managementPoint, labelPrefix, keySuffix) {
     return [

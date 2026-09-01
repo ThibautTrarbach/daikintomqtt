@@ -8,8 +8,9 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const paths_1 = require("../paths");
 function anonymise(dev, value) {
-    let fileName = value ?? dev.getId();
-    let data = recurse(dev);
+    const fileName = value ?? dev.getId();
+    const snapshot = structuredClone(dev.getDescription());
+    const data = recurse(snapshot);
     const configFolder = (0, paths_1.getNewConfigDir)();
     const configFile = path_1.default.join(configFolder, fileName + '.json');
     if (!fs_1.default.existsSync(configFolder))

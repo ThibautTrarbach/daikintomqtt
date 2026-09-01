@@ -137,7 +137,7 @@ function generateClimateDiscovery(device, gatewayClass, deviceId, deviceName, se
         fan_modes: ["auto", "quiet", "fixed"],
         preset_mode_state_topic: stateTopic,
         preset_mode_command_topic: commandTopic,
-        preset_mode_state_template: "{% if value_json._isHolidayModeActive %}away{% elif value_json._econoMode %}eco{% elif value_json._powerfulMode %}powerful{% elif value_json._streamerMode %}streamer{% else %}none{% endif %}",
+        preset_mode_state_template: "{% if value_json._isHolidayModeActive %}away{% elif value_json._econoMode %}eco{% elif value_json._powerfulMode or value_json._isPowerfulModeActive %}powerful{% elif value_json._streamerMode %}streamer{% else %}none{% endif %}",
         preset_mode_command_template: "{% if value == 'away' %}{\"_setPresetAway\": true}{% elif value == 'eco' %}{\"_econoMode\": true}{% elif value == 'powerful' %}{\"_powerfulMode\": true}{% elif value == 'streamer' %}{\"_streamerMode\": true}{% else %}{\"_econoMode\": false, \"_powerfulMode\": false, \"_streamerMode\": false}{% endif %}",
         preset_modes: ["none", "away", "eco", "powerful", "streamer"],
         swing_mode_state_topic: stateTopic,

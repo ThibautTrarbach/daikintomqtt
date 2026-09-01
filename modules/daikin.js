@@ -672,19 +672,25 @@ function getModels(devices) {
         const cached = gatewayCache.get(deviceId);
         if (cached && cached.model === cacheKey) {
             (0, gateway_1.convertDaikinDevice)(devices, cached.gateway);
-            (0, gateway_1.enrichDeviceSupport)(devices, cached.gateway, {
+            const supportCommandsChanged = (0, gateway_1.enrichDeviceSupport)(devices, cached.gateway, {
                 supportStatus: cached.supportStatus,
                 gatewayModelRaw: cached.gatewayModelRaw,
                 gatewayModelResolved: cached.gatewayModelResolved,
             });
+            if (supportCommandsChanged && config.integration?.jeedom) {
+                void (0, converter_1.makeDefineFile)(cached.gateway, devices);
+            }
             return cached.gateway;
         }
         const { gateway, supportStatus, cacheKey: instanceKey, gatewayModelResolved } = instantiateGateway(devices);
-        (0, gateway_1.enrichDeviceSupport)(devices, gateway, {
+        const supportCommandsChanged = (0, gateway_1.enrichDeviceSupport)(devices, gateway, {
             supportStatus,
             gatewayModelRaw,
             gatewayModelResolved,
         });
+        if (supportCommandsChanged && config.integration?.jeedom) {
+            void (0, converter_1.makeDefineFile)(gateway, devices);
+        }
         gatewayCache.set(deviceId, {
             model: instanceKey,
             gateway,
@@ -701,7 +707,10 @@ function getModels(devices) {
         }
         if (devices) {
             const fallback = new gateway_1.UnsupportedGateway(devices);
-            (0, gateway_1.enrichDeviceSupport)(devices, fallback, { supportStatus: 'unsupported' });
+            const supportCommandsChanged = (0, gateway_1.enrichDeviceSupport)(devices, fallback, { supportStatus: 'unsupported' });
+            if (supportCommandsChanged && config.integration?.jeedom) {
+                void (0, converter_1.makeDefineFile)(fallback, devices);
+            }
             return fallback;
         }
         throw error;
