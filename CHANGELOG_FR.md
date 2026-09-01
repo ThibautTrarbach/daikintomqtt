@@ -4,6 +4,35 @@ Toutes les modifications notables de Daikin2MQTT seront documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [2.1.2] - 2026-09-01
+
+### Ajouté
+
+- `authorizationTimeoutSeconds` : délai d'attente configurable pour l'autorisation OAuth navigateur (60–3600 s, validé au démarrage)
+
+### Modifié
+
+- Renommage du package npm : `daikin-deamon` → `daikin2mqtt`
+
+---
+
+## [2.1.1] - 2026-08-31
+
+### Ajouté
+
+- Nettoyage au démarrage des topics MQTT retenus obsolètes (`cleanStaleRetainedTopics`)
+- WebSocket : prise en charge des caractéristiques imbriquées et des références dans `applyWebSocketUpdate`
+- Module `shutdown.ts` : gestion centralisée de l'arrêt propre (skip poll/publish pendant le shutdown)
+
+### Modifié
+
+- Métadonnées appareil : clés dynamiques dans `AbstractGateway`, enregistrement automatique dans `DynamicGateway`
+- `RateLimiter` : fusion des mises à jour partielles, conservation des valeurs précédentes si absentes
+- Gestion des erreurs OAuth mobile et transport HTTP affinées
+- Point d'entrée `main.ts` (DaikinToMQTT) : meilleure gestion des rejets de promesses non gérés
+
+---
+
 ## [2.1.0] - 2026-08-30
 
 ### Ajouté
