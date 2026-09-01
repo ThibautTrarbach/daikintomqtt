@@ -111,6 +111,8 @@ function run(): void {
 	assert.equal(report.includes('Maison Thibaut'), false);
 	assert.equal(report.includes(`deviceId: ${REDACTED}`), true);
 	assert.equal(report.includes(`deviceName: ${REDACTED}`), true);
+	assert.equal(report.includes('SN123456'), false);
+	assert.equal(report.includes(`serialNumber: ${REDACTED}`), true);
 	assert.equal(report.includes('"gateway":"BRP069C4x"'), true);
 	assert.equal(report.includes(`"climateControl":"${REDACTED}"`), true);
 	assert.equal(report.includes('supportMessage: Needs support'), true);

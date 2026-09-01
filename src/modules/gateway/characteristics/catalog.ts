@@ -261,6 +261,38 @@ function temperatureControlLeavingWater(
 	};
 }
 
+function temperatureControlLeavingWaterOffset(
+	managementPoint: string,
+	label: string,
+	propertyKey: string,
+): CharacteristicDefinition {
+	const daikin: ModulePropertyMetadata = {
+		managementPoint,
+		dataPoint: 'temperatureControl',
+		dataPointPath: '/operationModes/#value#/setpoints/leavingWaterOffset',
+		multiple: true,
+		converter: converterEnum.numeric,
+		multipleValue: { managementPoint, dataPoint: 'operationMode' },
+	};
+	return {
+		propertyKey,
+		daikin,
+		description: {
+			name: label,
+			settable: true,
+			type: typeEnum.numeric,
+			unite: '°C',
+			minMaxValue: {
+				managementPoint,
+				dataPoint: 'temperatureControl',
+				dataPointPath: '/operationModes/#value#/setpoints/leavingWaterOffset',
+				multiple: true,
+				multipleValue: { managementPoint, dataPoint: 'operationMode' },
+			},
+		},
+	};
+}
+
 function temperatureControlDhw(
 	managementPoint: string,
 	label: string,
@@ -455,6 +487,16 @@ function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): Charac
 	return chars;
 }
 
+function auxiliaryUnitInfoPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[] {
+	const suffix = managementPoint.replace(/[^a-zA-Z0-9]/g, '');
+	return [
+		stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: `_aux${suffix}ModelInfo` }),
+		stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+			propertyKey: `_aux${suffix}SoftwareVersion`,
+		}),
+	];
+}
+
 function zoneStatusPack(
 	managementPoint: string,
 	labelPrefix: string,
@@ -491,10 +533,12 @@ export {
 	operationModeClimate,
 	temperatureControlRoom,
 	temperatureControlLeavingWater,
+	temperatureControlLeavingWaterOffset,
 	temperatureControlDhw,
 	fanClimatePack,
 	powerfulModeClimate,
 	gatewayDiagnosticsPack,
 	auxiliaryUnitPack,
+	auxiliaryUnitInfoPack,
 	zoneStatusPack,
 };

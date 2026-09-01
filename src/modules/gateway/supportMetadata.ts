@@ -131,7 +131,7 @@ export function buildDebugReport(
 		`configCoverage: ${coverage.configCoverage}`,
 		`configCoverageDetail: ${coverage.configCoverageDetail}`,
 		`firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
-		`serialNumber: ${readGatewayField(device, 'gateway', 'serialNumber')}`,
+		`serialNumber: ${REDACTED}`,
 		`daemonVersion: ${getDaemonVersion()}`,
 		`authMode: ${getConfiguredAuthMode()}`,
 		`detectedAt: ${new Date().toISOString()}`,

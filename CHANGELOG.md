@@ -4,6 +4,21 @@ All notable changes to Daikin2MQTT will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.5] - 2026-09-01
+
+### Fixed
+
+- BRP069B4x / BRP069A4x: propagate `gatewayDiagnosticsPack` and `auxiliaryUnitPack` (complete static coverage, fixes daikinRCCloud #42)
+- BRP069A78: add gateway diagnostics, temperatureControl leavingWaterOffset, DHW tank name/isPowerfulModeActive, auxiliary unit packs for hydro/outdoor/UI (fixes daikinRCCloud #41)
+- Debug report: redact `serialNumber` alongside other sensitive fields
+
+### Added
+
+- `temperatureControlLeavingWaterOffset` and `auxiliaryUnitInfoPack` catalog helpers
+- API coverage tests for BRP069B4x and BRP069A78
+
+---
+
 ## [2.1.4] - 2026-09-01
 
 ### Fixed
