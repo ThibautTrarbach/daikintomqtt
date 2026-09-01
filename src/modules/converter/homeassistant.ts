@@ -2,7 +2,7 @@ import {ModulesDescriptionMetadata} from "../../types";
 import {typeEnum} from "../gateway";
 import {Gateways} from "../../types";
 import {DaikinCloudDevice} from "../../daikin-cloud";
-import {APP_VERSION, HA_AVAILABILITY_TOPIC_SUFFIX} from "../constants";
+import {APP_VERSION, HA_SYSTEM_BRIDGE_TOPIC} from "../constants";
 
 function toObjectId(propertyKey: string): string {
 	return propertyKey.replace(/^_/, "").replace(/([A-Z])/g, "_$1").toLowerCase().replace(/^_/, "");
@@ -14,7 +14,8 @@ function valueJsonTemplate(propertyKey: string, defaultValue: string): string {
 
 function buildAvailability(baseTopic: string) {
 	return [{
-		topic: `${baseTopic}/${HA_AVAILABILITY_TOPIC_SUFFIX}`,
+		topic: `${baseTopic}/${HA_SYSTEM_BRIDGE_TOPIC}`,
+		value_template: "{{ 'true' if value_json._authorizationTimeout else 'false' }}",
 		payload_available: "false",
 		payload_not_available: "true"
 	}];
@@ -242,7 +243,7 @@ function generateClimateDiscovery(
 		// Preset modes (eco, powerful, etc.)
 		preset_mode_state_topic: stateTopic,
 		preset_mode_command_topic: commandTopic,
-		preset_mode_state_template: "{% if value_json._isHolidayModeActive %}away{% elif value_json._econoMode %}eco{% elif value_json._powerfulMode %}powerful{% elif value_json._streamerMode %}streamer{% else %}none{% endif %}",
+		preset_mode_state_template: "{% if value_json._isHolidayModeActive %}away{% elif value_json._econoMode %}eco{% elif value_json._powerfulMode or value_json._isPowerfulModeActive %}powerful{% elif value_json._streamerMode %}streamer{% else %}none{% endif %}",
 		preset_mode_command_template: "{% if value == 'away' %}{\"_setPresetAway\": true}{% elif value == 'eco' %}{\"_econoMode\": true}{% elif value == 'powerful' %}{\"_powerfulMode\": true}{% elif value == 'streamer' %}{\"_streamerMode\": true}{% else %}{\"_econoMode\": false, \"_powerfulMode\": false, \"_streamerMode\": false}{% endif %}",
 		preset_modes: ["none", "away", "eco", "powerful", "streamer"],
 		// Swing mode

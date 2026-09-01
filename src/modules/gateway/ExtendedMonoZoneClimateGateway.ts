@@ -5,7 +5,10 @@ import { CharacteristicDefinition } from './metadataRegistry';
 import {
 	consumptionPack,
 	fanClimatePack,
+	gatewayDiagnosticsPack,
+	auxiliaryUnitPack,
 	operationModeClimate,
+	powerfulModeClimate,
 	sensoryHumidity,
 	sensoryTemperature,
 	standardGatewayDeviceInfo,
@@ -58,7 +61,7 @@ function buildExtendedMonoZoneCharacteristics(opts: ExtendedMonoZoneOptions): Ch
 		chars.push(stateBool(MP, 'econoMode', 'Eco Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
 	}
 
-	chars.push(stateBool(MP, 'powerfulMode', 'Powerful Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
+	chars.push(...powerfulModeClimate(MP));
 
 	if (opts.streamerMode) {
 		chars.push(stateBool(MP, 'streamerMode', 'Streamer Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
@@ -97,6 +100,16 @@ function buildExtendedMonoZoneCharacteristics(opts: ExtendedMonoZoneOptions): Ch
 	chars.push(...consumptionPack(MP, ''));
 
 	return chars;
+}
+
+function appendDeviceSpecificCharacteristics(device: DaikinCloudDevice, chars: CharacteristicDefinition[]): void {
+	chars.push(...gatewayDiagnosticsPack());
+	if ('indoorUnit' in device.managementPoints) {
+		chars.push(...auxiliaryUnitPack('indoorUnit', 'Indoor Unit'));
+	}
+	if ('outdoorUnit' in device.managementPoints) {
+		chars.push(...auxiliaryUnitPack('outdoorUnit', 'Outdoor Unit'));
+	}
 }
 
 const A4X_OPTS: ExtendedMonoZoneOptions = {
@@ -138,7 +151,9 @@ export class BRP069B4x extends AbstractGateway implements ClassModule {
 
 export class BRP069C4x extends AbstractGateway implements ClassModule {
 	constructor(device: DaikinCloudDevice) {
-		super(device, buildExtendedMonoZoneCharacteristics(C4X_OPTS), standardGatewayDeviceInfo(MP));
+		const chars = buildExtendedMonoZoneCharacteristics(C4X_OPTS);
+		appendDeviceSpecificCharacteristics(device, chars);
+		super(device, chars, standardGatewayDeviceInfo(MP));
 	}
 }
 

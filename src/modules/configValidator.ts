@@ -425,6 +425,23 @@ function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 		}
 	}
 
+	// Validate authorizationTimeoutSeconds
+	if (daikin.authorizationTimeoutSeconds !== undefined && daikin.authorizationTimeoutSeconds !== null) {
+		if (typeof daikin.authorizationTimeoutSeconds !== 'number' || !Number.isInteger(daikin.authorizationTimeoutSeconds)) {
+			errors.push({
+				field: 'daikin.authorizationTimeoutSeconds',
+				message: 'Authorization timeout must be an integer (seconds)',
+				value: daikin.authorizationTimeoutSeconds
+			});
+		} else if (daikin.authorizationTimeoutSeconds < 60 || daikin.authorizationTimeoutSeconds > 3600) {
+			errors.push({
+				field: 'daikin.authorizationTimeoutSeconds',
+				message: 'Authorization timeout must be between 60 and 3600 seconds',
+				value: daikin.authorizationTimeoutSeconds
+			});
+		}
+	}
+
 	// Validate clientPort
 	if (daikin.clientPort === undefined || daikin.clientPort === null) {
 		errors.push({

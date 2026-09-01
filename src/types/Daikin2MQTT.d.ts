@@ -1,4 +1,7 @@
-import {BRP069A4x, BRP069A61, BRP069A62, BRP069A78, BRP069B4x, BRP069C41, BRP069C4x, BRP069C8x, DynamicGateway} from "../modules/gateway";
+import type {BRP069A4x, BRP069A61, BRP069A62, BRP069A78, BRP069B4x, BRP069C41, BRP069C4x, BRP069C8x, DynamicGateway, UnsupportedGateway} from "../modules/gateway";
+
+export type SupportStatus = 'full' | 'partial' | 'unsupported';
+export type ConfigCoverage = 'complete' | 'incomplete';
 
 export interface Daikin2MQTT {
 	system: ConfigSystem
@@ -77,6 +80,7 @@ export interface ConfigDaikin {
 	clientID?: string
 	clientURL?: string
 	clientPort?: number
+	authorizationTimeoutSeconds?: number
 	email?: string | null
 	password?: string | null
 	enableWebSocket?: boolean
@@ -106,6 +110,7 @@ export interface ModulesDescriptionMetadata {
 	unite?: string
 	type: number
 	values?: object
+	visible?: boolean
 }
 
 export interface ModulesDescriptionMetadataMinMax {
@@ -147,7 +152,20 @@ export interface DevicesInformation {
 	timeZone?: string
 	wifiConnectionSSID?: string
 	wifiConnectionStrength?: string
+	ipAddress?: string
+	macAddress?: string
 	isCloudConnectionUp?: string
+	supportStatus?: SupportStatus
+	configCoverage?: ConfigCoverage
+	configCoverageDetail?: string
+	gatewayModelRaw?: string
+	gatewayModelResolved?: string
+	unitModels?: string
+	managementPointsList?: string
+	unmappedDatapoints?: string
+	supportMessage?: string
+	debugReport?: string
+	githubIssueUrl?: string
 }
 
 export interface ClassModule {
@@ -163,7 +181,8 @@ export type Gateways =
 	BRP069C41 |
 	BRP069A61 |
 	BRP069C8x |
-	DynamicGateway
+	DynamicGateway |
+	UnsupportedGateway
 
 
 

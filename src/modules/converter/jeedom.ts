@@ -95,7 +95,7 @@ function generateCMDInfo(
 		type: "info",
 		subType: type,
 		unite,
-		isVisible: false,
+		isVisible: value.visible === true,
 		minValue,
 		maxValue
 	};
