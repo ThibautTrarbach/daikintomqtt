@@ -123,9 +123,14 @@ function createMockDevice() {
 			},
 		},
 		indoorUnit: {
+			modelInfo: leaf('FTXA20C2V1BW'),
+			serialNumber: leaf('0000000010528853'),
 			softwareVersion: leaf('1.0.0'),
 		},
 		outdoorUnit: {
+			modelInfo: leaf('3MXM52A2V1B9'),
+			serialNumber: leaf('0000000010528854'),
+			softwareVersion: leaf('1.0.0'),
 			errorCode: leaf(''),
 			isInErrorState: leaf('off'),
 			isInWarningState: leaf('off'),
