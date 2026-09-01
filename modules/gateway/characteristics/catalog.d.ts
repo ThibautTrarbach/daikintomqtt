@@ -23,6 +23,7 @@ declare function sensoryHumidity(managementPoint: string, label: string, propert
 declare function operationModeClimate(managementPoint: string, values: string[], propertyKey?: string): CharacteristicDefinition;
 declare function temperatureControlRoom(managementPoint: string, label: string, propertyKey: string): CharacteristicDefinition;
 declare function temperatureControlLeavingWater(managementPoint: string, label: string, propertyKey: string): CharacteristicDefinition;
+declare function temperatureControlLeavingWaterOffset(managementPoint: string, label: string, propertyKey: string): CharacteristicDefinition;
 declare function temperatureControlDhw(managementPoint: string, label: string, propertyKey: string, opts?: {
     fixedHeatingPath?: boolean;
 }): CharacteristicDefinition;
@@ -33,5 +34,6 @@ declare function fanClimatePack(managementPoint: string, opts?: {
 declare function powerfulModeClimate(managementPoint: string): CharacteristicDefinition[];
 declare function gatewayDiagnosticsPack(): CharacteristicDefinition[];
 declare function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[];
+declare function auxiliaryUnitInfoPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[];
 declare function zoneStatusPack(managementPoint: string, labelPrefix: string, keySuffix: string): CharacteristicDefinition[];
-export { standardGatewayDeviceInfo, dualZoneDeviceInfo, multiZoneDeviceInfo, consumptionPack, stateBool, stringField, sensoryTemperature, sensoryHumidity, operationModeClimate, temperatureControlRoom, temperatureControlLeavingWater, temperatureControlDhw, fanClimatePack, powerfulModeClimate, gatewayDiagnosticsPack, auxiliaryUnitPack, zoneStatusPack, };
+export { standardGatewayDeviceInfo, dualZoneDeviceInfo, multiZoneDeviceInfo, consumptionPack, stateBool, stringField, sensoryTemperature, sensoryHumidity, operationModeClimate, temperatureControlRoom, temperatureControlLeavingWater, temperatureControlLeavingWaterOffset, temperatureControlDhw, fanClimatePack, powerfulModeClimate, gatewayDiagnosticsPack, auxiliaryUnitPack, auxiliaryUnitInfoPack, zoneStatusPack, };

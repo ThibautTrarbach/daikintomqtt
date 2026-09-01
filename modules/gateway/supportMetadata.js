@@ -111,7 +111,7 @@ function buildDebugReport(device, context, coverage, managementPointsList, suppo
         `configCoverage: ${coverage.configCoverage}`,
         `configCoverageDetail: ${coverage.configCoverageDetail}`,
         `firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
-        `serialNumber: ${readGatewayField(device, 'gateway', 'serialNumber')}`,
+        `serialNumber: ${exports.REDACTED}`,
         `daemonVersion: ${getDaemonVersion()}`,
         `authMode: ${(0, requestBudget_1.getConfiguredAuthMode)()}`,
         `detectedAt: ${new Date().toISOString()}`,
