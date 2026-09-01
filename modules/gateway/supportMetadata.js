@@ -19,6 +19,7 @@ const apiCoverageAudit_1 = require("./apiCoverageAudit");
 const SUPPORT_CMD_TYPE_STRING = 1;
 exports.GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikinRCCloud/issues/new';
 exports.REDACTED = '[redacted]';
+const MAX_DEBUG_REPORT_SIZE = 16 * 1024;
 const SUPPORT_CMD_KEYS = [
     '_supportStatus',
     '_configCoverage',
@@ -98,7 +99,7 @@ function getDaemonVersion() {
         return 'unknown';
     }
 }
-function buildDebugReport(device, context, coverage, managementPointsList) {
+function buildDebugReport(device, context, coverage, managementPointsList, supportMessage) {
     const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
     const lines = [
         '=== DaikinToMQTT Debug Report ===',
@@ -111,20 +112,28 @@ function buildDebugReport(device, context, coverage, managementPointsList) {
         `configCoverageDetail: ${coverage.configCoverageDetail}`,
         `firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
         `serialNumber: ${readGatewayField(device, 'gateway', 'serialNumber')}`,
-        `managementPoints: ${managementPointsList.join(', ')}`,
-        `unitModels: ${JSON.stringify(sanitizedUnitModels)}`,
         `daemonVersion: ${getDaemonVersion()}`,
         `authMode: ${(0, requestBudget_1.getConfiguredAuthMode)()}`,
         `detectedAt: ${new Date().toISOString()}`,
     ];
+    if (supportMessage) {
+        lines.push(`supportMessage: ${supportMessage}`);
+    }
+    lines.push(`managementPoints: ${managementPointsList.join(', ')}`);
+    lines.push(`unitModels: ${JSON.stringify(sanitizedUnitModels)}`);
     if (coverage.unmappedDatapoints.length > 0) {
-        lines.push('unmappedDatapoints:');
-        for (const point of coverage.unmappedDatapoints) {
-            lines.push(`  - ${point}`);
+        lines.push(`unmappedDatapoints: ${coverage.unmappedDatapoints.join(', ')}`);
+        if (coverage.totalUnmappedCount > coverage.unmappedDatapoints.length) {
+            lines.push(`unmappedDatapointsTruncated: showing ${coverage.unmappedDatapoints.length}/${coverage.totalUnmappedCount}`);
         }
     }
-    lines.push(`githubIssueUrl: ${exports.GITHUB_ISSUE_URL}`);
-    return lines.join('\n').slice(0, 2048);
+    const footer = `githubIssueUrl: ${exports.GITHUB_ISSUE_URL}`;
+    const body = lines.join('\n');
+    const maxBodySize = MAX_DEBUG_REPORT_SIZE - footer.length - 1;
+    if (body.length <= maxBodySize) {
+        return `${body}\n${footer}`;
+    }
+    return `${body.slice(0, maxBodySize - 14)}\n...[truncated]\n${footer}`;
 }
 function buildSupportMessage(context, coverage) {
     if (context.supportStatus === 'unsupported') {
@@ -214,8 +223,8 @@ function enrichDeviceSupport(device, gateway, context) {
     const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
     const managementPointsList = Object.keys(device.managementPoints);
     const gatewayModelRaw = context.gatewayModelRaw ?? (readGatewayField(device, 'gateway', 'modelInfo') || readGatewayField(device, '0', 'modelInfo'));
-    const debugReport = buildDebugReport(device, context, coverage, managementPointsList);
     const supportMessage = buildSupportMessage(context, coverage);
+    const debugReport = buildDebugReport(device, context, coverage, managementPointsList, supportMessage);
     const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
     const deviceInfo = gateway._device;
     if (deviceInfo) {

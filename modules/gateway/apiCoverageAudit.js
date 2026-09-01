@@ -94,8 +94,9 @@ function auditApiCoverage(device, gateway) {
         }
     }
     const apiCount = apiDatapoints.length;
-    const mappedCount = apiCount - unmapped.length;
-    const configCoverage = unmapped.length === 0 ? 'complete' : 'incomplete';
+    const totalUnmappedCount = unmapped.length;
+    const mappedCount = apiCount - totalUnmappedCount;
+    const configCoverage = totalUnmappedCount === 0 ? 'complete' : 'incomplete';
     const configCoverageDetail = `${mappedCount}/${apiCount} datapoints mapped`;
     return {
         configCoverage,
@@ -103,6 +104,7 @@ function auditApiCoverage(device, gateway) {
         apiCount,
         configCoverageDetail,
         unmappedDatapoints: unmapped.slice(0, 50),
+        totalUnmappedCount,
     };
 }
 //# sourceMappingURL=apiCoverageAudit.js.map

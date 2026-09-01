@@ -17,7 +17,7 @@ export declare function redactSensitiveValue(): string;
 export declare function isSupportValueEmpty(value: string): boolean;
 export declare function extractUnitModels(device: DaikinCloudDevice): Record<string, string>;
 export declare function sanitizeUnitModelsForReport(device: DaikinCloudDevice): Record<string, string>;
-export declare function buildDebugReport(device: DaikinCloudDevice, context: SupportEnrichmentContext, coverage: CoverageAuditResult, managementPointsList: string[]): string;
+export declare function buildDebugReport(device: DaikinCloudDevice, context: SupportEnrichmentContext, coverage: CoverageAuditResult, managementPointsList: string[], supportMessage: string): string;
 export declare function needsSupportReporting(supportStatus: SupportStatus, configCoverage: ConfigCoverage): boolean;
 export declare function syncSupportMetadata(gateway: Gateways, values: SupportCommandValues): boolean;
 export declare function enrichDeviceSupport(device: DaikinCloudDevice, gateway: Gateways, context: SupportEnrichmentContext): boolean;

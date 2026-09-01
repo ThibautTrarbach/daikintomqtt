@@ -7,5 +7,6 @@ export interface CoverageAuditResult {
     apiCount: number;
     configCoverageDetail: string;
     unmappedDatapoints: string[];
+    totalUnmappedCount: number;
 }
 export declare function auditApiCoverage(device: DaikinCloudDevice, gateway: Gateways): CoverageAuditResult;
