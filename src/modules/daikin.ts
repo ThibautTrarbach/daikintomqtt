@@ -1,6 +1,5 @@
 import { resolve } from 'node:path';
 import {
-	anonymise,
 	BRP069A4x,
 	BRP069A61,
 	BRP069A62,
@@ -9,6 +8,9 @@ import {
 	BRP069C41,
 	BRP069C4x, BRP069C8x,
 	DynamicGateway,
+	UnsupportedGateway,
+	enrichDeviceSupport,
+	resolveGatewayModel,
 	applyGatewayEvents,
 	convertDaikinDevice,
 	eventValue,
@@ -18,16 +20,16 @@ import {makeDefineFile} from "./converter";
 import {publishToMQTT} from "./mqtt";
 import {DaikinCloudController, DaikinCloudDevice} from "../daikin-cloud";
 import fs from "fs";
-import {Gateways} from "../types";
+import {Gateways, SupportStatus} from "../types";
 import {INSTANCE_ID} from "./instanceId";
 import {canRefresh, getBudgetStatus, getSkippedRefreshCount, getDefaultDailyQuotaLimit, getConfiguredAuthMode} from "./requestBudget";
 import { AUTH_MODE_MOBILE_APP } from "../daikin-cloud/constants";
 import { getTokenFilePath } from "./tokenPaths";
 import { getNewConfigDir } from "./paths";
 import { DEVICE_CACHE_TTL_MS } from "./constants";
-import { publishConfig, setMqttRepublishHandler } from "./mqtt";
+import { setMqttRepublishHandler } from "./mqtt";
 import { AuthenticationError } from "./errorHandler";
-import { isShuttingDown } from "./shutdown";
+import { beginShutdown, isShuttingDown } from "./shutdown";
 
 function isAuthFailure(error: unknown): boolean {
 	if (error instanceof AuthenticationError) {
@@ -43,13 +45,36 @@ function failAuthStartup(message: string): never {
 	throw new AuthenticationError(message);
 }
 
+async function handleAuthorizationTimeoutShutdown(context: string): Promise<never> {
+	beginShutdown();
+	logger.error(`[daikin.ts] => Authorization timeout detected in ${context}. Shutting down daemon.`);
+
+	try {
+		await updateSystemBridge(null, [], {
+			authorizationTimeout: true
+		});
+		logger.info('[daikin.ts] => System bridge updated with timeout state');
+	} catch (bridgeError) {
+		logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+	}
+
+	logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
+	process.exit(1);
+}
+
 interface PendingCommand {
 	payload: Record<string, unknown>;
 	timer: NodeJS.Timeout;
 }
 
 const pendingCommands = new Map<string, PendingCommand>();
-const gatewayCache = new Map<string, { model: string; gateway: Gateways }>();
+const gatewayCache = new Map<string, {
+	model: string;
+	gateway: Gateways;
+	supportStatus: SupportStatus;
+	gatewayModelRaw?: string;
+	gatewayModelResolved?: string | null;
+}>();
 
 function clearPendingCommands(): void {
 	for (const pending of pendingCommands.values()) {
@@ -93,11 +118,6 @@ async function queueDeviceCommand(device: DaikinCloudDevice, eventData: Record<s
 	const timer = setTimeout(async () => {
 		pendingCommands.delete(deviceId);
 		const gateway = getModels(device);
-		if (gateway === undefined) {
-			logger.warn(`[daikin.ts] => No gateway found for coalesced command on device ${deviceId}`);
-			return;
-		}
-
 		try {
 			await applyGatewayEvents(device, gateway, merged);
 			logger.debug(`[daikin.ts] => Coalesced command processed for device: ${deviceId}`);
@@ -141,7 +161,7 @@ async function loadDaikinAPI() {
 		mobileTokenFilePath: resolve(datadir, 'daikin-mobile-tokenset'),
 		enableWebSocket: config.daikin.enableWebSocket ?? true,
 		httpTransport: config.daikin.httpTransport,
-		oidcAuthorizationTimeoutS: 120,
+		oidcAuthorizationTimeoutS: config.daikin.authorizationTimeoutSeconds ?? 600,
 		useMock: config.daikin.useMock ?? false,
 		mockId: config.daikin.mockId ?? undefined,
 	});
@@ -248,26 +268,7 @@ async function loadDaikinAPI() {
 		    errorMessage.includes("authorization timeout") ||
 		    errorString.includes("Authorization time out") ||
 		    errorString.includes("authorization timeout")) {
-			try {
-				logger.error('[daikin.ts] => Authorization timeout detected. Shutting down daemon.');
-				
-				// Update system bridge to indicate timeout
-				try {
-					await updateSystemBridge(null, null, {
-						authorizationTimeout: true
-					});
-					logger.info('[daikin.ts] => System bridge updated with timeout state');
-				} catch (bridgeError) {
-					logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
-				}
-				
-				logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
-			} catch (e) {
-				logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
-			}
-			
-			// Exit the daemon immediately
-			process.exit(1);
+			await handleAuthorizationTimeoutShutdown('error handler');
 		}
 		// Handle invalid_grant error (invalid token) - delete token and exit
 		else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (error as any)?.error === "invalid_grant") {
@@ -522,25 +523,21 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 				logger.debug(`[daikin.ts] => Processing message for device: ${deviceId}`);
 				
 				let gateway = getModels(dev);
-				if (gateway !== undefined) {
-					let eventData;
-					try {
-						eventData = JSON.parse(messageString);
-					} catch (parseError) {
-						logger.error(`[daikin.ts] => JSON parsing error for device ${deviceId}, topic: ${topicString}. Message: ${messageString.substring(0, 100)}`);
-						break;
+				let eventData;
+				try {
+					eventData = JSON.parse(messageString);
+				} catch (parseError) {
+					logger.error(`[daikin.ts] => JSON parsing error for device ${deviceId}, topic: ${topicString}. Message: ${messageString.substring(0, 100)}`);
+					break;
+				}
+
+				try {
+					await queueDeviceCommand(dev, eventData);
+				} catch (eventError) {
+					logger.error(`[daikin.ts] => Error processing event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
+					if (eventError instanceof Error && eventError.stack) {
+						logger.debug(`[daikin.ts] => Stack trace: ${eventError.stack}`);
 					}
-					
-					try {
-						await queueDeviceCommand(dev, eventData);
-					} catch (eventError) {
-						logger.error(`[daikin.ts] => Error processing event for device ${deviceId}: ${eventError instanceof Error ? eventError.message : String(eventError)}`);
-						if (eventError instanceof Error && eventError.stack) {
-							logger.debug(`[daikin.ts] => Stack trace: ${eventError.stack}`);
-						}
-					}
-				} else {
-					logger.warn(`[daikin.ts] => No gateway found for device ${deviceId}, unsupported model`);
 				}
 				break;
 			}
@@ -578,10 +575,6 @@ async function refreshSingleDevice(deviceId: string, reason: string): Promise<bo
 		await cache.set(`device_${deviceId}`, device, 10800000);
 
 		const gateway = getModels(device);
-		if (gateway === undefined) {
-			return false;
-		}
-
 		await publishToMQTT(deviceId, JSON.stringify(gateway));
 		await updateSystemBridge(null, devices);
 		return true;
@@ -634,11 +627,6 @@ async function sendDevice(
 				await cache.set(`device_${deviceId}`, dev, DEVICE_CACHE_TTL_MS);
 				
 				let gateway = getModels(dev);
-				if (gateway === undefined) {
-					logger.warn(`[daikin.ts] => No gateway found for device ${deviceId}, unsupported model`);
-					continue;
-				}
-				
 				const gatewayJson = JSON.stringify(gateway);
 				await publishToMQTT(deviceId, gatewayJson);
 				logger.debug(`[daikin.ts] => Device ${deviceId} published successfully to MQTT`);
@@ -697,7 +685,7 @@ function detectGatewayModel(devices: DaikinCloudDevice): string | undefined {
 	return undefined;
 }
 
-function createGatewayInstance(devices: DaikinCloudDevice, model: string): Gateways | undefined {
+function createStaticGatewayInstance(devices: DaikinCloudDevice, model: string): Gateways | undefined {
 	switch (model) {
 		case 'BRP069C4x':
 			return new BRP069C4x(devices);
@@ -716,67 +704,115 @@ function createGatewayInstance(devices: DaikinCloudDevice, model: string): Gatew
 		case 'BRP069C8x':
 			return new BRP069C8x(devices);
 		default:
-			if (config.system?.dynamicFallback !== false) {
-				logger.info(`[daikin.ts] => Using DynamicGateway for model: ${model}`);
-				return new DynamicGateway(devices);
-			}
-			logger.warn(`[daikin.ts] => Unsupported model: ${model}`);
-			anonymise(devices, model);
 			return undefined;
 	}
+}
+
+function instantiateGateway(devices: DaikinCloudDevice): { gateway: Gateways; supportStatus: SupportStatus; cacheKey: string; gatewayModelRaw?: string; gatewayModelResolved?: string | null } {
+	const deviceId = devices.getId();
+	const gatewayModelRaw = detectGatewayModel(devices);
+	const gatewayModelResolved = gatewayModelRaw ? resolveGatewayModel(gatewayModelRaw) : null;
+
+	if (gatewayModelResolved) {
+		const staticGateway = createStaticGatewayInstance(devices, gatewayModelResolved);
+		if (staticGateway) {
+			return {
+				gateway: staticGateway,
+				supportStatus: 'full',
+				cacheKey: gatewayModelResolved,
+				gatewayModelRaw,
+				gatewayModelResolved,
+			};
+		}
+	}
+
+	if (config.system?.dynamicFallback !== false) {
+		const dynamicGateway = new DynamicGateway(devices);
+		if (dynamicGateway.getCharacteristicDefs().length > 0) {
+			logger.info(`[daikin.ts] => Using DynamicGateway for model: ${gatewayModelRaw ?? 'unknown'} (device ${deviceId})`);
+			return {
+				gateway: dynamicGateway,
+				supportStatus: 'partial',
+				cacheKey: 'DynamicGateway',
+				gatewayModelRaw,
+				gatewayModelResolved: null,
+			};
+		}
+		logger.warn(`[daikin.ts] => DynamicGateway produced no characteristics for device ${deviceId}, using UnsupportedGateway`);
+	}
+
+	logger.warn(`[daikin.ts] => Unsupported model for device ${deviceId}: ${gatewayModelRaw ?? 'unknown'}`);
+	return {
+		gateway: new UnsupportedGateway(devices),
+		supportStatus: 'unsupported',
+		cacheKey: 'UnsupportedGateway',
+		gatewayModelRaw,
+		gatewayModelResolved: gatewayModelResolved,
+	};
 }
 
 /**
  * Detects the gateway model for a given Daikin device and instantiates
  * the corresponding gateway class, or returns undefined if unsupported.
  */
-function getModels(devices: DaikinCloudDevice): Gateways | undefined {
+function getModels(devices: DaikinCloudDevice): Gateways {
 	try {
 		if (!devices) {
-			logger.warn(`[daikin.ts] => Device null or undefined in getModels`);
-			return undefined;
+			throw new Error('Device null or undefined in getModels');
 		}
 
 		const deviceId = devices.getId();
-		const model = detectGatewayModel(devices);
+		const gatewayModelRaw = detectGatewayModel(devices);
 		let cacheKey: string;
 
-		if (!model) {
+		if (!gatewayModelRaw) {
 			if (config.system?.dynamicFallback === false) {
 				logger.warn(`[daikin.ts] => No modelInfo found for device ${deviceId}`);
-				anonymise(devices, 'unknown');
-				return undefined;
 			}
-			cacheKey = 'DynamicGateway';
-			logger.info(`[daikin.ts] => Using DynamicGateway for device without modelInfo`);
+			cacheKey = config.system?.dynamicFallback === false ? 'UnsupportedGateway' : 'DynamicGateway';
 		} else {
-			cacheKey = model;
-			logger.debug(`[daikin.ts] => Model detected: ${model} for device ${deviceId}`);
+			const resolved = resolveGatewayModel(gatewayModelRaw);
+			cacheKey = resolved ?? (config.system?.dynamicFallback === false ? 'UnsupportedGateway' : 'DynamicGateway');
+			logger.debug(`[daikin.ts] => Model detected: ${gatewayModelRaw} (resolved: ${resolved ?? 'dynamic'}) for device ${deviceId}`);
 		}
 
 		const cached = gatewayCache.get(deviceId);
 		if (cached && cached.model === cacheKey) {
 			convertDaikinDevice(devices, cached.gateway);
+			enrichDeviceSupport(devices, cached.gateway, {
+				supportStatus: cached.supportStatus,
+				gatewayModelRaw: cached.gatewayModelRaw,
+				gatewayModelResolved: cached.gatewayModelResolved,
+			});
 			return cached.gateway;
 		}
 
-		let gateway: Gateways | undefined;
-		if (cacheKey === 'DynamicGateway') {
-			gateway = new DynamicGateway(devices);
-		} else {
-			gateway = createGatewayInstance(devices, cacheKey);
-		}
+		const { gateway, supportStatus, cacheKey: instanceKey, gatewayModelResolved } = instantiateGateway(devices);
+		enrichDeviceSupport(devices, gateway, {
+			supportStatus,
+			gatewayModelRaw,
+			gatewayModelResolved,
+		});
 
-		if (gateway) {
-			gatewayCache.set(deviceId, { model: cacheKey, gateway });
-		}
+		gatewayCache.set(deviceId, {
+			model: instanceKey,
+			gateway,
+			supportStatus,
+			gatewayModelRaw,
+			gatewayModelResolved,
+		});
 		return gateway;
 	} catch (error) {
 		logger.error(`[daikin.ts] => Critical error in getModels: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {
 			logger.debug(`[daikin.ts] => Stack trace: ${error.stack}`);
 		}
-		return undefined;
+		if (devices) {
+			const fallback = new UnsupportedGateway(devices);
+			enrichDeviceSupport(devices, fallback, { supportStatus: 'unsupported' });
+			return fallback;
+		}
+		throw error;
 	}
 }
 
@@ -937,26 +973,7 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				    errorMessage.includes("authorization timeout") ||
 				    errorString.includes("Authorization time out") ||
 				    errorString.includes("authorization timeout")) {
-					try {
-						logger.error('[daikin.ts] => Authorization timeout detected in getDevices. Shutting down daemon.');
-						
-						// Update system bridge to indicate timeout
-						try {
-							await updateSystemBridge(null, null, {
-								authorizationTimeout: true
-							});
-							logger.info('[daikin.ts] => System bridge updated with timeout state');
-						} catch (bridgeError) {
-							logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
-						}
-						
-						logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
-					} catch (e) {
-						logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
-					}
-					
-					// Exit the daemon immediately
-					process.exit(1);
+					await handleAuthorizationTimeoutShutdown('getDevices');
 				}
 				// Handle invalid_grant error (invalid token) - delete token and exit
 				else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (cloudError as any)?.error === "invalid_grant") {
@@ -1087,7 +1104,15 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 
 	// Update module information
 	// Only try to get devices if not provided and API is available, otherwise use empty array
+	const authPending = authorizationInfo?.authorizationRequest === true
+		|| authorizationInfo?.authorizationTimeout === true;
+	const cachedAuthRequest = authPending ? true : Boolean(await cache.get('authorizationRequest'));
+	const skipDeviceFetch = authPending || cachedAuthRequest;
+
 	if (devices === null || devices === undefined) {
+		if (skipDeviceFetch) {
+			devices = [];
+		} else {
 		try {
 			// Try to get from cache first without forcing API call
 			const cachedDevices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
@@ -1110,6 +1135,7 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 			logger.debug(`[daikin.ts] => Error retrieving devices for system bridge: ${error instanceof Error ? error.message : String(error)}`);
 			devices = [];
 		}
+		}
 	}
 	
 	if (devices && devices.length) {
@@ -1117,10 +1143,14 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 			const modulesInfo = devices.map(dev => {
 				try {
 					const modelInfo = dev.getData('gateway', 'modelInfo', null)?.value || dev.getData('0', 'modelInfo', null)?.value || 'Unknown';
+					const gateway = getModels(dev);
+					const deviceInfo = (gateway as { _device?: { supportStatus?: string; configCoverage?: string } })._device;
 					return {
 						id: dev.getId(),
 						model: modelInfo,
-						name: dev.getData('climateControl', 'name', null)?.value || dev.getId()
+						name: dev.getData('climateControl', 'name', null)?.value || dev.getId(),
+						supportStatus: deviceInfo?.supportStatus ?? 'unknown',
+						configCoverage: deviceInfo?.configCoverage ?? 'unknown',
 					};
 				} catch (devError) {
 					logger.debug(`[daikin.ts] => Error getting device info: ${devError instanceof Error ? devError.message : String(devError)}`);
@@ -1159,18 +1189,16 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 
 	// Publish system module
 	await publishSystemBridge(systemBridge);
-
-	await publishConfig('authorization_timeout', systemBridge.authorizationTimeout ? 'true' : 'false');
 }
 
 async function publishSystemBridge(systemBridge: SystemBridge) {
 	try {
-		// Publish complete object like other devices (includes device)
-		await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
-
 		if (config.integration?.jeedom) {
 			await makeDefineFile(systemBridge, null);
 		}
+
+		// Publish complete object like other devices (includes device)
+		await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
 	} catch (error) {
 		if (isShuttingDown()) {
 			logger.debug(`[daikin.ts] => Skipping system bridge publish during shutdown`);

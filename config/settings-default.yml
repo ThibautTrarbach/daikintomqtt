@@ -38,6 +38,7 @@ daikin:
   clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud
   clientURL: ""
   clientPort: 8765
+  authorizationTimeoutSeconds: 600 # OIDC browser authorization wait time (60-3600)
   # Mobile App (Onecta account — 3000 req/day + WebSocket)
   email: null
   password: null
