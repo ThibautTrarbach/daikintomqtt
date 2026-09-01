@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BRP069A62 = exports.BRP069A61 = void 0;
 exports.buildDualZoneCharacteristics = buildDualZoneCharacteristics;
 const AbstractGateway_1 = require("./AbstractGateway");
-const BaseModules_1 = require("./BaseModules");
+const typeConstants_1 = require("./typeConstants");
 const catalog_1 = require("./characteristics/catalog");
 function buildHeatPumpZone1Characteristics(extended) {
     const MP = '1';
@@ -24,10 +24,10 @@ function buildHeatPumpZone1Characteristics(extended) {
         propertyKey: '_onOffMode1',
     }), (0, catalog_1.stringField)(MP, 'setpointMode', `${prefix}Setpoint Mode`, {
         propertyKey: '_setpointMode1',
-        converter: BaseModules_1.converterEnum.string,
+        converter: typeConstants_1.converterEnum.string,
     }), (0, catalog_1.stringField)(MP, 'controlMode', `${prefix}Control Mode`, {
         propertyKey: '_controlMode1',
-        converter: BaseModules_1.converterEnum.string,
+        converter: typeConstants_1.converterEnum.string,
     }));
     if (extended) {
         chars.push((0, catalog_1.sensoryTemperature)(MP, '/roomTemperature', `${prefix}Room Temperature`, '_roomTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/outdoorTemperature', `${prefix}Outdoor Temperature`, '_outdoorTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/leavingWaterTemperature', `${prefix}Leaving Water Temperature`, '_leavingWaterTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/leavingWaterOffset', `${prefix}Leaving Water Offset`, '_leavingWaterOffset1'), (0, catalog_1.temperatureControlRoom)(MP, `${prefix}Temperature Control`, '_temperatureControl1'), {
@@ -35,12 +35,12 @@ function buildHeatPumpZone1Characteristics(extended) {
             daikin: {
                 managementPoint: MP,
                 dataPoint: 'targetTemperature',
-                converter: BaseModules_1.converterEnum.numeric,
+                converter: typeConstants_1.converterEnum.numeric,
             },
             description: {
                 name: `${prefix}Target Temperature`,
                 settable: true,
-                type: BaseModules_1.typeEnum.numeric,
+                type: typeConstants_1.typeEnum.numeric,
                 unite: '°C',
                 minMaxValue: {
                     managementPoint: MP,
@@ -79,7 +79,7 @@ function buildDhwZone2Characteristics() {
         (0, catalog_1.temperatureControlDhw)(MP, `${prefix}Temperature Control`, '_temperatureControl'),
         (0, catalog_1.stringField)(MP, 'setpointMode', `${prefix}Setpoint Mode`, {
             propertyKey: '_setpointMode2',
-            converter: BaseModules_1.converterEnum.string,
+            converter: typeConstants_1.converterEnum.string,
         }),
         ...(0, catalog_1.consumptionPack)(MP, prefix, '2'),
     ];

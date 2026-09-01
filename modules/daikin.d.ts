@@ -7,7 +7,7 @@ declare function loadDaikinAPI(): Promise<void>;
 declare function startDaikinAPI(): Promise<void>;
 declare function subscribeDevices(devices: DaikinCloudDevice[]): Promise<void>;
 declare function sendDevice(devices?: DaikinCloudDevice[] | null, cron?: boolean, reason?: string, onlyDeviceIds?: string[]): Promise<void>;
-declare function getModels(devices: DaikinCloudDevice): Gateways | undefined;
+declare function getModels(devices: DaikinCloudDevice): Gateways;
 declare function generateConfig(devices: DaikinCloudDevice[]): Promise<void>;
 declare function getDevices(force?: boolean, reason?: string): Promise<DaikinCloudDevice[]>;
 declare function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDevice[] | null, authorizationInfo?: {

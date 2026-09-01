@@ -1,6 +1,6 @@
 {
-  "name": "daikin-deamon",
-  "version": "2.1.0",
+  "name": "daikin2mqtt",
+  "version": "2.1.3",
   "description": "",
   "main": "daikinToMQTT.js",
   "scripts": {

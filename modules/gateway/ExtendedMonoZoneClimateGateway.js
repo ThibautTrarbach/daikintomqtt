@@ -25,7 +25,7 @@ function buildExtendedMonoZoneCharacteristics(opts) {
     if (opts.econoMode) {
         chars.push((0, catalog_1.stateBool)(MP, 'econoMode', 'Eco Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
     }
-    chars.push((0, catalog_1.stateBool)(MP, 'powerfulMode', 'Powerful Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
+    chars.push(...(0, catalog_1.powerfulModeClimate)(MP));
     if (opts.streamerMode) {
         chars.push((0, catalog_1.stateBool)(MP, 'streamerMode', 'Streamer Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
     }
@@ -47,6 +47,15 @@ function buildExtendedMonoZoneCharacteristics(opts) {
     }
     chars.push(...(0, catalog_1.consumptionPack)(MP, ''));
     return chars;
+}
+function appendDeviceSpecificCharacteristics(device, chars) {
+    chars.push(...(0, catalog_1.gatewayDiagnosticsPack)());
+    if ('indoorUnit' in device.managementPoints) {
+        chars.push(...(0, catalog_1.auxiliaryUnitPack)('indoorUnit', 'Indoor Unit'));
+    }
+    if ('outdoorUnit' in device.managementPoints) {
+        chars.push(...(0, catalog_1.auxiliaryUnitPack)('outdoorUnit', 'Outdoor Unit'));
+    }
 }
 const A4X_OPTS = {
     warningState: true,
@@ -84,7 +93,9 @@ class BRP069B4x extends AbstractGateway_1.AbstractGateway {
 exports.BRP069B4x = BRP069B4x;
 class BRP069C4x extends AbstractGateway_1.AbstractGateway {
     constructor(device) {
-        super(device, buildExtendedMonoZoneCharacteristics(C4X_OPTS), (0, catalog_1.standardGatewayDeviceInfo)(MP));
+        const chars = buildExtendedMonoZoneCharacteristics(C4X_OPTS);
+        appendDeviceSpecificCharacteristics(device, chars);
+        super(device, chars, (0, catalog_1.standardGatewayDeviceInfo)(MP));
     }
 }
 exports.BRP069C4x = BRP069C4x;

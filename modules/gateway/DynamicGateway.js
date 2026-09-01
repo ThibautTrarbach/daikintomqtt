@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DynamicGateway = void 0;
 require("reflect-metadata");
 const decorator_1 = require("../decorator");
-const BaseModules_1 = require("./BaseModules");
+const typeConstants_1 = require("./typeConstants");
 const metadataRegistry_1 = require("./metadataRegistry");
 const catalog_1 = require("./characteristics/catalog");
 const SKIP_DATAPOINTS = new Set(['schedule', 'firmwareUpdate', 'firmwareUpdateStatus']);
@@ -18,24 +18,24 @@ function inferType(def) {
     if (Array.isArray(def.values)) {
         const normalized = def.values.map(v => String(v).toLowerCase());
         if (normalized.every(v => v === 'on' || v === 'off')) {
-            return BaseModules_1.typeEnum.binary;
+            return typeConstants_1.typeEnum.binary;
         }
-        return BaseModules_1.typeEnum.string;
+        return typeConstants_1.typeEnum.string;
     }
     if (typeof def.value === 'number' || typeof def.minValue === 'number' || typeof def.maxValue === 'number') {
-        return BaseModules_1.typeEnum.numeric;
+        return typeConstants_1.typeEnum.numeric;
     }
     if (typeof def.value === 'boolean') {
-        return BaseModules_1.typeEnum.binary;
+        return typeConstants_1.typeEnum.binary;
     }
-    return BaseModules_1.typeEnum.string;
+    return typeConstants_1.typeEnum.string;
 }
 function inferConverter(def, type) {
-    if (type === BaseModules_1.typeEnum.binary) {
-        return BaseModules_1.converterEnum.binary;
+    if (type === typeConstants_1.typeEnum.binary) {
+        return typeConstants_1.converterEnum.binary;
     }
-    if (type === BaseModules_1.typeEnum.numeric && typeof def.value === 'number') {
-        return BaseModules_1.converterEnum.numeric;
+    if (type === typeConstants_1.typeEnum.numeric && typeof def.value === 'number') {
+        return typeConstants_1.converterEnum.numeric;
     }
     return undefined;
 }
@@ -82,7 +82,9 @@ function walkDatapointLeaves(embeddedId, dataPoint, obj, pathPrefix, exposeReadO
         if (subKey === 'meta' || subVal === null || typeof subVal !== 'object') {
             continue;
         }
-        const newPath = pathPrefix ? `${pathPrefix}/${subKey}` : `/${subKey}`;
+        const newPath = subKey === ''
+            ? (pathPrefix || '')
+            : (pathPrefix ? `${pathPrefix}/${subKey}` : `/${subKey}`);
         walkDatapointLeaves(embeddedId, dataPoint, subVal, newPath, exposeReadOnly, results);
     }
 }
@@ -111,13 +113,13 @@ function buildDeviceInfo(device) {
     };
 }
 function convertReadValue(value, converter) {
-    if (converter === BaseModules_1.converterEnum.binary) {
+    if (converter === typeConstants_1.converterEnum.binary) {
         if (value === 'on' || value === true)
             return true;
         if (value === 'off' || value === false)
             return false;
     }
-    if (converter === BaseModules_1.converterEnum.numeric && value !== undefined && value !== null) {
+    if (converter === typeConstants_1.converterEnum.numeric && value !== undefined && value !== null) {
         return Number(value);
     }
     return value;
@@ -186,11 +188,11 @@ class DynamicGateway {
         this._firmwareUpdateAvailable = available;
         this._firmwareUpdateStatus = status ?? '';
         this._firmwareUpdateTarget = details?.version ?? '';
-        cmdMetadata._firmwareUpdateAvailable = { name: 'Firmware Update Available', settable: false, type: BaseModules_1.typeEnum.binary };
-        cmdMetadata._firmwareUpdateStatus = { name: 'Firmware Update Status', settable: false, type: BaseModules_1.typeEnum.string };
-        cmdMetadata._firmwareUpdateTarget = { name: 'Firmware Update Target', settable: false, type: BaseModules_1.typeEnum.string };
-        cmdMetadata._triggerFirmwareUpdate = { name: 'Trigger Firmware Update', settable: true, type: BaseModules_1.typeEnum.binary, generic_type: 'OTHER' };
-        cmdMetadata._setPresetAway = { name: 'Set Away Preset (Holiday)', settable: true, type: BaseModules_1.typeEnum.binary, generic_type: 'MODE' };
+        cmdMetadata._firmwareUpdateAvailable = { name: 'Firmware Update Available', settable: false, type: typeConstants_1.typeEnum.binary };
+        cmdMetadata._firmwareUpdateStatus = { name: 'Firmware Update Status', settable: false, type: typeConstants_1.typeEnum.string };
+        cmdMetadata._firmwareUpdateTarget = { name: 'Firmware Update Target', settable: false, type: typeConstants_1.typeEnum.string };
+        cmdMetadata._triggerFirmwareUpdate = { name: 'Trigger Firmware Update', settable: true, type: typeConstants_1.typeEnum.binary, generic_type: 'OTHER' };
+        cmdMetadata._setPresetAway = { name: 'Set Away Preset (Holiday)', settable: true, type: typeConstants_1.typeEnum.binary, generic_type: 'MODE' };
         daikinMetadata._triggerFirmwareUpdate = { managementPoint: 'gateway', dataPoint: '__firmwareUpdate__' };
         daikinMetadata._setPresetAway = { managementPoint: 'gateway', dataPoint: '__awayPreset__' };
     }
@@ -202,7 +204,7 @@ class DynamicGateway {
             }
             const key = `_${embeddedId}_scheduleEnabled`;
             this[key] = schedule.value?.enabled ?? false;
-            cmdMetadata[key] = { name: `${embeddedId} - Schedule Enabled`, settable: true, type: BaseModules_1.typeEnum.binary };
+            cmdMetadata[key] = { name: `${embeddedId} - Schedule Enabled`, settable: true, type: typeConstants_1.typeEnum.binary };
             daikinMetadata[key] = { managementPoint: embeddedId, dataPoint: '__scheduleEnable__' };
         }
     }
