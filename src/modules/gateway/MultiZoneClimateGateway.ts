@@ -4,13 +4,17 @@ import { AbstractGateway } from './AbstractGateway';
 import { converterEnum } from './typeConstants';
 import { CharacteristicDefinition } from './metadataRegistry';
 import {
+	auxiliaryUnitInfoPack,
+	auxiliaryUnitPack,
 	consumptionPack,
+	gatewayDiagnosticsPack,
 	multiZoneDeviceInfo,
 	sensoryTemperature,
 	stateBool,
 	stringField,
 	temperatureControlDhw,
 	temperatureControlLeavingWater,
+	temperatureControlLeavingWaterOffset,
 	temperatureControlRoom,
 } from './characteristics/catalog';
 
@@ -60,6 +64,7 @@ function buildMainZoneCharacteristics(): CharacteristicDefinition[] {
 		}),
 		temperatureControlRoom(MAIN_MP, `${prefix} Temperature Control`, '_temperatureControlMain'),
 		temperatureControlLeavingWater(MAIN_MP, `${prefix} Leaving Water Control`, '_temperatureControlWaterMain'),
+		temperatureControlLeavingWaterOffset(MAIN_MP, `${prefix} Leaving Water Offset Control`, '_temperatureControlWaterOffsetMain'),
 		...consumptionPack(MAIN_MP, `${prefix} `, 'Main'),
 	];
 }
@@ -67,6 +72,9 @@ function buildMainZoneCharacteristics(): CharacteristicDefinition[] {
 function buildTankZoneCharacteristics(): CharacteristicDefinition[] {
 	const prefix = 'Water Tank -';
 	return [
+		stringField(TANK_MP, 'name', `${prefix} Name`, {
+			propertyKey: '_nameTank',
+		}),
 		stringField(TANK_MP, 'errorCode', `${prefix} Error Code`, {
 			propertyKey: '_errorCodeTank',
 		}),
@@ -102,6 +110,9 @@ function buildTankZoneCharacteristics(): CharacteristicDefinition[] {
 			generic_type: 'ENERGY_STATE',
 			propertyKey: '_powerfulModeTank',
 		}),
+		stateBool(TANK_MP, 'isPowerfulModeActive', `${prefix} Powerful Mode Active`, {
+			propertyKey: '_isPowerfulModeActiveTank',
+		}),
 		sensoryTemperature(TANK_MP, '/tankTemperature', `${prefix} Tank Temperature`, '_tankTemperatureTank'),
 		stringField(TANK_MP, 'setpointMode', `${prefix} Setpoint Mode`, {
 			propertyKey: '_setpointModeTank',
@@ -120,9 +131,29 @@ function buildMultiZoneCharacteristics(): CharacteristicDefinition[] {
 	];
 }
 
+function appendMultiZoneDeviceSpecificCharacteristics(device: DaikinCloudDevice, chars: CharacteristicDefinition[]): void {
+	chars.push(...gatewayDiagnosticsPack());
+
+	const infoOnlyUnits: Array<[string, string]> = [
+		['indoorUnitHydro', 'Indoor Unit Hydro'],
+		['userInterface', 'User Interface'],
+	];
+	for (const [managementPoint, label] of infoOnlyUnits) {
+		if (managementPoint in device.managementPoints) {
+			chars.push(...auxiliaryUnitInfoPack(managementPoint, label));
+		}
+	}
+
+	if ('outdoorUnit' in device.managementPoints) {
+		chars.push(...auxiliaryUnitPack('outdoorUnit', 'Outdoor Unit'));
+	}
+}
+
 export class BRP069A78 extends AbstractGateway implements ClassModule {
 	constructor(device: DaikinCloudDevice) {
-		super(device, buildMultiZoneCharacteristics(), multiZoneDeviceInfo());
+		const chars = buildMultiZoneCharacteristics();
+		appendMultiZoneDeviceSpecificCharacteristics(device, chars);
+		super(device, chars, multiZoneDeviceInfo());
 	}
 }
 
