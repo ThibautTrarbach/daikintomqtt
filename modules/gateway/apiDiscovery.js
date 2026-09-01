@@ -1,11 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SKIP_DATAPOINTS = void 0;
+exports.normalizeDatapointPath = normalizeDatapointPath;
 exports.makeDatapointKey = makeDatapointKey;
 exports.discoverApiDatapoints = discoverApiDatapoints;
 exports.SKIP_DATAPOINTS = new Set(['schedule', 'firmwareUpdate', 'firmwareUpdateStatus']);
+function normalizeDatapointPath(dataPointPath) {
+    if (!dataPointPath) {
+        return undefined;
+    }
+    const segments = dataPointPath.split('/').filter(Boolean);
+    if (segments.length === 0) {
+        return undefined;
+    }
+    return `/${segments.join('/')}`;
+}
 function makeDatapointKey(managementPoint, dataPoint, dataPointPath) {
-    const path = dataPointPath ? (dataPointPath.startsWith('/') ? dataPointPath : `/${dataPointPath}`) : '';
+    const path = normalizeDatapointPath(dataPointPath) ?? '';
     return `${managementPoint}/${dataPoint}${path}`;
 }
 function walkDatapointLeaves(embeddedId, dataPoint, obj, pathPrefix, exposeReadOnly, results) {
@@ -21,7 +32,7 @@ function walkDatapointLeaves(embeddedId, dataPoint, obj, pathPrefix, exposeReadO
         if (leaf.value !== undefined && typeof leaf.value === 'object' && leaf.value !== null && !Array.isArray(leaf.value)) {
             return;
         }
-        const dataPointPath = pathPrefix || undefined;
+        const dataPointPath = normalizeDatapointPath(pathPrefix || undefined);
         results.push({
             managementPoint: embeddedId,
             dataPoint,
@@ -34,7 +45,14 @@ function walkDatapointLeaves(embeddedId, dataPoint, obj, pathPrefix, exposeReadO
         if (subKey === 'meta' || subVal === null || typeof subVal !== 'object') {
             continue;
         }
-        const newPath = pathPrefix ? `${pathPrefix}/${subKey}` : `/${subKey}`;
+        let newPath;
+        if (subKey === '') {
+            newPath = normalizeDatapointPath(pathPrefix) ?? '';
+        }
+        else {
+            const normalizedPrefix = normalizeDatapointPath(pathPrefix) ?? '';
+            newPath = normalizedPrefix ? `${normalizedPrefix}/${subKey}` : `/${subKey}`;
+        }
         walkDatapointLeaves(embeddedId, dataPoint, subVal, newPath, exposeReadOnly, results);
     }
 }

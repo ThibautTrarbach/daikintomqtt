@@ -6,5 +6,6 @@ export interface ApiDatapointRef {
     settable: boolean;
 }
 export declare const SKIP_DATAPOINTS: Set<string>;
+export declare function normalizeDatapointPath(dataPointPath?: string): string | undefined;
 export declare function makeDatapointKey(managementPoint: string, dataPoint: string, dataPointPath?: string): string;
 export declare function discoverApiDatapoints(device: DaikinCloudDevice, exposeReadOnly?: boolean): ApiDatapointRef[];

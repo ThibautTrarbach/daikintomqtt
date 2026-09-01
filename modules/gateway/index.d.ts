@@ -2,6 +2,7 @@ export * from "./Anonymise";
 export * from "./AbstractGateway";
 export * from "./metadataRegistry";
 export * from "./characteristics/catalog";
+export * from "./typeConstants";
 export * from "./BaseModules";
 export * from "./SystemBridge";
 export * from "./DynamicGateway";

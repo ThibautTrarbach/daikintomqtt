@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.SystemBridge = void 0;
 require("reflect-metadata");
 const decorator_1 = require("../decorator");
-const BaseModules_1 = require("./BaseModules");
+const typeConstants_1 = require("./typeConstants");
 const constants_1 = require("../constants");
 class SystemBridge {
     _device = {
@@ -182,7 +182,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Rate Limit Minute',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'req/min'
     }),
     __metadata("design:type", Number)
@@ -191,7 +191,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Rate Remaining Minute',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'req/min'
     }),
     __metadata("design:type", Number)
@@ -200,7 +200,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Rate Limit Day',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'req/day'
     }),
     __metadata("design:type", Number)
@@ -209,7 +209,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Rate Remaining Day',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'req/day'
     }),
     __metadata("design:type", Number)
@@ -218,7 +218,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Modules Count',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'modules'
     }),
     __metadata("design:type", Number)
@@ -227,7 +227,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Modules List',
         settable: false,
-        type: BaseModules_1.typeEnum.string
+        type: typeConstants_1.typeEnum.string
     }),
     __metadata("design:type", String)
 ], SystemBridge.prototype, "_modulesList", void 0);
@@ -235,7 +235,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Unsupported Modules Count',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'modules'
     }),
     __metadata("design:type", Number)
@@ -244,7 +244,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Unsupported Modules List',
         settable: false,
-        type: BaseModules_1.typeEnum.string
+        type: typeConstants_1.typeEnum.string
     }),
     __metadata("design:type", String)
 ], SystemBridge.prototype, "_unsupportedModulesList", void 0);
@@ -252,7 +252,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Refresh All Devices',
         settable: true,
-        type: BaseModules_1.typeEnum.binary
+        type: typeConstants_1.typeEnum.binary
     }),
     __metadata("design:type", Boolean)
 ], SystemBridge.prototype, "_refreshAllDevices", void 0);
@@ -260,7 +260,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Authorization URL',
         settable: false,
-        type: BaseModules_1.typeEnum.string
+        type: typeConstants_1.typeEnum.string
     }),
     __metadata("design:type", String)
 ], SystemBridge.prototype, "_authorizationUrl", void 0);
@@ -268,7 +268,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Authorization Request',
         settable: false,
-        type: BaseModules_1.typeEnum.binary
+        type: typeConstants_1.typeEnum.binary
     }),
     __metadata("design:type", Boolean)
 ], SystemBridge.prototype, "_authorizationRequest", void 0);
@@ -276,7 +276,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Authorization Timeout',
         settable: false,
-        type: BaseModules_1.typeEnum.binary
+        type: typeConstants_1.typeEnum.binary
     }),
     __metadata("design:type", Boolean)
 ], SystemBridge.prototype, "_authorizationTimeout", void 0);
@@ -284,7 +284,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'API Budget Status',
         settable: false,
-        type: BaseModules_1.typeEnum.string
+        type: typeConstants_1.typeEnum.string
     }),
     __metadata("design:type", String)
 ], SystemBridge.prototype, "_apiBudgetStatus", void 0);
@@ -292,7 +292,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Next Polling At',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'ms'
     }),
     __metadata("design:type", Number)
@@ -301,7 +301,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Skipped Refresh Count',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'count'
     }),
     __metadata("design:type", Number)
@@ -310,7 +310,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Auth Mode',
         settable: false,
-        type: BaseModules_1.typeEnum.string
+        type: typeConstants_1.typeEnum.string
     }),
     __metadata("design:type", String)
 ], SystemBridge.prototype, "_authMode", void 0);
@@ -318,7 +318,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'WebSocket Connected',
         settable: false,
-        type: BaseModules_1.typeEnum.binary
+        type: typeConstants_1.typeEnum.binary
     }),
     __metadata("design:type", Boolean)
 ], SystemBridge.prototype, "_webSocketConnected", void 0);
@@ -326,7 +326,7 @@ __decorate([
     (0, decorator_1.modulesDataDescription)({
         name: 'Daily Quota Limit',
         settable: false,
-        type: BaseModules_1.typeEnum.numeric,
+        type: typeConstants_1.typeEnum.numeric,
         unite: 'req/day'
     }),
     __metadata("design:type", Number)

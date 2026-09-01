@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BRP069C8x = exports.BRP069C41 = void 0;
 exports.buildMonoZoneClimateCharacteristics = buildMonoZoneClimateCharacteristics;
 const AbstractGateway_1 = require("./AbstractGateway");
-const BaseModules_1 = require("./BaseModules");
+const typeConstants_1 = require("./typeConstants");
 const catalog_1 = require("./characteristics/catalog");
 const MP = 'climateControl';
 function buildMonoZoneClimateCharacteristics() {
@@ -19,7 +19,7 @@ function buildMonoZoneClimateCharacteristics() {
             description: {
                 name: 'Operation Mode',
                 settable: true,
-                type: BaseModules_1.typeEnum.string,
+                type: typeConstants_1.typeEnum.string,
                 values: operationModeValues,
             },
         },
@@ -33,13 +33,13 @@ function buildMonoZoneClimateCharacteristics() {
                 dataPoint: 'temperatureControl',
                 dataPointPath: '/operationModes/#value#/setpoints/roomTemperature',
                 multiple: true,
-                converter: BaseModules_1.converterEnum.numeric,
+                converter: typeConstants_1.converterEnum.numeric,
                 multipleValue: { managementPoint: MP, dataPoint: 'operationMode' },
             },
             description: {
                 name: 'Temperature Control',
                 settable: true,
-                type: BaseModules_1.typeEnum.numeric,
+                type: typeConstants_1.typeEnum.numeric,
                 unite: '°C',
                 minMaxValue: {
                     managementPoint: MP,
@@ -62,7 +62,7 @@ function buildMonoZoneClimateCharacteristics() {
             description: {
                 name: 'Fan Current Mode',
                 settable: true,
-                type: BaseModules_1.typeEnum.string,
+                type: typeConstants_1.typeEnum.string,
                 values: fanModeValues,
             },
         },
@@ -73,13 +73,13 @@ function buildMonoZoneClimateCharacteristics() {
                 dataPoint: 'fanControl',
                 dataPointPath: '/operationModes/#value#/fanSpeed/modes/fixed',
                 multiple: true,
-                converter: BaseModules_1.converterEnum.numeric,
+                converter: typeConstants_1.converterEnum.numeric,
                 multipleValue: { managementPoint: MP, dataPoint: 'operationMode' },
             },
             description: {
                 name: 'Fan Fixed',
                 settable: true,
-                type: BaseModules_1.typeEnum.numeric,
+                type: typeConstants_1.typeEnum.numeric,
                 minMaxValue: {
                     managementPoint: MP,
                     dataPoint: 'fanControl',

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.BRP069A78 = void 0;
 exports.buildMultiZoneCharacteristics = buildMultiZoneCharacteristics;
 const AbstractGateway_1 = require("./AbstractGateway");
-const BaseModules_1 = require("./BaseModules");
+const typeConstants_1 = require("./typeConstants");
 const catalog_1 = require("./characteristics/catalog");
 const MAIN_MP = 'climateControlMainZone';
 const TANK_MP = 'domesticHotWaterTank';
@@ -46,7 +46,7 @@ function buildMainZoneCharacteristics() {
         (0, catalog_1.sensoryTemperature)(MAIN_MP, '/leavingWaterOffset', `${prefix} Leaving Water Offset`, '_leavingWaterOffsetMain'),
         (0, catalog_1.stringField)(MAIN_MP, 'setpointMode', `${prefix} Setpoint Mode`, {
             propertyKey: '_setpointModeMain',
-            converter: BaseModules_1.converterEnum.string,
+            converter: typeConstants_1.converterEnum.string,
         }),
         (0, catalog_1.temperatureControlRoom)(MAIN_MP, `${prefix} Temperature Control`, '_temperatureControlMain'),
         (0, catalog_1.temperatureControlLeavingWater)(MAIN_MP, `${prefix} Leaving Water Control`, '_temperatureControlWaterMain'),
@@ -94,7 +94,7 @@ function buildTankZoneCharacteristics() {
         (0, catalog_1.sensoryTemperature)(TANK_MP, '/tankTemperature', `${prefix} Tank Temperature`, '_tankTemperatureTank'),
         (0, catalog_1.stringField)(TANK_MP, 'setpointMode', `${prefix} Setpoint Mode`, {
             propertyKey: '_setpointModeTank',
-            converter: BaseModules_1.converterEnum.string,
+            converter: typeConstants_1.converterEnum.string,
         }),
         (0, catalog_1.temperatureControlDhw)(TANK_MP, `${prefix} Domestic Water Temperature`, '_domesticHotWaterTemperatureTank', {
             fixedHeatingPath: true,
