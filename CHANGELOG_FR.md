@@ -4,6 +4,14 @@ Toutes les modifications notables de Daikin2MQTT seront documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [2.1.4] - 2026-09-01
+
+### Corrigé
+
+- `auxiliaryUnitPack` : ajout modelInfo, serialNumber (indoor/outdoor) et softwareVersion (outdoor) — couverture complète BRP069C4x
+
+---
+
 ## [2.1.3] - 2026-09-01
 
 ### Ajouté

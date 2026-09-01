@@ -429,13 +429,22 @@ function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): Charac
 	const chars: CharacteristicDefinition[] = [];
 
 	if (managementPoint === 'indoorUnit') {
-		chars.push(stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
-			propertyKey: '_indoorUnitSoftwareVersion',
-		}));
+		chars.push(
+			stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_indoorUnitModelInfo' }),
+			stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_indoorUnitSerialNumber' }),
+			stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+				propertyKey: '_indoorUnitSoftwareVersion',
+			}),
+		);
 	}
 
 	if (managementPoint === 'outdoorUnit') {
 		chars.push(
+			stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_outdoorUnitModelInfo' }),
+			stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_outdoorUnitSerialNumber' }),
+			stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+				propertyKey: '_outdoorUnitSoftwareVersion',
+			}),
 			stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }),
 			stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }),
 			stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }),
