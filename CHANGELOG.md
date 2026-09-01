@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - BRP069B4x / BRP069A4x: propagate `gatewayDiagnosticsPack` and `auxiliaryUnitPack` (complete static coverage, fixes daikinRCCloud #42)
 - BRP069A78: add gateway diagnostics, temperatureControl leavingWaterOffset, DHW tank name/isPowerfulModeActive, auxiliary unit packs for hydro/outdoor/UI (fixes daikinRCCloud #41)
 - Debug report: redact `serialNumber` alongside other sensitive fields
+- Debug report: point `githubIssueUrl` to `daikintomqtt` repository
 
 ### Added
 

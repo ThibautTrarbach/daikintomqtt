@@ -12,7 +12,7 @@ const SUPPORT_CMD_TYPE_STRING = 1;
 
 export type SupportStatus = 'full' | 'partial' | 'unsupported';
 
-export const GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikinRCCloud/issues/new';
+export const GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikintomqtt/issues/new';
 export const REDACTED = '[redacted]';
 const MAX_DEBUG_REPORT_SIZE = 16 * 1024;
 
