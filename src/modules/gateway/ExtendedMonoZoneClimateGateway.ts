@@ -139,13 +139,17 @@ const C4X_OPTS: ExtendedMonoZoneOptions = {
 
 export class BRP069A4x extends AbstractGateway implements ClassModule {
 	constructor(device: DaikinCloudDevice) {
-		super(device, buildExtendedMonoZoneCharacteristics(A4X_OPTS), standardGatewayDeviceInfo(MP));
+		const chars = buildExtendedMonoZoneCharacteristics(A4X_OPTS);
+		appendDeviceSpecificCharacteristics(device, chars);
+		super(device, chars, standardGatewayDeviceInfo(MP));
 	}
 }
 
 export class BRP069B4x extends AbstractGateway implements ClassModule {
 	constructor(device: DaikinCloudDevice) {
-		super(device, buildExtendedMonoZoneCharacteristics(B4X_OPTS), standardGatewayDeviceInfo(MP));
+		const chars = buildExtendedMonoZoneCharacteristics(B4X_OPTS);
+		appendDeviceSpecificCharacteristics(device, chars);
+		super(device, chars, standardGatewayDeviceInfo(MP));
 	}
 }
 
