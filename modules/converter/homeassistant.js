@@ -11,7 +11,8 @@ function valueJsonTemplate(propertyKey, defaultValue) {
 }
 function buildAvailability(baseTopic) {
     return [{
-            topic: `${baseTopic}/${constants_1.HA_AVAILABILITY_TOPIC_SUFFIX}`,
+            topic: `${baseTopic}/${constants_1.HA_SYSTEM_BRIDGE_TOPIC}`,
+            value_template: "{{ 'true' if value_json._authorizationTimeout else 'false' }}",
             payload_available: "false",
             payload_not_available: "true"
         }];

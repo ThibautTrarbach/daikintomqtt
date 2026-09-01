@@ -4,6 +4,7 @@ exports.setMqttRepublishHandler = void 0;
 exports.loadMQTTClient = loadMQTTClient;
 exports.publishToMQTT = publishToMQTT;
 exports.publishConfig = publishConfig;
+exports.cleanStaleMqttTopics = cleanStaleMqttTopics;
 const mqtt_1 = require("mqtt");
 const mqttLifecycle_1 = require("./mqttLifecycle");
 Object.defineProperty(exports, "setMqttRepublishHandler", { enumerable: true, get: function () { return mqttLifecycle_1.setMqttRepublishHandler; } });
@@ -141,5 +142,46 @@ async function publishToMQTT(topic, data) {
 }
 async function publishConfig(key, value) {
     await publishToMQTT('system/bridge/' + key, String(value));
+}
+const STALE_RETAINED_TOPICS = [
+    'system/bridge/availability',
+];
+const LEGACY_RETAINED_TOPICS = [
+    'system/bridge/authorization_timeout',
+];
+async function clearRetainedTopic(relativeTopic) {
+    if (!global.mqttClient) {
+        throw new Error("MQTT client not initialized");
+    }
+    const fullTopic = config.mqtt.topic + '/' + relativeTopic;
+    logger.debug(`[mqtt.ts] => Clearing retained message on ${fullTopic}`);
+    await cache.del(relativeTopic);
+    return new Promise((resolve, reject) => {
+        const publishTimeout = setTimeout(() => {
+            reject(new Error(`Timeout clearing retained message on ${fullTopic}`));
+        }, 5000);
+        mqttClient.publish(fullTopic, '', { qos: 0, retain: true }, (error) => {
+            clearTimeout(publishTimeout);
+            if (error) {
+                logger.error(`[mqtt.ts] => Error clearing retained message on ${fullTopic}: ${error.message}`);
+                reject(error);
+                return;
+            }
+            logger.debug(`[mqtt.ts] => Retained message cleared on ${fullTopic}`);
+            resolve();
+        });
+    });
+}
+async function cleanStaleMqttTopics() {
+    logger.info('[mqtt.ts] => Cleaning stale retained MQTT topics');
+    const topicsToClear = [...STALE_RETAINED_TOPICS, ...LEGACY_RETAINED_TOPICS];
+    for (const topic of topicsToClear) {
+        try {
+            await clearRetainedTopic(topic);
+        }
+        catch (error) {
+            logger.warn(`[mqtt.ts] => Could not clear retained topic ${topic}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
 }
 //# sourceMappingURL=mqtt.js.map

@@ -59,6 +59,8 @@ const promises_1 = require("timers/promises");
         await (0, modules_1.loadGlobalConfig)();
         global.logger.info("[main.ts] => Connecting to MQTT broker");
         await (0, modules_1.loadMQTTClient)();
+        global.logger.info("[main.ts] => Cleaning stale retained MQTT topics");
+        await (0, modules_1.cleanStaleMqttTopics)();
         global.logger.info("[main.ts] => Connecting to Daikin API");
         await (0, modules_1.loadDaikinAPI)();
         global.logger.info("[main.ts] => Starting Daikin API");
@@ -149,8 +151,9 @@ const promises_1 = require("timers/promises");
         String(error).includes("Authorization time out")) {
         log.error('[main.ts] => Authorization timeout detected. Please restart DaikinToMQTT and try again.');
         try {
+            (0, shutdown_1.beginShutdown)();
             const { updateSystemBridge } = await Promise.resolve().then(() => __importStar(require("./modules/daikin")));
-            await updateSystemBridge(null, null, { authorizationTimeout: true });
+            await updateSystemBridge(null, [], { authorizationTimeout: true });
             log.info('[main.ts] => System module updated with timeout state');
         }
         catch (updateError) {
