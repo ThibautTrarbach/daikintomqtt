@@ -152,6 +152,8 @@ export interface DevicesInformation {
 	timeZone?: string
 	wifiConnectionSSID?: string
 	wifiConnectionStrength?: string
+	ipAddress?: string
+	macAddress?: string
 	isCloudConnectionUp?: string
 	supportStatus?: SupportStatus
 	configCoverage?: ConfigCoverage

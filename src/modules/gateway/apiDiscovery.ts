@@ -9,12 +9,23 @@ export interface ApiDatapointRef {
 
 export const SKIP_DATAPOINTS = new Set(['schedule', 'firmwareUpdate', 'firmwareUpdateStatus']);
 
+export function normalizeDatapointPath(dataPointPath?: string): string | undefined {
+	if (!dataPointPath) {
+		return undefined;
+	}
+	const segments = dataPointPath.split('/').filter(Boolean);
+	if (segments.length === 0) {
+		return undefined;
+	}
+	return `/${segments.join('/')}`;
+}
+
 export function makeDatapointKey(
 	managementPoint: string,
 	dataPoint: string,
 	dataPointPath?: string,
 ): string {
-	const path = dataPointPath ? (dataPointPath.startsWith('/') ? dataPointPath : `/${dataPointPath}`) : '';
+	const path = normalizeDatapointPath(dataPointPath) ?? '';
 	return `${managementPoint}/${dataPoint}${path}`;
 }
 
@@ -40,7 +51,7 @@ function walkDatapointLeaves(
 			return;
 		}
 
-		const dataPointPath = pathPrefix || undefined;
+		const dataPointPath = normalizeDatapointPath(pathPrefix || undefined);
 		results.push({
 			managementPoint: embeddedId,
 			dataPoint,
@@ -54,7 +65,13 @@ function walkDatapointLeaves(
 		if (subKey === 'meta' || subVal === null || typeof subVal !== 'object') {
 			continue;
 		}
-		const newPath = pathPrefix ? `${pathPrefix}/${subKey}` : `/${subKey}`;
+		let newPath: string;
+		if (subKey === '') {
+			newPath = normalizeDatapointPath(pathPrefix) ?? '';
+		} else {
+			const normalizedPrefix = normalizeDatapointPath(pathPrefix) ?? '';
+			newPath = normalizedPrefix ? `${normalizedPrefix}/${subKey}` : `/${subKey}`;
+		}
 		walkDatapointLeaves(embeddedId, dataPoint, subVal as Record<string, unknown>, newPath, exposeReadOnly, results);
 	}
 }

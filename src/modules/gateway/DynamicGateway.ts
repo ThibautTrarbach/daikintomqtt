@@ -110,7 +110,9 @@ function walkDatapointLeaves(
 		if (subKey === 'meta' || subVal === null || typeof subVal !== 'object') {
 			continue;
 		}
-		const newPath = pathPrefix ? `${pathPrefix}/${subKey}` : `/${subKey}`;
+		const newPath = subKey === ''
+			? (pathPrefix || '')
+			: (pathPrefix ? `${pathPrefix}/${subKey}` : `/${subKey}`);
 		walkDatapointLeaves(embeddedId, dataPoint, subVal as Record<string, unknown>, newPath, exposeReadOnly, results);
 	}
 }

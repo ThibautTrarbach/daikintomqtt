@@ -140,6 +140,29 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 				// optional fields
 			}
 		}
+		// @ts-ignore
+		if (!gatewayClass[key1].wifiConnectionSSID) {
+			try {
+				const ssid = device.getData('gateway', 'ssid', undefined);
+				if (ssid?.value !== undefined && ssid?.value !== null) {
+					// @ts-ignore
+					gatewayClass[key1].wifiConnectionSSID = String(ssid.value);
+				}
+			} catch {
+				// optional fields
+			}
+		}
+		for (const [field, mp, dp] of [['ipAddress', 'gateway', 'ipAddress'], ['macAddress', 'gateway', 'macAddress']] as const) {
+			try {
+				const extra = device.getData(mp, dp, undefined);
+				if (extra?.value !== undefined && extra?.value !== null) {
+					// @ts-ignore
+					gatewayClass[key1][field] = String(extra.value);
+				}
+			} catch {
+				// optional fields
+			}
+		}
 		try {
 			// @ts-ignore
 			gatewayClass[key1]['isCloudConnectionUp'] = device.isCloudConnectionUp() ? 'true' : 'false';

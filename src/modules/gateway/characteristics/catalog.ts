@@ -406,6 +406,46 @@ function fanClimatePack(
 	return defs;
 }
 
+function powerfulModeClimate(managementPoint: string): CharacteristicDefinition[] {
+	return [
+		stateBool(managementPoint, 'powerfulMode', 'Powerful Mode', { settable: true, generic_type: 'ENERGY_STATE' }),
+		stateBool(managementPoint, 'isPowerfulModeActive', 'Powerful Mode Active', { propertyKey: '_isPowerfulModeActive' }),
+	];
+}
+
+function gatewayDiagnosticsPack(): CharacteristicDefinition[] {
+	const MP = 'gateway';
+	return [
+		stringField(MP, 'ipAddress', 'Gateway IP Address', { propertyKey: '_gatewayIpAddress' }),
+		stringField(MP, 'macAddress', 'Gateway MAC Address', { propertyKey: '_gatewayMacAddress' }),
+		stringField(MP, 'ssid', 'Gateway SSID', { propertyKey: '_gatewaySsid' }),
+		stateBool(MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', { propertyKey: '_gatewayFirmwareUpdateSupported' }),
+		stateBool(MP, 'isInErrorState', 'Gateway Error State', { propertyKey: '_gatewayIsInErrorState' }),
+		stringField(MP, 'errorCode', 'Gateway Error Code', { propertyKey: '_gatewayErrorCode' }),
+	];
+}
+
+function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[] {
+	const chars: CharacteristicDefinition[] = [];
+
+	if (managementPoint === 'indoorUnit') {
+		chars.push(stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+			propertyKey: '_indoorUnitSoftwareVersion',
+		}));
+	}
+
+	if (managementPoint === 'outdoorUnit') {
+		chars.push(
+			stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }),
+			stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }),
+			stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }),
+			stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }),
+		);
+	}
+
+	return chars;
+}
+
 function zoneStatusPack(
 	managementPoint: string,
 	labelPrefix: string,
@@ -444,5 +484,8 @@ export {
 	temperatureControlLeavingWater,
 	temperatureControlDhw,
 	fanClimatePack,
+	powerfulModeClimate,
+	gatewayDiagnosticsPack,
+	auxiliaryUnitPack,
 	zoneStatusPack,
 };
