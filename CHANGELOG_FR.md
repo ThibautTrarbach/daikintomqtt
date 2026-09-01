@@ -4,6 +4,28 @@ Toutes les modifications notables de Daikin2MQTT seront documentées dans ce fic
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [2.1.3] - 2026-09-01
+
+### Ajouté
+
+- `gatewayDiagnosticsPack` : capteurs réseau/diagnostic gateway (IP, MAC, SSID, support MAJ firmware, état d'erreur)
+- `auxiliaryUnitPack` : capteurs unités indoor/outdoor (version logicielle, états erreur/avertissement/précaution) pour BRP069C4x
+- Mapping read-only `isPowerfulModeActive` en complément de `powerfulMode` (API firmware 2.6.x)
+- Module métadonnées support : génération du rapport de debug, URL issue GitHub, synchronisation des commandes support avec masquage des données sensibles
+- Tests unitaires pour l'audit de couverture API et les métadonnées support (`test/unit/apiCoverageAudit.test.js`, `test/unit/supportMetadata.test.ts`)
+
+### Corrigé
+
+- Audit de couverture API : normalisation des chemins datapoint (fix segments `//`), prise en compte metadata `_device`, matching des placeholders `#value#`
+- Preset mode Home Assistant : fallback sur `_isPowerfulModeActive` si `_powerfulMode` est absent
+
+### Modifié
+
+- Enrichissement `_device` : `ipAddress`, `macAddress`, et alias `ssid` pour `wifiConnectionSSID`
+- Rapport de debug : inclusion du message de support, indication de troncature si les datapoints non mappés dépassent la limite d'affichage (`totalUnmappedCount`)
+
+---
+
 ## [2.1.2] - 2026-09-01
 
 ### Ajouté

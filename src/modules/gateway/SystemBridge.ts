@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import {modulesDataDescription} from "../decorator";
-import {typeEnum} from "./BaseModules";
+import {typeEnum} from "./typeConstants";
 import {ClassModule, DevicesInformation} from "../../types";
 import { APP_VERSION } from "../constants";
 

@@ -4,35 +4,13 @@ import {DaikinCloudDevice} from "../../daikin-cloud";
 import {publishToMQTT} from "../mqtt";
 import {schedulePostActionRefresh} from "../actionRefresh";
 import { DEVICE_CACHE_TTL_MS } from "../constants";
+import {consumptionEnum, converterEnum, typeEnum} from "./typeConstants";
 
-// Generic type information for module properties
-const typeEnum = Object.freeze({
-	numeric: 0,
-	string: 1,
-	binary: 2,
-});
-
-// Converters used to translate between Daikin values and internal representation
-const converterEnum = Object.freeze({
-	numeric: 0,
-	string: 1,
-	binary: 2,
-	consumption: 3
-});
+export {consumptionEnum, converterEnum, typeEnum};
 
 function isDeviceMetadataField(value: unknown): value is ModulePropertyMetadata {
 	return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;
 }
-
-// Indices used to select specific energy consumption periods
-const consumptionEnum = Object.freeze({
-	heatingDay: 0,
-	heatingWeek: 1,
-	heatingMonth: 2,
-	coolingDay: 3,
-	coolingWeek: 4,
-	coolingMonth: 5
-});
 
 /**
  * Populates a gateway class instance with values from a DaikinCloudDevice
@@ -152,6 +130,29 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 			['wifiConnectionStrength', 'gateway', 'wifiConnectionStrength'],
 		];
 		for (const [field, mp, dp] of extraDeviceFields) {
+			try {
+				const extra = device.getData(mp, dp, undefined);
+				if (extra?.value !== undefined && extra?.value !== null) {
+					// @ts-ignore
+					gatewayClass[key1][field] = String(extra.value);
+				}
+			} catch {
+				// optional fields
+			}
+		}
+		// @ts-ignore
+		if (!gatewayClass[key1].wifiConnectionSSID) {
+			try {
+				const ssid = device.getData('gateway', 'ssid', undefined);
+				if (ssid?.value !== undefined && ssid?.value !== null) {
+					// @ts-ignore
+					gatewayClass[key1].wifiConnectionSSID = String(ssid.value);
+				}
+			} catch {
+				// optional fields
+			}
+		}
+		for (const [field, mp, dp] of [['ipAddress', 'gateway', 'ipAddress'], ['macAddress', 'gateway', 'macAddress']] as const) {
 			try {
 				const extra = device.getData(mp, dp, undefined);
 				if (extra?.value !== undefined && extra?.value !== null) {
@@ -814,9 +815,6 @@ function getConsumptionData(values : any, consumptionT: number, unit?: string) {
 }
 
 export {
-	typeEnum,
-	converterEnum,
-	consumptionEnum,
 	convertDaikinDevice,
 	eventValue
 }

@@ -779,20 +779,26 @@ function getModels(devices: DaikinCloudDevice): Gateways {
 		const cached = gatewayCache.get(deviceId);
 		if (cached && cached.model === cacheKey) {
 			convertDaikinDevice(devices, cached.gateway);
-			enrichDeviceSupport(devices, cached.gateway, {
+			const supportCommandsChanged = enrichDeviceSupport(devices, cached.gateway, {
 				supportStatus: cached.supportStatus,
 				gatewayModelRaw: cached.gatewayModelRaw,
 				gatewayModelResolved: cached.gatewayModelResolved,
 			});
+			if (supportCommandsChanged && config.integration?.jeedom) {
+				void makeDefineFile(cached.gateway, devices);
+			}
 			return cached.gateway;
 		}
 
 		const { gateway, supportStatus, cacheKey: instanceKey, gatewayModelResolved } = instantiateGateway(devices);
-		enrichDeviceSupport(devices, gateway, {
+		const supportCommandsChanged = enrichDeviceSupport(devices, gateway, {
 			supportStatus,
 			gatewayModelRaw,
 			gatewayModelResolved,
 		});
+		if (supportCommandsChanged && config.integration?.jeedom) {
+			void makeDefineFile(gateway, devices);
+		}
 
 		gatewayCache.set(deviceId, {
 			model: instanceKey,
@@ -809,7 +815,10 @@ function getModels(devices: DaikinCloudDevice): Gateways {
 		}
 		if (devices) {
 			const fallback = new UnsupportedGateway(devices);
-			enrichDeviceSupport(devices, fallback, { supportStatus: 'unsupported' });
+			const supportCommandsChanged = enrichDeviceSupport(devices, fallback, { supportStatus: 'unsupported' });
+			if (supportCommandsChanged && config.integration?.jeedom) {
+				void makeDefineFile(fallback, devices);
+			}
 			return fallback;
 		}
 		throw error;

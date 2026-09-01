@@ -135,7 +135,7 @@ export class DaikinCloudDevice extends EventEmitter<DaikinCloudDeviceEvents> {
      * @returns {boolean} Connected status
      */
     isCloudConnectionUp() {
-        return !!this.desc.isCloudConnectionUp.value;
+        return !!this.desc?.isCloudConnectionUp?.value;
     }
 
     /**
