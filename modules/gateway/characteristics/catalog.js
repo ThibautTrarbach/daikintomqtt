@@ -11,11 +11,13 @@ exports.sensoryHumidity = sensoryHumidity;
 exports.operationModeClimate = operationModeClimate;
 exports.temperatureControlRoom = temperatureControlRoom;
 exports.temperatureControlLeavingWater = temperatureControlLeavingWater;
+exports.temperatureControlLeavingWaterOffset = temperatureControlLeavingWaterOffset;
 exports.temperatureControlDhw = temperatureControlDhw;
 exports.fanClimatePack = fanClimatePack;
 exports.powerfulModeClimate = powerfulModeClimate;
 exports.gatewayDiagnosticsPack = gatewayDiagnosticsPack;
 exports.auxiliaryUnitPack = auxiliaryUnitPack;
+exports.auxiliaryUnitInfoPack = auxiliaryUnitInfoPack;
 exports.zoneStatusPack = zoneStatusPack;
 const typeConstants_1 = require("../typeConstants");
 function standardGatewayDeviceInfo(managementPoint, nameDataPoint = 'name') {
@@ -217,6 +219,33 @@ function temperatureControlLeavingWater(managementPoint, label, propertyKey) {
         },
     };
 }
+function temperatureControlLeavingWaterOffset(managementPoint, label, propertyKey) {
+    const daikin = {
+        managementPoint,
+        dataPoint: 'temperatureControl',
+        dataPointPath: '/operationModes/#value#/setpoints/leavingWaterOffset',
+        multiple: true,
+        converter: typeConstants_1.converterEnum.numeric,
+        multipleValue: { managementPoint, dataPoint: 'operationMode' },
+    };
+    return {
+        propertyKey,
+        daikin,
+        description: {
+            name: label,
+            settable: true,
+            type: typeConstants_1.typeEnum.numeric,
+            unite: '°C',
+            minMaxValue: {
+                managementPoint,
+                dataPoint: 'temperatureControl',
+                dataPointPath: '/operationModes/#value#/setpoints/leavingWaterOffset',
+                multiple: true,
+                multipleValue: { managementPoint, dataPoint: 'operationMode' },
+            },
+        },
+    };
+}
 function temperatureControlDhw(managementPoint, label, propertyKey, opts = {}) {
     if (opts.fixedHeatingPath) {
         const dataPointPath = '/operationModes/heating/setpoints/domesticHotWaterTemperature';
@@ -378,6 +407,15 @@ function auxiliaryUnitPack(managementPoint, labelPrefix) {
         }), stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }), stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }), stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }), stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }));
     }
     return chars;
+}
+function auxiliaryUnitInfoPack(managementPoint, labelPrefix) {
+    const suffix = managementPoint.replace(/[^a-zA-Z0-9]/g, '');
+    return [
+        stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: `_aux${suffix}ModelInfo` }),
+        stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+            propertyKey: `_aux${suffix}SoftwareVersion`,
+        }),
+    ];
 }
 function zoneStatusPack(managementPoint, labelPrefix, keySuffix) {
     return [
