@@ -145,9 +145,9 @@ import { setTimeout } from "timers/promises";
 		log.error('[main.ts] => Authorization timeout detected. Please restart DaikinToMQTT and try again.');
 		
 		try {
-			// Update system module with timeout
+			beginShutdown();
 			const {updateSystemBridge} = await import("./modules/daikin");
-			await updateSystemBridge(null, null, {authorizationTimeout: true});
+			await updateSystemBridge(null, [], {authorizationTimeout: true});
 			log.info('[main.ts] => System module updated with timeout state');
 		} catch (updateError) {
 			log.error(`[main.ts] => Error updating system bridge: ${updateError instanceof Error ? updateError.message : String(updateError)}`);

@@ -27,9 +27,9 @@ import { AUTH_MODE_MOBILE_APP } from "../daikin-cloud/constants";
 import { getTokenFilePath } from "./tokenPaths";
 import { getNewConfigDir } from "./paths";
 import { DEVICE_CACHE_TTL_MS } from "./constants";
-import { publishConfig, setMqttRepublishHandler } from "./mqtt";
+import { setMqttRepublishHandler } from "./mqtt";
 import { AuthenticationError } from "./errorHandler";
-import { isShuttingDown } from "./shutdown";
+import { beginShutdown, isShuttingDown } from "./shutdown";
 
 function isAuthFailure(error: unknown): boolean {
 	if (error instanceof AuthenticationError) {
@@ -43,6 +43,23 @@ function failAuthStartup(message: string): never {
 	logger.error(message);
 	logger.error('[daikin.ts] => Shutting down daemon due to authentication failure.');
 	throw new AuthenticationError(message);
+}
+
+async function handleAuthorizationTimeoutShutdown(context: string): Promise<never> {
+	beginShutdown();
+	logger.error(`[daikin.ts] => Authorization timeout detected in ${context}. Shutting down daemon.`);
+
+	try {
+		await updateSystemBridge(null, [], {
+			authorizationTimeout: true
+		});
+		logger.info('[daikin.ts] => System bridge updated with timeout state');
+	} catch (bridgeError) {
+		logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+	}
+
+	logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
+	process.exit(1);
 }
 
 interface PendingCommand {
@@ -144,7 +161,7 @@ async function loadDaikinAPI() {
 		mobileTokenFilePath: resolve(datadir, 'daikin-mobile-tokenset'),
 		enableWebSocket: config.daikin.enableWebSocket ?? true,
 		httpTransport: config.daikin.httpTransport,
-		oidcAuthorizationTimeoutS: 120,
+		oidcAuthorizationTimeoutS: config.daikin.authorizationTimeoutSeconds ?? 600,
 		useMock: config.daikin.useMock ?? false,
 		mockId: config.daikin.mockId ?? undefined,
 	});
@@ -251,26 +268,7 @@ async function loadDaikinAPI() {
 		    errorMessage.includes("authorization timeout") ||
 		    errorString.includes("Authorization time out") ||
 		    errorString.includes("authorization timeout")) {
-			try {
-				logger.error('[daikin.ts] => Authorization timeout detected. Shutting down daemon.');
-				
-				// Update system bridge to indicate timeout
-				try {
-					await updateSystemBridge(null, null, {
-						authorizationTimeout: true
-					});
-					logger.info('[daikin.ts] => System bridge updated with timeout state');
-				} catch (bridgeError) {
-					logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
-				}
-				
-				logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
-			} catch (e) {
-				logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
-			}
-			
-			// Exit the daemon immediately
-			process.exit(1);
+			await handleAuthorizationTimeoutShutdown('error handler');
 		}
 		// Handle invalid_grant error (invalid token) - delete token and exit
 		else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (error as any)?.error === "invalid_grant") {
@@ -975,26 +973,7 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				    errorMessage.includes("authorization timeout") ||
 				    errorString.includes("Authorization time out") ||
 				    errorString.includes("authorization timeout")) {
-					try {
-						logger.error('[daikin.ts] => Authorization timeout detected in getDevices. Shutting down daemon.');
-						
-						// Update system bridge to indicate timeout
-						try {
-							await updateSystemBridge(null, null, {
-								authorizationTimeout: true
-							});
-							logger.info('[daikin.ts] => System bridge updated with timeout state');
-						} catch (bridgeError) {
-							logger.debug(`[daikin.ts] => Error updating system bridge: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
-						}
-						
-						logger.error('[daikin.ts] => Please restart DaikinToMQTT and try again.');
-					} catch (e) {
-						logger.error(`[daikin.ts] => Error handling authorization timeout: ${e instanceof Error ? e.message : String(e)}`);
-					}
-					
-					// Exit the daemon immediately
-					process.exit(1);
+					await handleAuthorizationTimeoutShutdown('getDevices');
 				}
 				// Handle invalid_grant error (invalid token) - delete token and exit
 				else if (errorMessage.includes("invalid_grant") || errorString.includes("invalid_grant") || (cloudError as any)?.error === "invalid_grant") {
@@ -1125,7 +1104,15 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 
 	// Update module information
 	// Only try to get devices if not provided and API is available, otherwise use empty array
+	const authPending = authorizationInfo?.authorizationRequest === true
+		|| authorizationInfo?.authorizationTimeout === true;
+	const cachedAuthRequest = authPending ? true : Boolean(await cache.get('authorizationRequest'));
+	const skipDeviceFetch = authPending || cachedAuthRequest;
+
 	if (devices === null || devices === undefined) {
+		if (skipDeviceFetch) {
+			devices = [];
+		} else {
 		try {
 			// Try to get from cache first without forcing API call
 			const cachedDevices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
@@ -1147,6 +1134,7 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 		} catch (error) {
 			logger.debug(`[daikin.ts] => Error retrieving devices for system bridge: ${error instanceof Error ? error.message : String(error)}`);
 			devices = [];
+		}
 		}
 	}
 	
@@ -1201,18 +1189,16 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 
 	// Publish system module
 	await publishSystemBridge(systemBridge);
-
-	await publishConfig('authorization_timeout', systemBridge.authorizationTimeout ? 'true' : 'false');
 }
 
 async function publishSystemBridge(systemBridge: SystemBridge) {
 	try {
-		// Publish complete object like other devices (includes device)
-		await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
-
 		if (config.integration?.jeedom) {
 			await makeDefineFile(systemBridge, null);
 		}
+
+		// Publish complete object like other devices (includes device)
+		await publishToMQTT(INSTANCE_ID, JSON.stringify(systemBridge));
 	} catch (error) {
 		if (isShuttingDown()) {
 			logger.debug(`[daikin.ts] => Skipping system bridge publish during shutdown`);

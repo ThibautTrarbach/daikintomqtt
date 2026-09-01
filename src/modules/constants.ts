@@ -20,5 +20,5 @@ export const DEVICE_CACHE_TTL_MS = 3 * 60 * 60 * 1000;
 /** WebSocket post-action confirmation window: 120 seconds in milliseconds */
 export const WS_CONFIRMATION_TTL_MS = 120 * 1000;
 
-/** Availability topic suffix for Home Assistant discovery */
-export const HA_AVAILABILITY_TOPIC_SUFFIX = 'system/bridge/authorization_timeout';
+/** System bridge MQTT topic used for Home Assistant availability (authorization state) */
+export { INSTANCE_ID as HA_SYSTEM_BRIDGE_TOPIC } from './instanceId';

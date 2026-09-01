@@ -80,6 +80,7 @@ export interface ConfigDaikin {
 	clientID?: string
 	clientURL?: string
 	clientPort?: number
+	authorizationTimeoutSeconds?: number
 	email?: string | null
 	password?: string | null
 	enableWebSocket?: boolean

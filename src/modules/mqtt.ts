@@ -168,6 +168,9 @@ async function publishConfig(key: string, value: string | boolean) {
 
 const STALE_RETAINED_TOPICS = [
 	'system/bridge/availability',
+];
+
+const LEGACY_RETAINED_TOPICS = [
 	'system/bridge/authorization_timeout',
 ];
 
@@ -203,7 +206,8 @@ async function clearRetainedTopic(relativeTopic: string): Promise<void> {
 
 async function cleanStaleMqttTopics(): Promise<void> {
 	logger.info('[mqtt.ts] => Cleaning stale retained MQTT topics');
-	for (const topic of STALE_RETAINED_TOPICS) {
+	const topicsToClear = [...STALE_RETAINED_TOPICS, ...LEGACY_RETAINED_TOPICS];
+	for (const topic of topicsToClear) {
 		try {
 			await clearRetainedTopic(topic);
 		} catch (error) {
