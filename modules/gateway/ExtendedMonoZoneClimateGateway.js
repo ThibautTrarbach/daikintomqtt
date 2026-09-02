@@ -4,6 +4,7 @@ exports.BRP069C4x = exports.BRP069B4x = exports.BRP069A4x = void 0;
 exports.buildExtendedMonoZoneCharacteristics = buildExtendedMonoZoneCharacteristics;
 const AbstractGateway_1 = require("./AbstractGateway");
 const catalog_1 = require("./characteristics/catalog");
+const typeConstants_1 = require("./typeConstants");
 const MP = 'climateControl';
 const OPERATION_MODES = ['fanOnly', 'heating', 'cooling', 'auto', 'dry'];
 function buildExtendedMonoZoneCharacteristics(opts) {
@@ -46,6 +47,19 @@ function buildExtendedMonoZoneCharacteristics(opts) {
         chars.push(...(0, catalog_1.fanClimatePack)(MP, { horizontal: opts.fanHorizontal, vertical: opts.fanVertical }));
     }
     chars.push(...(0, catalog_1.consumptionPack)(MP, ''));
+    chars.push({
+        propertyKey: '_iconId',
+        daikin: {
+            managementPoint: MP,
+            dataPoint: 'iconId',
+            converter: typeConstants_1.converterEnum.numeric,
+        },
+        description: {
+            name: 'Icon ID',
+            settable: true,
+            type: typeConstants_1.typeEnum.numeric,
+        },
+    }, (0, catalog_1.stateBool)(MP, 'isLockFunctionEnabled', 'Lock Function', { settable: true }), ...(0, catalog_1.demandControlPack)(MP));
     return chars;
 }
 function appendDeviceSpecificCharacteristics(device, chars) {

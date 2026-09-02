@@ -15,6 +15,7 @@ exports.temperatureControlLeavingWaterOffset = temperatureControlLeavingWaterOff
 exports.temperatureControlDhw = temperatureControlDhw;
 exports.fanClimatePack = fanClimatePack;
 exports.powerfulModeClimate = powerfulModeClimate;
+exports.demandControlPack = demandControlPack;
 exports.gatewayDiagnosticsPack = gatewayDiagnosticsPack;
 exports.auxiliaryUnitPack = auxiliaryUnitPack;
 exports.auxiliaryUnitInfoPack = auxiliaryUnitInfoPack;
@@ -389,9 +390,49 @@ function gatewayDiagnosticsPack() {
         stringField(MP, 'ipAddress', 'Gateway IP Address', { propertyKey: '_gatewayIpAddress' }),
         stringField(MP, 'macAddress', 'Gateway MAC Address', { propertyKey: '_gatewayMacAddress' }),
         stringField(MP, 'ssid', 'Gateway SSID', { propertyKey: '_gatewaySsid' }),
+        stateBool(MP, 'daylightSavingTimeEnabled', 'Daylight Saving', { settable: true, propertyKey: '_gatewayDaylightSaving' }),
+        stateBool(MP, 'ledEnabled', 'LED Enabled', { settable: true, propertyKey: '_gatewayLedEnabled' }),
+        stringField(MP, 'regionCode', 'Region Code', { propertyKey: '_gatewayRegionCode' }),
         stateBool(MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', { propertyKey: '_gatewayFirmwareUpdateSupported' }),
         stateBool(MP, 'isInErrorState', 'Gateway Error State', { propertyKey: '_gatewayIsInErrorState' }),
         stringField(MP, 'errorCode', 'Gateway Error Code', { propertyKey: '_gatewayErrorCode' }),
+    ];
+}
+function demandControlPack(managementPoint) {
+    return [
+        {
+            propertyKey: '_demandControlCurrentMode',
+            daikin: {
+                managementPoint,
+                dataPoint: 'demandControl',
+                dataPointPath: '/currentMode',
+            },
+            description: {
+                name: 'Demand Control Mode',
+                settable: true,
+                type: typeConstants_1.typeEnum.string,
+                values: ['off', 'auto', 'fixed', 'scheduled'],
+            },
+        },
+        {
+            propertyKey: '_demandControlFixed',
+            daikin: {
+                managementPoint,
+                dataPoint: 'demandControl',
+                dataPointPath: '/modes/fixed',
+                converter: typeConstants_1.converterEnum.numeric,
+            },
+            description: {
+                name: 'Demand Control Fixed',
+                settable: true,
+                type: typeConstants_1.typeEnum.numeric,
+                minMaxValue: {
+                    managementPoint,
+                    dataPoint: 'demandControl',
+                    dataPointPath: '/modes/fixed',
+                },
+            },
+        },
     ];
 }
 function auxiliaryUnitPack(managementPoint, labelPrefix) {
@@ -399,12 +440,19 @@ function auxiliaryUnitPack(managementPoint, labelPrefix) {
     if (managementPoint === 'indoorUnit') {
         chars.push(stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_indoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_indoorUnitSerialNumber' }), stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
             propertyKey: '_indoorUnitSoftwareVersion',
+        }), stringField(managementPoint, 'eepromVersion', `${labelPrefix} EEPROM Version`, {
+            propertyKey: '_indoorUnitEepromVersion',
+        }), stateBool(managementPoint, 'dryKeepSetting', `${labelPrefix} Dry Keep`, {
+            settable: true,
+            propertyKey: '_indoorUnitDryKeepSetting',
+        }), stateBool(managementPoint, 'isInThermoOnState', `${labelPrefix} Thermo On State`, {
+            propertyKey: '_indoorUnitIsInThermoOnState',
         }));
     }
     if (managementPoint === 'outdoorUnit') {
         chars.push(stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_outdoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_outdoorUnitSerialNumber' }), stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
             propertyKey: '_outdoorUnitSoftwareVersion',
-        }), stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }), stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }), stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }), stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }));
+        }), stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }), stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }), stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }), stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }), stateBool(managementPoint, 'isInDefrostState', `${labelPrefix} Defrost State`, { propertyKey: '_outdoorUnitIsInDefrostState' }));
     }
     return chars;
 }
