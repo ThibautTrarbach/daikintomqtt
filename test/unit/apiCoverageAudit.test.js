@@ -22,6 +22,7 @@ const {
 	multiZoneDeviceInfo,
 	fanClimatePack,
 	powerfulModeClimate,
+	demandControlPack,
 	operationModeClimate,
 	sensoryTemperature,
 	sensoryHumidity,
@@ -33,6 +34,7 @@ const {
 	temperatureControlLeavingWater,
 	temperatureControlLeavingWaterOffset,
 } = require('../../dist/modules/gateway/characteristics/catalog');
+const { converterEnum, typeEnum } = require('../../dist/modules/gateway/typeConstants');
 
 function leaf(value, settable = false) {
 	return { value, settable };
@@ -71,6 +73,9 @@ function createMockDevice() {
 			ssid: leaf('MyWifi'),
 			ipAddress: leaf('192.168.1.10'),
 			macAddress: leaf('AA:BB:CC:DD:EE:FF'),
+			daylightSavingTimeEnabled: leaf('on', true),
+			ledEnabled: leaf('on', true),
+			regionCode: leaf('EU'),
 			isFirmwareUpdateSupported: leaf('off'),
 			isInErrorState: leaf('off'),
 			errorCode: leaf(''),
@@ -82,6 +87,14 @@ function createMockDevice() {
 			operationMode: { value: 'cooling', settable: true, values: ['fanOnly', 'heating', 'cooling', 'auto', 'dry'] },
 			onOffMode: leaf('on', true),
 			powerfulMode: leaf('off', true),
+			iconId: leaf(3, true),
+			isLockFunctionEnabled: leaf('off', true),
+			demandControl: {
+				currentMode: { value: 'off', settable: true, values: ['off', 'auto', 'fixed', 'scheduled'] },
+				modes: {
+					fixed: { value: 100, settable: true, minValue: 40, maxValue: 100, stepValue: 5 },
+				},
+			},
 			sensoryData: {
 				'': {
 					roomTemperature: leaf(22),
@@ -155,6 +168,9 @@ function createMockDevice() {
 			modelInfo: leaf('FTXA20C2V1BW'),
 			serialNumber: leaf('0000000010528853'),
 			softwareVersion: leaf('1.0.0'),
+			eepromVersion: leaf('1.2.3'),
+			dryKeepSetting: leaf('off', true),
+			isInThermoOnState: leaf('off'),
 		},
 		outdoorUnit: {
 			modelInfo: leaf('3MXM52A2V1B9'),
@@ -164,6 +180,7 @@ function createMockDevice() {
 			isInErrorState: leaf('off'),
 			isInWarningState: leaf('off'),
 			isInCautionState: leaf('off'),
+			isInDefrostState: leaf('off'),
 		},
 	};
 
@@ -347,6 +364,21 @@ function createC4xGatewayMock() {
 		temperatureControlRoom(MP, 'Temperature Control', '_temperatureControl'),
 		...fanClimatePack(MP, { horizontal: true, vertical: true }),
 		...consumptionPack(MP, ''),
+		{
+			propertyKey: '_iconId',
+			daikin: {
+				managementPoint: MP,
+				dataPoint: 'iconId',
+				converter: converterEnum.numeric,
+			},
+			description: {
+				name: 'Icon ID',
+				settable: true,
+				type: typeEnum.numeric,
+			},
+		},
+		stateBool(MP, 'isLockFunctionEnabled', 'Lock Function', { settable: true }),
+		...demandControlPack(MP),
 		...gatewayDiagnosticsPack(),
 		...auxiliaryUnitPack('indoorUnit', 'Indoor Unit'),
 		...auxiliaryUnitPack('outdoorUnit', 'Outdoor Unit'),
