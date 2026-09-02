@@ -33,7 +33,8 @@ declare function fanClimatePack(managementPoint: string, opts?: {
 }): CharacteristicDefinition[];
 declare function powerfulModeClimate(managementPoint: string): CharacteristicDefinition[];
 declare function gatewayDiagnosticsPack(): CharacteristicDefinition[];
+declare function demandControlPack(managementPoint: string): CharacteristicDefinition[];
 declare function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[];
 declare function auxiliaryUnitInfoPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[];
 declare function zoneStatusPack(managementPoint: string, labelPrefix: string, keySuffix: string): CharacteristicDefinition[];
-export { standardGatewayDeviceInfo, dualZoneDeviceInfo, multiZoneDeviceInfo, consumptionPack, stateBool, stringField, sensoryTemperature, sensoryHumidity, operationModeClimate, temperatureControlRoom, temperatureControlLeavingWater, temperatureControlLeavingWaterOffset, temperatureControlDhw, fanClimatePack, powerfulModeClimate, gatewayDiagnosticsPack, auxiliaryUnitPack, auxiliaryUnitInfoPack, zoneStatusPack, };
+export { standardGatewayDeviceInfo, dualZoneDeviceInfo, multiZoneDeviceInfo, consumptionPack, stateBool, stringField, sensoryTemperature, sensoryHumidity, operationModeClimate, temperatureControlRoom, temperatureControlLeavingWater, temperatureControlLeavingWaterOffset, temperatureControlDhw, fanClimatePack, powerfulModeClimate, demandControlPack, gatewayDiagnosticsPack, auxiliaryUnitPack, auxiliaryUnitInfoPack, zoneStatusPack, };
