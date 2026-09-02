@@ -451,9 +451,50 @@ function gatewayDiagnosticsPack(): CharacteristicDefinition[] {
 		stringField(MP, 'ipAddress', 'Gateway IP Address', { propertyKey: '_gatewayIpAddress' }),
 		stringField(MP, 'macAddress', 'Gateway MAC Address', { propertyKey: '_gatewayMacAddress' }),
 		stringField(MP, 'ssid', 'Gateway SSID', { propertyKey: '_gatewaySsid' }),
+		stateBool(MP, 'daylightSavingTimeEnabled', 'Daylight Saving', { settable: true, propertyKey: '_gatewayDaylightSaving' }),
+		stateBool(MP, 'ledEnabled', 'LED Enabled', { settable: true, propertyKey: '_gatewayLedEnabled' }),
+		stringField(MP, 'regionCode', 'Region Code', { propertyKey: '_gatewayRegionCode' }),
 		stateBool(MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', { propertyKey: '_gatewayFirmwareUpdateSupported' }),
 		stateBool(MP, 'isInErrorState', 'Gateway Error State', { propertyKey: '_gatewayIsInErrorState' }),
 		stringField(MP, 'errorCode', 'Gateway Error Code', { propertyKey: '_gatewayErrorCode' }),
+	];
+}
+
+function demandControlPack(managementPoint: string): CharacteristicDefinition[] {
+	return [
+		{
+			propertyKey: '_demandControlCurrentMode',
+			daikin: {
+				managementPoint,
+				dataPoint: 'demandControl',
+				dataPointPath: '/currentMode',
+			},
+			description: {
+				name: 'Demand Control Mode',
+				settable: true,
+				type: typeEnum.string,
+				values: ['off', 'auto', 'fixed', 'scheduled'],
+			},
+		},
+		{
+			propertyKey: '_demandControlFixed',
+			daikin: {
+				managementPoint,
+				dataPoint: 'demandControl',
+				dataPointPath: '/modes/fixed',
+				converter: converterEnum.numeric,
+			},
+			description: {
+				name: 'Demand Control Fixed',
+				settable: true,
+				type: typeEnum.numeric,
+				minMaxValue: {
+					managementPoint,
+					dataPoint: 'demandControl',
+					dataPointPath: '/modes/fixed',
+				},
+			},
+		},
 	];
 }
 
@@ -466,6 +507,16 @@ function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): Charac
 			stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_indoorUnitSerialNumber' }),
 			stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
 				propertyKey: '_indoorUnitSoftwareVersion',
+			}),
+			stringField(managementPoint, 'eepromVersion', `${labelPrefix} EEPROM Version`, {
+				propertyKey: '_indoorUnitEepromVersion',
+			}),
+			stateBool(managementPoint, 'dryKeepSetting', `${labelPrefix} Dry Keep`, {
+				settable: true,
+				propertyKey: '_indoorUnitDryKeepSetting',
+			}),
+			stateBool(managementPoint, 'isInThermoOnState', `${labelPrefix} Thermo On State`, {
+				propertyKey: '_indoorUnitIsInThermoOnState',
 			}),
 		);
 	}
@@ -481,6 +532,7 @@ function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): Charac
 			stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }),
 			stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }),
 			stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }),
+			stateBool(managementPoint, 'isInDefrostState', `${labelPrefix} Defrost State`, { propertyKey: '_outdoorUnitIsInDefrostState' }),
 		);
 	}
 
@@ -537,6 +589,7 @@ export {
 	temperatureControlDhw,
 	fanClimatePack,
 	powerfulModeClimate,
+	demandControlPack,
 	gatewayDiagnosticsPack,
 	auxiliaryUnitPack,
 	auxiliaryUnitInfoPack,

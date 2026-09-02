@@ -4,6 +4,7 @@ import { AbstractGateway } from './AbstractGateway';
 import { CharacteristicDefinition } from './metadataRegistry';
 import {
 	consumptionPack,
+	demandControlPack,
 	fanClimatePack,
 	gatewayDiagnosticsPack,
 	auxiliaryUnitPack,
@@ -15,6 +16,7 @@ import {
 	stateBool,
 	temperatureControlRoom,
 } from './characteristics/catalog';
+import { converterEnum, typeEnum } from './typeConstants';
 
 const MP = 'climateControl';
 const OPERATION_MODES = ['fanOnly', 'heating', 'cooling', 'auto', 'dry'];
@@ -98,6 +100,24 @@ function buildExtendedMonoZoneCharacteristics(opts: ExtendedMonoZoneOptions): Ch
 	}
 
 	chars.push(...consumptionPack(MP, ''));
+
+	chars.push(
+		{
+			propertyKey: '_iconId',
+			daikin: {
+				managementPoint: MP,
+				dataPoint: 'iconId',
+				converter: converterEnum.numeric,
+			},
+			description: {
+				name: 'Icon ID',
+				settable: true,
+				type: typeEnum.numeric,
+			},
+		},
+		stateBool(MP, 'isLockFunctionEnabled', 'Lock Function', { settable: true }),
+		...demandControlPack(MP),
+	);
 
 	return chars;
 }

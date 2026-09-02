@@ -1,0 +1,33 @@
+---
+description: Run and extend tests for daikintomqtt
+globs: test/**/*.ts,test/**/*.js
+alwaysApply: false
+---
+
+# Testing
+
+Read `docs/workflows/testing.md` for full details.
+
+## Key commands
+
+```bash
+npm run build                                    # Required first
+node test/unit/apiCoverageAudit.test.js          # Gateway coverage gate
+npx ts-node test/unit/modelResolver.test.ts      # Model resolver
+npm run test:oauth                               # OAuth integration
+npm run schema:check                             # Zod schemas
+```
+
+## Coverage audit success
+
+Output must show `configCoverage: complete` for each static gateway tested.
+
+## When changing mappings
+
+1. Enrich `createMockDevice()` with new API datapoints
+2. Update gateway mock factory in `apiCoverageAudit.test.js`
+3. `npm run build && node test/unit/apiCoverageAudit.test.js`
+
+## EXTRA_DEVICE_DATAPOINTS
+
+Audit-only escape hatch in `apiCoverageAudit.ts` — rare, no MQTT command desired. Not a shortcut for incomplete mappings.

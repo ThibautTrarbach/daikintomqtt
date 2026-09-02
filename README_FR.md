@@ -187,6 +187,8 @@ Si votre modèle n'est pas listé et que `dynamicFallback` est à `false`, un du
 
 ## Développement
 
+Pour ajouter ou corriger un mapping de datapoint sur un gateway statique, consultez [docs/mapping-datapoints.md](docs/mapping-datapoints.md) (ou [EN](docs/mapping-datapoints.md)).
+
 Lorsque vous modifiez des fichiers dans le répertoire `src/`, vous devez recompiler Daikin2MQTT pour un usage en production :
 
 ```bash

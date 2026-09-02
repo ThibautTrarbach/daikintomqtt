@@ -1,0 +1,51 @@
+---
+description: Add or fix a Daikin datapoint mapping (static gateway)
+globs: src/modules/gateway/**/*.ts,test/unit/apiCoverageAudit.test.js
+alwaysApply: false
+---
+
+# Daikin datapoint mapping
+
+Read `docs/mapping-datapoints.md` for full details. Minimal workflow:
+
+## 1. Read the target key
+
+Format: `{managementPoint}/{dataPoint}{/path}` (e.g. `climateControl/demandControl/currentMode`).
+
+Source: debug report `unmappedDatapoints`, GitHub issue, or dump in `config/newConfig/`.
+
+## 2. Pick the location
+
+- `gateway/*` → `gatewayDiagnosticsPack()` in `catalog.ts`
+- `indoorUnit/*` / `outdoorUnit/*` → `auxiliaryUnitPack()` in `catalog.ts`
+- Reusable climate group → new `*Pack()` in `catalog.ts`, exported
+- Simple climate field → static gateway (`ExtendedMonoZoneClimateGateway.ts` or `BRP069*.ts`)
+
+Do not duplicate: factor into `catalog.ts`.
+
+## 3. Pick the helper
+
+| API | Helper |
+|-----|--------|
+| on/off settable | `stateBool(mp, dp, label, { settable: true, propertyKey })` |
+| on/off read-only | `stateBool(mp, dp, label, { propertyKey })` |
+| string/enum | `stringField(mp, dp, label, { settable, values, propertyKey })` |
+| integer | inline: `converter: converterEnum.numeric`, `type: typeEnum.numeric` |
+| nested path | inline: `dataPointPath: '/segment'`, `minMaxValue` if numeric |
+| depends on operationMode | copy `fanClimatePack`: `multiple: true`, `#value#` |
+
+`propertyKey`: `_` prefix, unique, explicit on collision (`_gatewayLedEnabled`).
+
+## 4. Wire + test
+
+1. Import and call the pack in the static gateway.
+2. Enrich mock device + mock gateway in `test/unit/apiCoverageAudit.test.js`.
+3. `npm run build && node test/unit/apiCoverageAudit.test.js` → `configCoverage: complete`.
+4. Changelog: `CHANGELOG.md` + `CHANGELOG_FR.md`.
+
+## Don'ts / pitfalls
+
+- Do not change `daikinRCCloud` for a new mapping (auto via MQTT). See `docs/workflows/mqtt-contract.md` for the stable payload contract.
+- Do not partially map `schedule` or `demandControl/modes/scheduled`.
+- `EXTRA_DEVICE_DATAPOINTS` only for audit without MQTT command.
+- Root-level `ref` datapoints are not discovered; verify the real API structure.

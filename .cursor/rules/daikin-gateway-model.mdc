@@ -1,0 +1,30 @@
+---
+description: Add or support a new Daikin device model (static gateway)
+globs: src/modules/gateway/modelResolver.ts,src/modules/gateway/BRP069*.ts,src/modules/gateway/*Gateway.ts,src/modules/daikin.ts
+alwaysApply: false
+---
+
+# New device model
+
+Read `docs/workflows/add-device-model.md` for full details.
+
+## Checklist
+
+1. **Register model** in `modelResolver.ts` (`EXACT_MODELS` or `FAMILY_PATTERNS`)
+2. **Choose gateway** — reuse `ExtendedMonoZoneClimateGateway`, `MonoZoneClimateGateway`, `DualZoneHeatPumpGateway`, or `MultiZoneClimateGateway`; or create new `*Gateway.ts`
+3. **Create shim** — `BRP069*.ts` re-export file
+4. **Wire factory** — add `case` in `createStaticGatewayInstance()` in `daikin.ts`
+5. **Export** from `gateway/index.ts`
+6. **Map datapoints** — follow `daikin-datapoint-mapping` rule until `configCoverage: complete`
+7. **Test** — `modelResolver.test.ts` + `apiCoverageAudit.test.js` (after `npm run build`)
+8. **README** — add to Supported devices list; CHANGELOG EN + FR
+
+## Model resolution flow
+
+`detectGatewayModel` → `resolveGatewayModel` → `createStaticGatewayInstance` → else `DynamicGateway`
+
+## Don'ts
+
+- No cloud API calls in gateway constructors
+- No duplicate characteristic packs — use `catalog.ts`
+- No daikinRCCloud changes needed

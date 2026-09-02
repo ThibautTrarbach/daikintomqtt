@@ -69,7 +69,7 @@ By default Daikin2MQTT expects its configuration in the `config` directory locat
   - `auth`, `username`, `password`: MQTT authentication if required
   - `topic`: base topic under which Daikin2MQTT publishes and listens (default `daikinToMQTT`)
 
-If the configuration file is invalid at startup, Daikin2MQTT will stop and print validation errors in the logs. A detailed explanation of all validation errors is available in `VALIDATION_ERRORS_DOCUMENTATION.md`.
+If the configuration file is invalid at startup, Daikin2MQTT will stop and print validation errors in the logs. A detailed explanation of all validation errors is available in `VALIDATION_ERRORS_DOCUMENTATION_EN.md`.
 
 ### Authorization flow with Daikin Cloud
 
@@ -151,10 +151,12 @@ If your model is not listed and `dynamicFallback` is `false`, an anonymized dump
 ## Logs & troubleshooting
 
 - Logs are stored in the `log` directory (`combined.log`, `error.log`, `debug.log`, ...).
-- If startup fails with configuration validation errors, refer to `VALIDATION_ERRORS_DOCUMENTATION.md` for detailed explanations and examples.
+- If startup fails with configuration validation errors, refer to `VALIDATION_ERRORS_DOCUMENTATION_EN.md` for detailed explanations and examples.
 - For token or authorization related issues, check the messages in the logs; Daikin2MQTT will guide you to delete invalid tokens and restart the authorization flow if needed.
 
 ## Developing
+
+To add or fix a datapoint mapping on a static gateway, see [docs/mapping-datapoints.md](docs/mapping-datapoints.md).
 
 When you modify files in the `src/` directory you need to recompile Daikin2MQTT for production use:
 
@@ -163,6 +165,10 @@ yarn build
 # or
 npm run build
 ```
+
+## Contributing / AI agents
+
+For maintainers and AI coding agents, start with [AGENTS.md](AGENTS.md). It links to architecture docs, workflow guides (new model, MQTT contract, config, testing, release, API quota), and Cursor rules in `.cursor/rules/`.
 
 ## Changelog
 
