@@ -4,6 +4,15 @@ All notable changes to Daikin2MQTT will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.6] - 2026-09-02
+
+### Added
+
+- BRP069C4x: complete mapping for gateway datapoints (LED, daylight saving, region), demandControl, iconId, lock function, indoor/outdoor units (dry keep, EEPROM, thermo on, defrost)
+- `demandControlPack` catalog helper for power demand control (mode + fixed value)
+
+---
+
 ## [2.1.5] - 2026-09-01
 
 ### Fixed
