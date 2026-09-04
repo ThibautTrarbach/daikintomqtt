@@ -9,7 +9,6 @@ There is **no single `npm test` command**. Tests are run individually or in docu
 | File | Runner | Requires build? | What it tests |
 |------|--------|-----------------|---------------|
 | `modelResolver.test.ts` | `npx ts-node` | No | `resolveGatewayModel()` patterns |
-| `anonymise.test.ts` | `npx ts-node` | No | Anonymized dump export |
 | `supportMetadata.test.ts` | `npx ts-node` | No | Support fields, redaction, sync |
 | `device-ws-update.test.ts` | `npx ts-node` | No | WebSocket merge on nested characteristics |
 | `apiCoverageAudit.test.js` | `node` | **Yes** (`dist/`) | Full API coverage audit per gateway model |
@@ -33,7 +32,6 @@ There is **no single `npm test` command**. Tests are run individually or in docu
 ```bash
 # Unit tests (TypeScript, no build needed)
 npx ts-node test/unit/modelResolver.test.ts
-npx ts-node test/unit/anonymise.test.ts
 npx ts-node test/unit/supportMetadata.test.ts
 npx ts-node test/unit/device-ws-update.test.ts
 

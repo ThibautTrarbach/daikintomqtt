@@ -52,7 +52,7 @@ There is **no global `npm test` script**. See [docs/workflows/testing.md](docs/w
 
 1. **Do not modify `daikinRCCloud`** (Jeedom plugin) for a new datapoint mapping — Jeedom auto-discovers via MQTT.
 2. **Do not edit `src/daikin-cloud/**`** unless fixing a cloud-client bug (vendored fork).
-3. **Do not commit** `config/settings.yml`, token files, or `config/newConfig/` dumps.
+3. **Do not commit** `config/settings.yml` or token files.
 4. **Do not bypass** `enqueueWriteForDevice` or add ad-hoc cloud API polling in gateways.
 5. **Do not partially map** complex structures (`schedule`, `demandControl/modes/scheduled`) without explicit need.
 

@@ -118,7 +118,6 @@ Observed patterns in git history:
 
 - `config/settings.yml` (user config)
 - Token files
-- `config/newConfig/` dumps
 - `node_modules/`, `dist/` (dist is CI-published separately)
 
 ## Post-release

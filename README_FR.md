@@ -177,7 +177,7 @@ Les modèles non listés peuvent être pris en charge automatiquement via **Dyna
 - Nommage MQTT : `_{embeddedId}_{dataPoint}_{chemin}` (ex. `_climateControlMainZone_onOffMode`)
 - Commandes spéciales : `_triggerFirmwareUpdate`, `_setPresetAway`, `_{zone}_scheduleEnabled`
 
-Si votre modèle n'est pas listé et que `dynamicFallback` est à `false`, un dump anonymisé est généré dans `config/newConfig/` pour faciliter l'ajout d'un support statique.
+Si votre modèle n'est pas listé et que la couverture est incomplète, utilisez le rapport de debug MQTT (`_debugReport` / `_unmappedDatapointsDetail`) depuis Jeedom ou l'état du device pour ouvrir une issue GitHub.
 
 ## Logs & dépannage
 

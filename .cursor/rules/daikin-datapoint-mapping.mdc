@@ -12,7 +12,7 @@ Read `docs/mapping-datapoints.md` for full details. Minimal workflow:
 
 Format: `{managementPoint}/{dataPoint}{/path}` (e.g. `climateControl/demandControl/currentMode`).
 
-Source: debug report `unmappedDatapoints`, GitHub issue, or dump in `config/newConfig/`.
+Source: debug report `unmappedDatapoints` / `unmappedDatapointsDetail`, or GitHub issue.
 
 ## 2. Pick the location
 

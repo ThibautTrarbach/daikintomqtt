@@ -49,7 +49,10 @@ All paths below are relative to `{baseTopic}/`.
 Rules:
 - **State keys** = `propertyKey` from characteristic definitions (always `_` prefix)
 - **`_device`** = device metadata object (required by Jeedom plugin)
-- **Support fields** (`_supportStatus`, `_configCoverage`, `_unmappedDatapoints`, `_debugReport`) = consumed by daikinRCCloud for diagnostics
+- **Support fields** (`_supportStatus`, `_configCoverage`, `_unmappedDatapoints`, `_unmappedDatapointsDetail`, `_settableMismatches`, `_settableMismatchesDetail`, `_apiDatapointsDetail`, `_debugReport`) = consumed by daikinRCCloud for diagnostics
+- `_apiDatapointsDetail` = JSON inventory of discovered API leaves (`settable`, `valueType`, `values`, min/max/step/unit)
+- `_settableMismatchesDetail` = API-settable leaves mapped as read-only by the daemon
+- `_unmappedDatapointsDetail` = JSON array of unmapped leaves with the same leaf metadata (no raw runtime values)
 
 ## Jeedom command definitions (`jeedom/{deviceId}`)
 

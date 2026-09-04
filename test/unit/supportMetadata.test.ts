@@ -100,6 +100,21 @@ function run(): void {
 			apiCount: 2,
 			configCoverageDetail: '1/2 datapoints mapped',
 			unmappedDatapoints: ['climateControl/somePoint'],
+			unmappedDatapointDetails: [{
+				managementPoint: 'climateControl',
+				dataPoint: 'somePoint',
+				settable: true,
+				valueType: 'string',
+				values: ['on', 'off'],
+			}],
+			settableMismatches: [],
+			apiDatapointDetails: [{
+				managementPoint: 'climateControl',
+				dataPoint: 'somePoint',
+				settable: true,
+				valueType: 'string',
+				values: ['on', 'off'],
+			}],
 			totalUnmappedCount: 1,
 		},
 		['gateway', 'climateControl'],
@@ -118,6 +133,10 @@ function run(): void {
 	assert.equal(report.includes('supportMessage: Needs support'), true);
 	assert.equal(report.includes(`githubIssueUrl: ${GITHUB_ISSUE_URL}`), true);
 	assert.equal(report.includes('unmappedDatapoints: climateControl/somePoint'), true);
+	assert.equal(report.includes('unmappedDatapointsDetail:'), true);
+	assert.equal(report.includes('"settable":true'), true);
+	assert.equal(report.includes('"valueType":"string"'), true);
+	assert.equal(report.includes('apiDatapointsDetail:'), true);
 
 	const longUnmapped = Array.from({ length: 42 }, (_, index) =>
 		`climateControl/fanControl//operationModes/heating/fanSpeed/modes/fixed/${index}`,
@@ -135,6 +154,18 @@ function run(): void {
 			apiCount: 50,
 			configCoverageDetail: '8/50 datapoints mapped',
 			unmappedDatapoints: longUnmapped,
+			unmappedDatapointDetails: longUnmapped.map((key) => {
+				const [managementPoint, dataPoint, ...pathParts] = key.split('/');
+				return {
+					managementPoint,
+					dataPoint,
+					dataPointPath: pathParts.length ? `/${pathParts.join('/')}` : undefined,
+					settable: false,
+					valueType: 'number' as const,
+				};
+			}),
+			settableMismatches: [],
+			apiDatapointDetails: [],
 			totalUnmappedCount: 55,
 		},
 		['gateway', 'climateControl'],
@@ -156,6 +187,7 @@ function run(): void {
 		_supportMessage: 'Needs support',
 		_debugReport: report,
 		_unmappedDatapoints: 'climateControl/somePoint',
+		_unmappedDatapointsDetail: '[{"key":"climateControl/somePoint","settable":true,"valueType":"string"}]',
 		_unitModels: JSON.stringify(sanitized),
 		_managementPointsList: 'gateway, climateControl',
 		_githubIssueUrl: 'https://example.com/issues',

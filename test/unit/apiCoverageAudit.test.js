@@ -87,6 +87,7 @@ function createMockDevice() {
 			operationMode: { value: 'cooling', settable: true, values: ['fanOnly', 'heating', 'cooling', 'auto', 'dry'] },
 			onOffMode: leaf('on', true),
 			powerfulMode: leaf('off', true),
+			intelligentEyeMode: leaf('off', true),
 			iconId: leaf(3, true),
 			isLockFunctionEnabled: leaf('off', true),
 			demandControl: {
@@ -171,6 +172,8 @@ function createMockDevice() {
 			eepromVersion: leaf('1.2.3'),
 			dryKeepSetting: leaf('off', true),
 			isInThermoOnState: leaf('off'),
+			frontPanelSetting: { value: 'closed', settable: true, values: ['open', 'closed'] },
+			installationPosition: leaf('wallMounted'),
 		},
 		outdoorUnit: {
 			modelInfo: leaf('3MXM52A2V1B9'),
@@ -357,6 +360,7 @@ function createC4xGatewayMock() {
 		stateBool(MP, 'econoMode', 'Eco Mode', { settable: true }),
 		...powerfulModeClimate(MP),
 		stateBool(MP, 'streamerMode', 'Streamer Mode', { settable: true }),
+		stateBool(MP, 'intelligentEyeMode', 'Intelligent Eye', { settable: true }),
 		sensoryTemperature(MP, '/roomTemperature', 'Room Temperature', '_roomTemperature'),
 		sensoryHumidity(MP, 'Room Humidity'),
 		sensoryTemperature(MP, '/outdoorTemperature', 'Outdoor Temperature', '_outdoorTemperature'),
@@ -431,7 +435,7 @@ function createA78GatewayMock(device) {
 		stateBool(MAIN_MP, 'isInInstallerState', `${mainPrefix} Installer State`, { propertyKey: '_isInInstallerStateMain' }),
 		stateBool(MAIN_MP, 'isInWarningState', `${mainPrefix} Warning State`, { propertyKey: '_isInWarningStateMain' }),
 		stateBool(MAIN_MP, 'onOffMode', `${mainPrefix} State`, { settable: true, generic_type: 'ENERGY_STATE', propertyKey: '_onOffModeMain' }),
-		stringField(MAIN_MP, 'operationMode', `${mainPrefix} Operation Mode`, { propertyKey: '_operationModeMain', values: ['heating'] }),
+		stringField(MAIN_MP, 'operationMode', `${mainPrefix} Operation Mode`, { propertyKey: '_operationModeMain', settable: true, values: ['heating'] }),
 		sensoryTemperature(MAIN_MP, '/roomTemperature', `${mainPrefix} Room Temperature`, '_roomTemperatureMain'),
 		sensoryTemperature(MAIN_MP, '/outdoorTemperature', `${mainPrefix} Outdoor Temperature`, '_outdoorTemperatureMain'),
 		sensoryTemperature(MAIN_MP, '/leavingWaterTemperature', `${mainPrefix} Leaving Water Temperature`, '_leavingWaterTemperatureMain'),
@@ -450,7 +454,7 @@ function createA78GatewayMock(device) {
 		stateBool(TANK_MP, 'isInInstallerState', `${tankPrefix} Installer State`, { propertyKey: '_isInInstallerStateTank' }),
 		stateBool(TANK_MP, 'isInWarningState', `${tankPrefix} Warning State`, { propertyKey: '_isInWarningStateTank' }),
 		stateBool(TANK_MP, 'onOffMode', `${tankPrefix} State`, { settable: true, generic_type: 'ENERGY_STATE', propertyKey: '_onOffModeTank' }),
-		stringField(TANK_MP, 'operationMode', `${tankPrefix} Operation Mode`, { propertyKey: '_operationModeTank', values: ['heating'] }),
+		stringField(TANK_MP, 'operationMode', `${tankPrefix} Operation Mode`, { propertyKey: '_operationModeTank', settable: true, values: ['heating'] }),
 		stateBool(TANK_MP, 'powerfulMode', `${tankPrefix} Powerful Mode`, { settable: true, generic_type: 'ENERGY_STATE', propertyKey: '_powerfulModeTank' }),
 		stateBool(TANK_MP, 'isPowerfulModeActive', `${tankPrefix} Powerful Mode Active`, { propertyKey: '_isPowerfulModeActiveTank' }),
 		sensoryTemperature(TANK_MP, '/tankTemperature', `${tankPrefix} Tank Temperature`, '_tankTemperatureTank'),
@@ -506,7 +510,7 @@ const a78Coverage = auditApiCoverage(a78Device, a78Gateway);
 assert.equal(
 	a78Coverage.configCoverage,
 	'complete',
-	`BRP069A78 expected complete coverage, unmapped: ${a78Coverage.unmappedDatapoints.join(', ')}`,
+	`BRP069A78 expected complete coverage, unmapped: ${a78Coverage.unmappedDatapoints.join(', ')}; settableMismatches: ${JSON.stringify(a78Coverage.settableMismatches)}`,
 );
 
 console.log('apiCoverageAudit.test.js: all tests passed');

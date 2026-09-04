@@ -5,7 +5,7 @@ import {PROPERTY_METADATA_CMD, PROPERTY_METADATA_DAIKIN} from '../decorator';
 import {DevicesInformation, Gateways, ModulePropertyMetadata, ModulesDescriptionMetadata} from '../../types';
 import {DaikinCloudDevice} from '../../daikin-cloud';
 import {getConfiguredAuthMode} from '../requestBudget';
-import {anonymise} from './Anonymise';
+import {ApiDatapointRef, makeDatapointKey} from './apiDiscovery';
 import {auditApiCoverage, ConfigCoverage, CoverageAuditResult} from './apiCoverageAudit';
 
 const SUPPORT_CMD_TYPE_STRING = 1;
@@ -14,7 +14,7 @@ export type SupportStatus = 'full' | 'partial' | 'unsupported';
 
 export const GITHUB_ISSUE_URL = 'https://github.com/ThibautTrarbach/daikintomqtt/issues/new';
 export const REDACTED = '[redacted]';
-const MAX_DEBUG_REPORT_SIZE = 16 * 1024;
+const MAX_DEBUG_REPORT_SIZE = 48 * 1024;
 
 const SUPPORT_CMD_KEYS = [
 	'_supportStatus',
@@ -23,6 +23,10 @@ const SUPPORT_CMD_KEYS = [
 	'_supportMessage',
 	'_debugReport',
 	'_unmappedDatapoints',
+	'_unmappedDatapointsDetail',
+	'_settableMismatches',
+	'_settableMismatchesDetail',
+	'_apiDatapointsDetail',
 	'_unitModels',
 	'_managementPointsList',
 	'_githubIssueUrl',
@@ -44,6 +48,10 @@ const SUPPORT_CMD_DEFS: Array<{ key: SupportCmdKey; name: string }> = [
 	{ key: '_supportMessage', name: 'Support Message' },
 	{ key: '_debugReport', name: 'Debug Report' },
 	{ key: '_unmappedDatapoints', name: 'Unmapped Datapoints' },
+	{ key: '_unmappedDatapointsDetail', name: 'Unmapped Datapoints Detail' },
+	{ key: '_settableMismatches', name: 'Settable Mismatches' },
+	{ key: '_settableMismatchesDetail', name: 'Settable Mismatches Detail' },
+	{ key: '_apiDatapointsDetail', name: 'API Datapoints Detail' },
 	{ key: '_unitModels', name: 'Unit Models' },
 	{ key: '_managementPointsList', name: 'Management Points' },
 	{ key: '_githubIssueUrl', name: 'GitHub Issue URL' },
@@ -113,6 +121,44 @@ function getDaemonVersion(): string {
 	}
 }
 
+export function serializeUnmappedDatapointDetail(ref: ApiDatapointRef): Record<string, unknown> {
+	const detail: Record<string, unknown> = {
+		key: makeDatapointKey(ref.managementPoint, ref.dataPoint, ref.dataPointPath),
+		settable: ref.settable,
+	};
+	if (ref.valueType) {
+		detail.valueType = ref.valueType;
+	}
+	if (ref.values !== undefined) {
+		detail.values = ref.values;
+	}
+	if (ref.minValue !== undefined) {
+		detail.minValue = ref.minValue;
+	}
+	if (ref.maxValue !== undefined) {
+		detail.maxValue = ref.maxValue;
+	}
+	if (ref.stepValue !== undefined) {
+		detail.stepValue = ref.stepValue;
+	}
+	if (ref.unit !== undefined) {
+		detail.unit = ref.unit;
+	}
+	return detail;
+}
+
+export function buildUnmappedDatapointsDetailJson(details: ApiDatapointRef[]): string {
+	return JSON.stringify(details.map(serializeUnmappedDatapointDetail));
+}
+
+export function buildSettableMismatchesDetailJson(mismatches: CoverageAuditResult['settableMismatches']): string {
+	return JSON.stringify(mismatches);
+}
+
+export function buildApiDatapointsDetailJson(details: ApiDatapointRef[]): string {
+	return JSON.stringify(details.map(serializeUnmappedDatapointDetail));
+}
+
 export function buildDebugReport(
 	device: DaikinCloudDevice,
 	context: SupportEnrichmentContext,
@@ -143,12 +189,20 @@ export function buildDebugReport(
 
 	lines.push(`managementPoints: ${managementPointsList.join(', ')}`);
 	lines.push(`unitModels: ${JSON.stringify(sanitizedUnitModels)}`);
+	lines.push(`apiDatapointsCount: ${coverage.apiCount}`);
+	lines.push(`apiDatapointsDetail: ${buildApiDatapointsDetailJson(coverage.apiDatapointDetails)}`);
 
 	if (coverage.unmappedDatapoints.length > 0) {
 		lines.push(`unmappedDatapoints: ${coverage.unmappedDatapoints.join(', ')}`);
 		if (coverage.totalUnmappedCount > coverage.unmappedDatapoints.length) {
 			lines.push(`unmappedDatapointsTruncated: showing ${coverage.unmappedDatapoints.length}/${coverage.totalUnmappedCount}`);
 		}
+		lines.push(`unmappedDatapointsDetail: ${buildUnmappedDatapointsDetailJson(coverage.unmappedDatapointDetails)}`);
+	}
+
+	if (coverage.settableMismatches.length > 0) {
+		lines.push(`settableMismatches: ${coverage.settableMismatches.map((item) => item.key).join(', ')}`);
+		lines.push(`settableMismatchesDetail: ${buildSettableMismatchesDetailJson(coverage.settableMismatches)}`);
 	}
 
 	const footer = `githubIssueUrl: ${GITHUB_ISSUE_URL}`;
@@ -167,6 +221,9 @@ function buildSupportMessage(context: SupportEnrichmentContext, coverage: Covera
 	}
 	if (context.supportStatus === 'partial') {
 		return 'Device model is using dynamic fallback mapping. Please open a GitHub issue with the debug report below to improve static support.';
+	}
+	if (coverage.settableMismatches.length > 0 && coverage.totalUnmappedCount === 0) {
+		return 'Some API-settable datapoints are mapped as read-only. Please open a GitHub issue with the debug report below.';
 	}
 	if (coverage.configCoverage === 'incomplete') {
 		return 'Static gateway configuration is incomplete for this API variant. Please open a GitHub issue with the debug report below.';
@@ -271,6 +328,16 @@ export function enrichDeviceSupport(
 	const supportMessage = buildSupportMessage(context, coverage);
 	const debugReport = buildDebugReport(device, context, coverage, managementPointsList, supportMessage);
 	const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
+	const unmappedDetailJson = coverage.unmappedDatapointDetails.length > 0
+		? buildUnmappedDatapointsDetailJson(coverage.unmappedDatapointDetails)
+		: '';
+	const settableMismatchKeys = coverage.settableMismatches.map((item) => item.key).join(', ');
+	const settableMismatchDetailJson = coverage.settableMismatches.length > 0
+		? buildSettableMismatchesDetailJson(coverage.settableMismatches)
+		: '';
+	const apiDetailJson = coverage.apiDatapointDetails.length > 0
+		? buildApiDatapointsDetailJson(coverage.apiDatapointDetails)
+		: '';
 
 	const deviceInfo = (gateway as { _device?: DevicesInformation })._device;
 	if (deviceInfo) {
@@ -282,6 +349,10 @@ export function enrichDeviceSupport(
 		deviceInfo.unitModels = JSON.stringify(unitModels);
 		deviceInfo.managementPointsList = managementPointsList.join(', ');
 		deviceInfo.unmappedDatapoints = coverage.unmappedDatapoints.join(', ');
+		deviceInfo.unmappedDatapointsDetail = unmappedDetailJson || undefined;
+		deviceInfo.settableMismatches = settableMismatchKeys || undefined;
+		deviceInfo.settableMismatchesDetail = settableMismatchDetailJson || undefined;
+		deviceInfo.apiDatapointsDetail = apiDetailJson || undefined;
 		deviceInfo.supportMessage = supportMessage;
 		deviceInfo.debugReport = debugReport;
 		deviceInfo.githubIssueUrl = GITHUB_ISSUE_URL;
@@ -294,19 +365,23 @@ export function enrichDeviceSupport(
 		_supportMessage: supportMessage,
 		_debugReport: debugReport,
 		_unmappedDatapoints: coverage.unmappedDatapoints.join(', '),
+		_unmappedDatapointsDetail: unmappedDetailJson,
+		_settableMismatches: settableMismatchKeys,
+		_settableMismatchesDetail: settableMismatchDetailJson,
+		_apiDatapointsDetail: apiDetailJson,
 		_unitModels: JSON.stringify(sanitizedUnitModels),
 		_managementPointsList: managementPointsList.join(', '),
 		_githubIssueUrl: GITHUB_ISSUE_URL,
-	} : {};
+	} : {
+		// Keep a compact API inventory on healthy devices so the Jeedom info page stays complete.
+		_configCoverage: coverage.configCoverage,
+		_configCoverageDetail: coverage.configCoverageDetail,
+		_apiDatapointsDetail: apiDetailJson,
+		_unitModels: JSON.stringify(sanitizedUnitModels),
+		_managementPointsList: managementPointsList.join(', '),
+	};
 
-	const supportCommandsChanged = syncSupportMetadata(gateway, supportValues);
-
-	if (reporting) {
-		const anonymiseKey = gatewayModelRaw || device.getId();
-		anonymise(device, anonymiseKey);
-	}
-
-	return supportCommandsChanged;
+	return syncSupportMetadata(gateway, supportValues);
 }
 
 export {SUPPORT_CMD_KEYS};

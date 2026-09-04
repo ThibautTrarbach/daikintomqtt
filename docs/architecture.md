@@ -156,7 +156,7 @@ Full topic/payload contract: [workflows/mqtt-contract.md](workflows/mqtt-contrac
 | `decorator.ts` | Reflect decorators (legacy, used by SystemBridge) |
 | `instanceId.ts` | Fixed system bridge UUID |
 | `constants.ts` | `APP_VERSION`, cache TTLs |
-| `paths.ts` | Data path helpers, `newConfig/` dir |
+| `paths.ts` | Data path helpers, legacy `newConfig/` cleanup |
 | `tokenPaths.ts` | Token file path by auth mode |
 | `errorHandler.ts` | Typed errors, HTTP error categorization |
 | `shutdown.ts` | Global shutdown flag |
@@ -179,7 +179,7 @@ Full topic/payload contract: [workflows/mqtt-contract.md](workflows/mqtt-contrac
 | `supportMetadata.ts` | Support status, debug report, redaction |
 | `apiDiscovery.ts` | `discoverApiDatapoints()` — recursive API walk |
 | `apiCoverageAudit.ts` | Compare API vs static mapping coverage |
-| `Anonymise.ts` | Anonymized device dump for new models |
+| `supportMetadata.ts` | Support status, coverage audit, MQTT debug report |
 | `ExtendedMonoZoneClimateGateway.ts` | BRP069A4x, BRP069B4x, BRP069C4x |
 | `MonoZoneClimateGateway.ts` | BRP069C41, BRP069C8x |
 | `DualZoneHeatPumpGateway.ts` | BRP069A61, BRP069A62 |

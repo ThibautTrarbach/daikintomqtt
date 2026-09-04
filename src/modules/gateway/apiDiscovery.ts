@@ -1,10 +1,18 @@
 import {DaikinCloudDevice} from '../../daikin-cloud';
 
+export type ApiValueType = 'string' | 'number' | 'boolean' | 'unknown';
+
 export interface ApiDatapointRef {
 	managementPoint: string;
 	dataPoint: string;
 	dataPointPath?: string;
 	settable: boolean;
+	valueType?: ApiValueType;
+	values?: unknown[];
+	minValue?: number;
+	maxValue?: number;
+	stepValue?: number;
+	unit?: string;
 }
 
 export const SKIP_DATAPOINTS = new Set(['schedule', 'firmwareUpdate', 'firmwareUpdateStatus']);
@@ -29,6 +37,19 @@ export function makeDatapointKey(
 	return `${managementPoint}/${dataPoint}${path}`;
 }
 
+function inferValueType(value: unknown): ApiValueType {
+	if (typeof value === 'string') {
+		return 'string';
+	}
+	if (typeof value === 'number') {
+		return 'number';
+	}
+	if (typeof value === 'boolean') {
+		return 'boolean';
+	}
+	return 'unknown';
+}
+
 function walkDatapointLeaves(
 	embeddedId: string,
 	dataPoint: string,
@@ -43,7 +64,15 @@ function walkDatapointLeaves(
 
 	const hasLeafShape = 'value' in obj || 'settable' in obj;
 	if (hasLeafShape) {
-		const leaf = obj as { value?: unknown; settable?: boolean };
+		const leaf = obj as {
+			value?: unknown;
+			settable?: boolean;
+			values?: unknown[];
+			minValue?: number;
+			maxValue?: number;
+			stepValue?: number;
+			unit?: string;
+		};
 		if (!leaf.settable && !exposeReadOnly) {
 			return;
 		}
@@ -57,6 +86,12 @@ function walkDatapointLeaves(
 			dataPoint,
 			dataPointPath,
 			settable: !!leaf.settable,
+			valueType: inferValueType(leaf.value),
+			...(Array.isArray(leaf.values) ? { values: leaf.values } : {}),
+			...(typeof leaf.minValue === 'number' ? { minValue: leaf.minValue } : {}),
+			...(typeof leaf.maxValue === 'number' ? { maxValue: leaf.maxValue } : {}),
+			...(typeof leaf.stepValue === 'number' ? { stepValue: leaf.stepValue } : {}),
+			...(typeof leaf.unit === 'string' ? { unit: leaf.unit } : {}),
 		});
 		return;
 	}

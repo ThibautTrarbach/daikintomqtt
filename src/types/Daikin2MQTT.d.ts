@@ -163,6 +163,10 @@ export interface DevicesInformation {
 	unitModels?: string
 	managementPointsList?: string
 	unmappedDatapoints?: string
+	unmappedDatapointsDetail?: string
+	settableMismatches?: string
+	settableMismatchesDetail?: string
+	apiDatapointsDetail?: string
 	supportMessage?: string
 	debugReport?: string
 	githubIssueUrl?: string
