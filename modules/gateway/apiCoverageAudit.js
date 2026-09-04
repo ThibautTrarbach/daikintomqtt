@@ -10,6 +10,9 @@ const EXTRA_DEVICE_DATAPOINTS = [
     ['gateway', 'wifiConnectionSSID', undefined],
     ['gateway', 'wifiConnectionStrength', undefined],
     ['gateway', 'ssid', undefined],
+    ['gateway', 'ipAddress', undefined],
+    ['gateway', 'macAddress', undefined],
+    ['indoorUnit', 'softwareVersion', undefined],
 ];
 function isDeviceMetadataField(value) {
     return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;

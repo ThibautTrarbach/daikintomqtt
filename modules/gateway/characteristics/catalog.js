@@ -387,9 +387,6 @@ function powerfulModeClimate(managementPoint) {
 function gatewayDiagnosticsPack() {
     const MP = 'gateway';
     return [
-        stringField(MP, 'ipAddress', 'Gateway IP Address', { propertyKey: '_gatewayIpAddress' }),
-        stringField(MP, 'macAddress', 'Gateway MAC Address', { propertyKey: '_gatewayMacAddress' }),
-        stringField(MP, 'ssid', 'Gateway SSID', { propertyKey: '_gatewaySsid' }),
         stateBool(MP, 'daylightSavingTimeEnabled', 'Daylight Saving', { settable: true, propertyKey: '_gatewayDaylightSaving' }),
         stateBool(MP, 'ledEnabled', 'LED Enabled', { settable: true, propertyKey: '_gatewayLedEnabled' }),
         stringField(MP, 'regionCode', 'Region Code', { propertyKey: '_gatewayRegionCode' }),
@@ -438,9 +435,7 @@ function demandControlPack(managementPoint) {
 function auxiliaryUnitPack(managementPoint, labelPrefix) {
     const chars = [];
     if (managementPoint === 'indoorUnit') {
-        chars.push(stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_indoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_indoorUnitSerialNumber' }), stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
-            propertyKey: '_indoorUnitSoftwareVersion',
-        }), stringField(managementPoint, 'eepromVersion', `${labelPrefix} EEPROM Version`, {
+        chars.push(stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_indoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_indoorUnitSerialNumber' }), stringField(managementPoint, 'eepromVersion', `${labelPrefix} EEPROM Version`, {
             propertyKey: '_indoorUnitEepromVersion',
         }), stateBool(managementPoint, 'dryKeepSetting', `${labelPrefix} Dry Keep`, {
             settable: true,

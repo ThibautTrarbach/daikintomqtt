@@ -261,7 +261,7 @@ function syncSupportMetadata(gateway, values) {
             name: def.name,
             settable: false,
             type: SUPPORT_CMD_TYPE_STRING,
-            visible: true,
+            visible: false,
         };
         daikinMetadata[def.key] = {
             managementPoint: 'gateway',
