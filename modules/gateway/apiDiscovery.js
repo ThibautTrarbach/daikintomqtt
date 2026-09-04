@@ -19,6 +19,18 @@ function makeDatapointKey(managementPoint, dataPoint, dataPointPath) {
     const path = normalizeDatapointPath(dataPointPath) ?? '';
     return `${managementPoint}/${dataPoint}${path}`;
 }
+function inferValueType(value) {
+    if (typeof value === 'string') {
+        return 'string';
+    }
+    if (typeof value === 'number') {
+        return 'number';
+    }
+    if (typeof value === 'boolean') {
+        return 'boolean';
+    }
+    return 'unknown';
+}
 function walkDatapointLeaves(embeddedId, dataPoint, obj, pathPrefix, exposeReadOnly, results) {
     if (!obj || typeof obj !== 'object') {
         return;
@@ -38,6 +50,12 @@ function walkDatapointLeaves(embeddedId, dataPoint, obj, pathPrefix, exposeReadO
             dataPoint,
             dataPointPath,
             settable: !!leaf.settable,
+            valueType: inferValueType(leaf.value),
+            ...(Array.isArray(leaf.values) ? { values: leaf.values } : {}),
+            ...(typeof leaf.minValue === 'number' ? { minValue: leaf.minValue } : {}),
+            ...(typeof leaf.maxValue === 'number' ? { maxValue: leaf.maxValue } : {}),
+            ...(typeof leaf.stepValue === 'number' ? { stepValue: leaf.stepValue } : {}),
+            ...(typeof leaf.unit === 'string' ? { unit: leaf.unit } : {}),
         });
         return;
     }

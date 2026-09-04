@@ -260,7 +260,7 @@ function temperatureControlDhw(managementPoint, label, propertyKey, opts = {}) {
             },
             description: {
                 name: label,
-                settable: false,
+                settable: true,
                 type: typeConstants_1.typeEnum.numeric,
                 unite: '°C',
                 minMaxValue: {
@@ -447,6 +447,11 @@ function auxiliaryUnitPack(managementPoint, labelPrefix) {
             propertyKey: '_indoorUnitDryKeepSetting',
         }), stateBool(managementPoint, 'isInThermoOnState', `${labelPrefix} Thermo On State`, {
             propertyKey: '_indoorUnitIsInThermoOnState',
+        }), stringField(managementPoint, 'frontPanelSetting', `${labelPrefix} Front Panel Setting`, {
+            settable: true,
+            propertyKey: '_indoorUnitFrontPanelSetting',
+        }), stringField(managementPoint, 'installationPosition', `${labelPrefix} Installation Position`, {
+            propertyKey: '_indoorUnitInstallationPosition',
         }));
     }
     if (managementPoint === 'outdoorUnit') {

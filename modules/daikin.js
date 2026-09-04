@@ -57,7 +57,6 @@ const instanceId_1 = require("./instanceId");
 const requestBudget_1 = require("./requestBudget");
 const constants_1 = require("../daikin-cloud/constants");
 const tokenPaths_1 = require("./tokenPaths");
-const paths_1 = require("./paths");
 const constants_2 = require("./constants");
 const mqtt_2 = require("./mqtt");
 const errorHandler_1 = require("./errorHandler");
@@ -1018,9 +1017,8 @@ async function updateSystemBridge(rateLimitStatus, devices, authorizationInfo, e
         systemBridge.modulesCount = 0;
         systemBridge.modulesList = "[]";
     }
-    const unsupportedModules = getUnsupportedModules();
-    systemBridge.unsupportedModulesCount = unsupportedModules.length;
-    systemBridge.unsupportedModulesList = JSON.stringify(unsupportedModules);
+    systemBridge.unsupportedModulesCount = 0;
+    systemBridge.unsupportedModulesList = '[]';
     systemBridge.apiBudgetStatus = await (0, requestBudget_1.getBudgetStatus)();
     systemBridge.skippedRefreshCount = await (0, requestBudget_1.getSkippedRefreshCount)();
     systemBridge.authMode = (0, requestBudget_1.getConfiguredAuthMode)();
@@ -1044,30 +1042,6 @@ async function publishSystemBridge(systemBridge) {
         }
         throw error;
     }
-}
-function getUnsupportedModules() {
-    const configFolder = (0, paths_1.getNewConfigDir)();
-    const unsupportedModules = [];
-    if (!fs_1.default.existsSync(configFolder)) {
-        return unsupportedModules;
-    }
-    const files = fs_1.default.readdirSync(configFolder);
-    files.forEach(file => {
-        if (file.endsWith('.json')) {
-            const fileName = file.replace('.json', '');
-            try {
-                const filePath = (0, node_path_1.resolve)(configFolder, file);
-                const content = fs_1.default.readFileSync(filePath, 'utf8');
-                const data = JSON.parse(content);
-                const model = data?.gateway?.modelInfo?.value || data?.['0']?.modelInfo?.value || fileName;
-                unsupportedModules.push({ fileName, model });
-            }
-            catch (e) {
-                unsupportedModules.push({ fileName });
-            }
-        }
-    });
-    return unsupportedModules;
 }
 async function disableDaikinWebSocket() {
     global.daikinClient?.disableWebSocket();

@@ -38,6 +38,7 @@ function buildMainZoneCharacteristics() {
         }),
         (0, catalog_1.stringField)(MAIN_MP, 'operationMode', `${prefix} Operation Mode`, {
             propertyKey: '_operationModeMain',
+            settable: true,
             values: ['heating'],
         }),
         (0, catalog_1.sensoryTemperature)(MAIN_MP, '/roomTemperature', `${prefix} Room Temperature`, '_roomTemperatureMain'),
@@ -88,6 +89,7 @@ function buildTankZoneCharacteristics() {
         }),
         (0, catalog_1.stringField)(TANK_MP, 'operationMode', `${prefix} Operation Mode`, {
             propertyKey: '_operationModeTank',
+            settable: true,
             values: ['heating'],
         }),
         (0, catalog_1.stateBool)(TANK_MP, 'powerfulMode', `${prefix} Powerful Mode`, {
