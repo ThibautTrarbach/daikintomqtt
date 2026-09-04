@@ -275,13 +275,36 @@ function syncSupportMetadata(gateway, values) {
 }
 function enrichDeviceSupport(device, gateway, context) {
     const coverage = (0, apiCoverageAudit_1.auditApiCoverage)(device, gateway);
-    const unitModels = extractUnitModels(device);
-    const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
     const managementPointsList = Object.keys(device.managementPoints);
     const gatewayModelRaw = context.gatewayModelRaw ?? (readGatewayField(device, 'gateway', 'modelInfo') || readGatewayField(device, '0', 'modelInfo'));
+    const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
+    const deviceInfo = gateway._device;
+    if (deviceInfo) {
+        deviceInfo.supportStatus = context.supportStatus;
+        deviceInfo.configCoverage = coverage.configCoverage;
+        deviceInfo.configCoverageDetail = coverage.configCoverageDetail;
+        deviceInfo.gatewayModelRaw = gatewayModelRaw || deviceInfo.modelInfo;
+        deviceInfo.gatewayModelResolved = context.gatewayModelResolved ?? undefined;
+    }
+    if (!reporting) {
+        if (deviceInfo) {
+            deviceInfo.unitModels = undefined;
+            deviceInfo.managementPointsList = undefined;
+            deviceInfo.unmappedDatapoints = undefined;
+            deviceInfo.unmappedDatapointsDetail = undefined;
+            deviceInfo.settableMismatches = undefined;
+            deviceInfo.settableMismatchesDetail = undefined;
+            deviceInfo.apiDatapointsDetail = undefined;
+            deviceInfo.supportMessage = undefined;
+            deviceInfo.debugReport = undefined;
+            deviceInfo.githubIssueUrl = undefined;
+        }
+        return syncSupportMetadata(gateway, {});
+    }
+    const unitModels = extractUnitModels(device);
+    const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
     const supportMessage = buildSupportMessage(context, coverage);
     const debugReport = buildDebugReport(device, context, coverage, managementPointsList, supportMessage);
-    const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
     const unmappedDetailJson = coverage.unmappedDatapointDetails.length > 0
         ? buildUnmappedDatapointsDetailJson(coverage.unmappedDatapointDetails)
         : '';
@@ -292,13 +315,7 @@ function enrichDeviceSupport(device, gateway, context) {
     const apiDetailJson = coverage.apiDatapointDetails.length > 0
         ? buildApiDatapointsDetailJson(coverage.apiDatapointDetails)
         : '';
-    const deviceInfo = gateway._device;
     if (deviceInfo) {
-        deviceInfo.supportStatus = context.supportStatus;
-        deviceInfo.configCoverage = coverage.configCoverage;
-        deviceInfo.configCoverageDetail = coverage.configCoverageDetail;
-        deviceInfo.gatewayModelRaw = gatewayModelRaw || deviceInfo.modelInfo;
-        deviceInfo.gatewayModelResolved = context.gatewayModelResolved ?? undefined;
         deviceInfo.unitModels = JSON.stringify(unitModels);
         deviceInfo.managementPointsList = managementPointsList.join(', ');
         deviceInfo.unmappedDatapoints = coverage.unmappedDatapoints.join(', ');
@@ -310,7 +327,7 @@ function enrichDeviceSupport(device, gateway, context) {
         deviceInfo.debugReport = debugReport;
         deviceInfo.githubIssueUrl = exports.GITHUB_ISSUE_URL;
     }
-    const supportValues = reporting ? {
+    return syncSupportMetadata(gateway, {
         _supportStatus: context.supportStatus,
         _configCoverage: coverage.configCoverage,
         _configCoverageDetail: coverage.configCoverageDetail,
@@ -324,13 +341,6 @@ function enrichDeviceSupport(device, gateway, context) {
         _unitModels: JSON.stringify(sanitizedUnitModels),
         _managementPointsList: managementPointsList.join(', '),
         _githubIssueUrl: exports.GITHUB_ISSUE_URL,
-    } : {
-        _configCoverage: coverage.configCoverage,
-        _configCoverageDetail: coverage.configCoverageDetail,
-        _apiDatapointsDetail: apiDetailJson,
-        _unitModels: JSON.stringify(sanitizedUnitModels),
-        _managementPointsList: managementPointsList.join(', '),
-    };
-    return syncSupportMetadata(gateway, supportValues);
+    });
 }
 //# sourceMappingURL=supportMetadata.js.map
