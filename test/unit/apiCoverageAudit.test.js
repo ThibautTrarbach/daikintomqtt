@@ -81,7 +81,7 @@ function createMockDevice() {
 			errorCode: leaf(''),
 		},
 		climateControl: {
-			name: leaf('Thibaut'),
+			name: leaf('Thibaut', true),
 			errorCode: leaf(''),
 			isPowerfulModeActive: leaf('off'),
 			operationMode: { value: 'cooling', settable: true, values: ['fanOnly', 'heating', 'cooling', 'auto', 'dry'] },

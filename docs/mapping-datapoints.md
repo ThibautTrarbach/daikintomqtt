@@ -117,6 +117,7 @@ stateBool('gateway', 'ledEnabled', 'LED Enabled', {
 - **Key with `#value#`**: used when the path depends on the current mode (`operationMode`). Audit matches via regex.
 - **`ref` in the API**: `discoverApiDatapoints` skips root-level `ref` datapoints; the real structure may be flat (`demandControl/currentMode`).
 - **Audit-only**: add to `EXTRA_DEVICE_DATAPOINTS` when no MQTT command is desired (e.g. `timeZone`, gateway IP/MAC, indoor unit software version for the Jeedom equipment info panel).
+- **Settable but identity-only**: when the API marks a leaf settable but it is only used as `_device` identity (no MQTT CMD), add the key to `SETTABLE_MISMATCH_EXCEPTIONS` in `apiCoverageAudit.ts` (e.g. `climateControl/name`). Do not use `EXTRA_DEVICE_DATAPOINTS` for this — it still counts as a settable mismatch.
 - **Intentionally out of scope**: complex structures (`schedule`, `demandControl/modes/scheduled`) — do not partially map without explicit need.
 
 ## Key files

@@ -50,6 +50,11 @@ const EXTRA_DEVICE_DATAPOINTS: Array<[string, string, string | undefined]> = [
 	['indoorUnit', 'softwareVersion', undefined],
 ];
 
+/** API-settable leaves intentionally kept read-only (device identity via `_device`, no MQTT CMD). */
+const SETTABLE_MISMATCH_EXCEPTIONS = new Set([
+	'climateControl/name',
+]);
+
 function isDeviceMetadataField(value: unknown): value is ModulePropertyMetadata {
 	return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;
 }
@@ -164,7 +169,7 @@ export function auditApiCoverage(device: DaikinCloudDevice, gateway: Gateways): 
 			unmappedRefs.push(ref);
 			continue;
 		}
-		if (ref.settable && !mappedInfo.settable) {
+		if (ref.settable && !mappedInfo.settable && !SETTABLE_MISMATCH_EXCEPTIONS.has(key)) {
 			settableMismatches.push(toSettableMismatch(ref, mappedInfo));
 		}
 	}
