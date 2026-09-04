@@ -152,7 +152,11 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 				// optional fields
 			}
 		}
-		for (const [field, mp, dp] of [['ipAddress', 'gateway', 'ipAddress'], ['macAddress', 'gateway', 'macAddress']] as const) {
+		for (const [field, mp, dp] of [
+			['ipAddress', 'gateway', 'ipAddress'],
+			['macAddress', 'gateway', 'macAddress'],
+			['indoorUnitSoftwareVersion', 'indoorUnit', 'softwareVersion'],
+		] as const) {
 			try {
 				const extra = device.getData(mp, dp, undefined);
 				if (extra?.value !== undefined && extra?.value !== null) {

@@ -154,6 +154,7 @@ export interface DevicesInformation {
 	wifiConnectionStrength?: string
 	ipAddress?: string
 	macAddress?: string
+	indoorUnitSoftwareVersion?: string
 	isCloudConnectionUp?: string
 	supportStatus?: SupportStatus
 	configCoverage?: ConfigCoverage
@@ -163,6 +164,10 @@ export interface DevicesInformation {
 	unitModels?: string
 	managementPointsList?: string
 	unmappedDatapoints?: string
+	unmappedDatapointsDetail?: string
+	settableMismatches?: string
+	settableMismatchesDetail?: string
+	apiDatapointsDetail?: string
 	supportMessage?: string
 	debugReport?: string
 	githubIssueUrl?: string

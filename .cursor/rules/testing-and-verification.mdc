@@ -31,3 +31,7 @@ Output must show `configCoverage: complete` for each static gateway tested.
 ## EXTRA_DEVICE_DATAPOINTS
 
 Audit-only escape hatch in `apiCoverageAudit.ts` — rare, no MQTT command desired. Not a shortcut for incomplete mappings.
+
+## SETTABLE_MISMATCH_EXCEPTIONS
+
+Allowlist in `apiCoverageAudit.ts` for API-settable leaves intentionally kept read-only (e.g. `climateControl/name` via `_device`). Not a shortcut to skip real settable mappings.

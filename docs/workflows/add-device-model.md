@@ -4,8 +4,7 @@ How to promote an unknown Daikin gateway from **DynamicGateway** to a **static g
 
 ## Prerequisites
 
-- An anonymized API dump in `config/newConfig/{model}.json` (generated when `system.dynamicFallback: false` and model is unsupported, or via `Anonymise.ts`)
-- Or a debug report / GitHub issue listing `unmappedDatapoints` for the target model
+- An anonymized API dump is **not** required: use the MQTT debug report (`unmappedDatapointsDetail` with `settable` / `values` / min-max) from Jeedom or a GitHub issue
 
 ## Decision: reuse or create?
 

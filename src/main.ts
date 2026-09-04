@@ -15,6 +15,7 @@ import {disableDaikinWebSocket} from "./modules/daikin";
 import {disconnectMqttClient} from "./modules/mqttLifecycle";
 import {beginShutdown, isShuttingDown} from "./modules/shutdown";
 import {getTokenFilePath} from "./modules/tokenPaths";
+import {cleanupLegacyNewConfigDir} from "./modules/paths";
 import {createCache} from "cache-manager";
 import fs from "fs";
 import { setTimeout } from "timers/promises";
@@ -32,6 +33,7 @@ import { setTimeout } from "timers/promises";
 		global.logger = loadLogger();
 		global.logger.debug("[main.ts] => Cache initialized");
 		global.logger.debug(`[main.ts] => Data directory: ${global.datadir}`);
+		cleanupLegacyNewConfigDir();
 		global.logger.info("[main.ts] => Starting DaikinToMQTT");
 
 		// Load configuration
