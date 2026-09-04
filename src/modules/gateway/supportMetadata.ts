@@ -320,14 +320,40 @@ export function enrichDeviceSupport(
 	context: SupportEnrichmentContext,
 ): boolean {
 	const coverage = auditApiCoverage(device, gateway);
-	const unitModels = extractUnitModels(device);
-	const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
 	const managementPointsList = Object.keys(device.managementPoints);
 	const gatewayModelRaw = context.gatewayModelRaw ?? (readGatewayField(device, 'gateway', 'modelInfo') || readGatewayField(device, '0', 'modelInfo'));
+	const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
 
+	const deviceInfo = (gateway as { _device?: DevicesInformation })._device;
+	if (deviceInfo) {
+		deviceInfo.supportStatus = context.supportStatus;
+		deviceInfo.configCoverage = coverage.configCoverage;
+		deviceInfo.configCoverageDetail = coverage.configCoverageDetail;
+		deviceInfo.gatewayModelRaw = gatewayModelRaw || deviceInfo.modelInfo;
+		deviceInfo.gatewayModelResolved = context.gatewayModelResolved ?? undefined;
+	}
+
+	if (!reporting) {
+		if (deviceInfo) {
+			// Healthy device: keep status only — no diagnostic payload on MQTT.
+			deviceInfo.unitModels = undefined;
+			deviceInfo.managementPointsList = undefined;
+			deviceInfo.unmappedDatapoints = undefined;
+			deviceInfo.unmappedDatapointsDetail = undefined;
+			deviceInfo.settableMismatches = undefined;
+			deviceInfo.settableMismatchesDetail = undefined;
+			deviceInfo.apiDatapointsDetail = undefined;
+			deviceInfo.supportMessage = undefined;
+			deviceInfo.debugReport = undefined;
+			deviceInfo.githubIssueUrl = undefined;
+		}
+		return syncSupportMetadata(gateway, {});
+	}
+
+	const unitModels = extractUnitModels(device);
+	const sanitizedUnitModels = sanitizeUnitModelsForReport(device);
 	const supportMessage = buildSupportMessage(context, coverage);
 	const debugReport = buildDebugReport(device, context, coverage, managementPointsList, supportMessage);
-	const reporting = needsSupportReporting(context.supportStatus, coverage.configCoverage);
 	const unmappedDetailJson = coverage.unmappedDatapointDetails.length > 0
 		? buildUnmappedDatapointsDetailJson(coverage.unmappedDatapointDetails)
 		: '';
@@ -339,13 +365,7 @@ export function enrichDeviceSupport(
 		? buildApiDatapointsDetailJson(coverage.apiDatapointDetails)
 		: '';
 
-	const deviceInfo = (gateway as { _device?: DevicesInformation })._device;
 	if (deviceInfo) {
-		deviceInfo.supportStatus = context.supportStatus;
-		deviceInfo.configCoverage = coverage.configCoverage;
-		deviceInfo.configCoverageDetail = coverage.configCoverageDetail;
-		deviceInfo.gatewayModelRaw = gatewayModelRaw || deviceInfo.modelInfo;
-		deviceInfo.gatewayModelResolved = context.gatewayModelResolved ?? undefined;
 		deviceInfo.unitModels = JSON.stringify(unitModels);
 		deviceInfo.managementPointsList = managementPointsList.join(', ');
 		deviceInfo.unmappedDatapoints = coverage.unmappedDatapoints.join(', ');
@@ -358,7 +378,7 @@ export function enrichDeviceSupport(
 		deviceInfo.githubIssueUrl = GITHUB_ISSUE_URL;
 	}
 
-	const supportValues: SupportCommandValues = reporting ? {
+	return syncSupportMetadata(gateway, {
 		_supportStatus: context.supportStatus,
 		_configCoverage: coverage.configCoverage,
 		_configCoverageDetail: coverage.configCoverageDetail,
@@ -372,16 +392,7 @@ export function enrichDeviceSupport(
 		_unitModels: JSON.stringify(sanitizedUnitModels),
 		_managementPointsList: managementPointsList.join(', '),
 		_githubIssueUrl: GITHUB_ISSUE_URL,
-	} : {
-		// Keep a compact API inventory on healthy devices so the Jeedom info page stays complete.
-		_configCoverage: coverage.configCoverage,
-		_configCoverageDetail: coverage.configCoverageDetail,
-		_apiDatapointsDetail: apiDetailJson,
-		_unitModels: JSON.stringify(sanitizedUnitModels),
-		_managementPointsList: managementPointsList.join(', '),
-	};
-
-	return syncSupportMetadata(gateway, supportValues);
+	});
 }
 
 export {SUPPORT_CMD_KEYS};

@@ -102,7 +102,7 @@ Instances are cached per `deviceId` in `gatewayCache`.
 
 1. Gateway constructor registers `CharacteristicDefinition[]` via `metadataRegistry.ts`
 2. `convertDaikinDevice()` (`BaseModules.ts`) reads cloud data → populates `_propertyKey` values
-3. `enrichDeviceSupport()` adds `_supportStatus`, `_configCoverage`, `_debugReport`, etc.
+3. `enrichDeviceSupport()` adds diagnostic `_support*` fields only when support/coverage is incomplete
 4. `publishToMQTT()` sends JSON state; `makeDefineFile()` generates Jeedom/HA discovery
 
 ## MQTT layer
