@@ -8,6 +8,7 @@ interface ExtendedMonoZoneOptions {
     coolHeatMaster?: boolean;
     econoMode?: boolean;
     streamerMode?: boolean;
+    intelligentEyeMode?: boolean;
     outdoorSilentMode?: boolean;
     fanHorizontal?: boolean;
     fanVertical?: boolean;
