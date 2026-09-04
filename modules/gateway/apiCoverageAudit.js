@@ -14,6 +14,9 @@ const EXTRA_DEVICE_DATAPOINTS = [
     ['gateway', 'macAddress', undefined],
     ['indoorUnit', 'softwareVersion', undefined],
 ];
+const SETTABLE_MISMATCH_EXCEPTIONS = new Set([
+    'climateControl/name',
+]);
 function isDeviceMetadataField(value) {
     return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;
 }
@@ -117,7 +120,7 @@ function auditApiCoverage(device, gateway) {
             unmappedRefs.push(ref);
             continue;
         }
-        if (ref.settable && !mappedInfo.settable) {
+        if (ref.settable && !mappedInfo.settable && !SETTABLE_MISMATCH_EXCEPTIONS.has(key)) {
             settableMismatches.push(toSettableMismatch(ref, mappedInfo));
         }
     }
