@@ -4,6 +4,36 @@ All notable changes to Daikin2MQTT will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+---
+
+## [2.1.7] - 2026-09-04
+
+### Changed
+
+- Gateway IP/MAC/SSID and indoor unit software version: publish in `_device` for Jeedom equipment info panel only (no longer as MQTT commands)
+- Support MQTT: publish diagnostic fields (`_debugReport`, inventaire API, unmapped, …) only when support is incomplete; healthy devices stay silent on MQTT
+- Jeedom: hide all support/debug commands by default (still available in equipment configuration)
+
+### Fixed
+
+- BRP069A78: mark main/tank `operationMode` and DHW setpoint (`temperatureControlDhw` fixed path) as settable to match API
+- Coverage audit: treat `climateControl/name` as intentional read-only (`SETTABLE_MISMATCH_EXCEPTIONS`) — device identity via `_device`, no MQTT CMD
+
+### Added
+
+- Support MQTT: `_unmappedDatapointsDetail` with leaf metadata (`settable`, `valueType`, `values`, `minValue`/`maxValue`, `stepValue`, `unit`) in debug report
+- Support MQTT: `_apiDatapointsDetail` inventory + `_settableMismatches(Detail)` when API-settable leaves are mapped read-only
+- BRP069C4x: map `climateControl/intelligentEyeMode`, `indoorUnit/frontPanelSetting`, `indoorUnit/installationPosition`
+
+### Removed
+
+- MQTT commands `_gatewayIpAddress`, `_gatewayMacAddress`, `_gatewaySsid`, `_indoorUnitSoftwareVersion` (moved to `_device` metadata)
+- Anonymized dump export to `config/newConfig/` (replaced by MQTT debug report); legacy folder is deleted on daemon startup
+
+---
+
 ## [2.1.6] - 2026-09-02
 
 ### Added
