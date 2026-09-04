@@ -45,6 +45,9 @@ const EXTRA_DEVICE_DATAPOINTS: Array<[string, string, string | undefined]> = [
 	['gateway', 'wifiConnectionSSID', undefined],
 	['gateway', 'wifiConnectionStrength', undefined],
 	['gateway', 'ssid', undefined],
+	['gateway', 'ipAddress', undefined],
+	['gateway', 'macAddress', undefined],
+	['indoorUnit', 'softwareVersion', undefined],
 ];
 
 function isDeviceMetadataField(value: unknown): value is ModulePropertyMetadata {

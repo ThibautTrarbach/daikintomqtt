@@ -118,14 +118,16 @@ function walkDatapointLeaves(
 }
 
 function buildDeviceInfo(device: DaikinCloudDevice): DevicesInformation {
-	const readGateway = (field: string): string => {
+	const readField = (managementPoint: string, field: string): string => {
 		try {
-			const data = device.getData('gateway', field, undefined);
+			const data = device.getData(managementPoint, field, undefined);
 			return data?.value !== undefined && data?.value !== null ? String(data.value) : '';
 		} catch {
 			return '';
 		}
 	};
+	const readGateway = (field: string): string => readField('gateway', field);
+	const wifiSsid = readGateway('wifiConnectionSSID') || readGateway('ssid');
 
 	return {
 		id: device.getId(),
@@ -136,8 +138,11 @@ function buildDeviceInfo(device: DaikinCloudDevice): DevicesInformation {
 		isInErrorState: readGateway('isInErrorState'),
 		errorCode: '',
 		timeZone: readGateway('timeZone'),
-		wifiConnectionSSID: readGateway('wifiConnectionSSID'),
+		wifiConnectionSSID: wifiSsid,
 		wifiConnectionStrength: readGateway('wifiConnectionStrength'),
+		ipAddress: readGateway('ipAddress'),
+		macAddress: readGateway('macAddress'),
+		indoorUnitSoftwareVersion: readField('indoorUnit', 'softwareVersion'),
 		isCloudConnectionUp: device.isCloudConnectionUp() ? 'true' : 'false',
 	};
 }

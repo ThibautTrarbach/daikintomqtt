@@ -29,7 +29,8 @@ Examples:
 
 | Situation | File | Action |
 |-----------|------|--------|
-| Gateway field (IP, LED, region…) | `catalog.ts` → `gatewayDiagnosticsPack()` | Add a helper |
+| Gateway field (LED, region, DST…) | `catalog.ts` → `gatewayDiagnosticsPack()` | Add a helper |
+| Gateway identity (IP, MAC, SSID) | `_device` via `BaseModules.createDeviceInfo` + `EXTRA_DEVICE_DATAPOINTS` | Info panel only (no MQTT CMD) |
 | Indoor/outdoor unit | `catalog.ts` → `auxiliaryUnitPack()` | Add a helper |
 | Climate field group (fan, demand control…) | `catalog.ts` → new `*Pack()` | Create and reuse |
 | Simple climate field | `ExtendedMonoZoneClimateGateway.ts` or dedicated gateway | `stateBool`, `stringField`, or inline definition |
@@ -103,8 +104,8 @@ stateBool('gateway', 'ledEnabled', 'LED Enabled', {
 
 | Pack | Management points | Usage |
 |------|-------------------|-------|
-| `gatewayDiagnosticsPack()` | `gateway` | Network, diagnostics, LED, DST, region |
-| `auxiliaryUnitPack('indoorUnit' \| 'outdoorUnit', label)` | units | Model, versions, states |
+| `gatewayDiagnosticsPack()` | `gateway` | Diagnostics, LED, DST, region (IP/MAC/SSID → `_device` only) |
+| `auxiliaryUnitPack('indoorUnit' \| 'outdoorUnit', label)` | units | Model, EEPROM, states (indoor `softwareVersion` → `_device` only) |
 | `demandControlPack('climateControl')` | climate | Power demand control |
 | `fanClimatePack('climateControl', opts)` | climate | Fan (mode-dependent) |
 | `consumptionPack(mp, prefix)` | climate / zone | kWh consumption |
@@ -115,7 +116,7 @@ stateBool('gateway', 'ledEnabled', 'LED Enabled', {
 - **Datapoint missing on some models**: no guard needed; `BaseModules.ts` ignores read errors.
 - **Key with `#value#`**: used when the path depends on the current mode (`operationMode`). Audit matches via regex.
 - **`ref` in the API**: `discoverApiDatapoints` skips root-level `ref` datapoints; the real structure may be flat (`demandControl/currentMode`).
-- **Audit-only**: add to `EXTRA_DEVICE_DATAPOINTS` only when no MQTT command is desired (e.g. `timeZone`).
+- **Audit-only**: add to `EXTRA_DEVICE_DATAPOINTS` when no MQTT command is desired (e.g. `timeZone`, gateway IP/MAC, indoor unit software version for the Jeedom equipment info panel).
 - **Intentionally out of scope**: complex structures (`schedule`, `demandControl/modes/scheduled`) — do not partially map without explicit need.
 
 ## Key files

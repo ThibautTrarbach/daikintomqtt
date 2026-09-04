@@ -39,7 +39,11 @@ All paths below are relative to `{baseTopic}/`.
     "id": "...",
     "name": "...",
     "modelInfo": "BRP069C42",
-    "supportStatus": "full"
+    "supportStatus": "full",
+    "ipAddress": "192.168.1.10",
+    "macAddress": "AA:BB:CC:DD:EE:FF",
+    "wifiConnectionSSID": "MyWifi",
+    "indoorUnitSoftwareVersion": "1.2.3"
   },
   "_supportStatus": "full",
   "_configCoverage": "complete"
@@ -48,9 +52,9 @@ All paths below are relative to `{baseTopic}/`.
 
 Rules:
 - **State keys** = `propertyKey` from characteristic definitions (always `_` prefix)
-- **`_device`** = device metadata object (required by Jeedom plugin)
+- **`_device`** = device metadata object (required by Jeedom plugin). Equipment identity / network fields shown in the Jeedom info panel live here: `ipAddress`, `macAddress`, `wifiConnectionSSID`, `indoorUnitSoftwareVersion`, `supportStatus` (not as MQTT commands)
 - **Support fields** (`_supportStatus`, `_configCoverage`, `_unmappedDatapoints`, `_unmappedDatapointsDetail`, `_settableMismatches`, `_settableMismatchesDetail`, `_apiDatapointsDetail`, `_debugReport`) = consumed by daikinRCCloud for diagnostics
-- **Conditional publish**: support MQTT commands and heavy `_device` diagnostic fields are published **only** when `needsSupportReporting` is true (`supportStatus !== 'full'` or `configCoverage === 'incomplete'`). Healthy devices keep a slim `_device` (`supportStatus`, `configCoverage`, `configCoverageDetail`, gateway model) and no `_support*` / inventaire / `debugReport` keys — reduces MQTT load.
+- **Conditional publish**: support MQTT commands and heavy `_device` diagnostic fields are published **only** when `needsSupportReporting` is true (`supportStatus !== 'full'` or `configCoverage === 'incomplete'`). Healthy devices keep a slim `_device` (`supportStatus`, `configCoverage`, `configCoverageDetail`, gateway model, network/identity fields) and no `_support*` / inventaire / `debugReport` keys — reduces MQTT load.
 - `_apiDatapointsDetail` = JSON inventory of discovered API leaves (`settable`, `valueType`, `values`, min/max/step/unit)
 - `_settableMismatchesDetail` = API-settable leaves mapped as read-only by the daemon
 - `_unmappedDatapointsDetail` = JSON array of unmapped leaves with the same leaf metadata (no raw runtime values)
