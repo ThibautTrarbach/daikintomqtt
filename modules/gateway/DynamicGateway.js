@@ -89,15 +89,17 @@ function walkDatapointLeaves(embeddedId, dataPoint, obj, pathPrefix, exposeReadO
     }
 }
 function buildDeviceInfo(device) {
-    const readGateway = (field) => {
+    const readField = (managementPoint, field) => {
         try {
-            const data = device.getData('gateway', field, undefined);
+            const data = device.getData(managementPoint, field, undefined);
             return data?.value !== undefined && data?.value !== null ? String(data.value) : '';
         }
         catch {
             return '';
         }
     };
+    const readGateway = (field) => readField('gateway', field);
+    const wifiSsid = readGateway('wifiConnectionSSID') || readGateway('ssid');
     return {
         id: device.getId(),
         name: readGateway('name') || device.getId(),
@@ -107,8 +109,11 @@ function buildDeviceInfo(device) {
         isInErrorState: readGateway('isInErrorState'),
         errorCode: '',
         timeZone: readGateway('timeZone'),
-        wifiConnectionSSID: readGateway('wifiConnectionSSID'),
+        wifiConnectionSSID: wifiSsid,
         wifiConnectionStrength: readGateway('wifiConnectionStrength'),
+        ipAddress: readGateway('ipAddress'),
+        macAddress: readGateway('macAddress'),
+        indoorUnitSoftwareVersion: readField('indoorUnit', 'softwareVersion'),
         isCloudConnectionUp: device.isCloudConnectionUp() ? 'true' : 'false',
     };
 }

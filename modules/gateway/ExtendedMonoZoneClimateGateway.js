@@ -30,6 +30,12 @@ function buildExtendedMonoZoneCharacteristics(opts) {
     if (opts.streamerMode) {
         chars.push((0, catalog_1.stateBool)(MP, 'streamerMode', 'Streamer Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
     }
+    if (opts.intelligentEyeMode) {
+        chars.push((0, catalog_1.stateBool)(MP, 'intelligentEyeMode', 'Intelligent Eye', {
+            settable: true,
+            generic_type: 'ENERGY_STATE',
+        }));
+    }
     chars.push((0, catalog_1.sensoryTemperature)(MP, '/roomTemperature', 'Room Temperature', '_roomTemperature', opts.roomTempFixedRange ?? {}));
     if (opts.humidity !== false) {
         chars.push((0, catalog_1.sensoryHumidity)(MP, 'Room Humidity'));
@@ -89,6 +95,7 @@ const C4X_OPTS = {
     coolHeatMaster: true,
     econoMode: true,
     streamerMode: true,
+    intelligentEyeMode: true,
     outdoorSilentMode: true,
     fanHorizontal: true,
     fanVertical: true,
