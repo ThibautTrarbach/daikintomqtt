@@ -1,4 +1,3 @@
-export * from "./Anonymise"
 export * from "./AbstractGateway"
 export * from "./metadataRegistry"
 export * from "./characteristics/catalog"

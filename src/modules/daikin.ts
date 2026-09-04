@@ -25,7 +25,6 @@ import {INSTANCE_ID} from "./instanceId";
 import {canRefresh, getBudgetStatus, getSkippedRefreshCount, getDefaultDailyQuotaLimit, getConfiguredAuthMode} from "./requestBudget";
 import { AUTH_MODE_MOBILE_APP } from "../daikin-cloud/constants";
 import { getTokenFilePath } from "./tokenPaths";
-import { getNewConfigDir } from "./paths";
 import { DEVICE_CACHE_TTL_MS } from "./constants";
 import { setMqttRepublishHandler } from "./mqtt";
 import { AuthenticationError } from "./errorHandler";
@@ -1183,10 +1182,9 @@ async function updateSystemBridge(rateLimitStatus?: any, devices?: DaikinCloudDe
 		systemBridge.modulesList = "[]";
 	}
 
-	// Update unsupported modules information
-	const unsupportedModules = getUnsupportedModules();
-	systemBridge.unsupportedModulesCount = unsupportedModules.length;
-	systemBridge.unsupportedModulesList = JSON.stringify(unsupportedModules);
+	// Legacy newConfig dumps removed — unsupported modules are reported via MQTT support metadata
+	systemBridge.unsupportedModulesCount = 0;
+	systemBridge.unsupportedModulesList = '[]';
 
 	systemBridge.apiBudgetStatus = await getBudgetStatus();
 	systemBridge.skippedRefreshCount = await getSkippedRefreshCount();
@@ -1215,38 +1213,6 @@ async function publishSystemBridge(systemBridge: SystemBridge) {
 		}
 		throw error;
 	}
-}
-
-/**
- * Returns the list of unsupported module JSON definitions found in the
- * generated configuration directory, with best-effort extraction of model info.
- */
-function getUnsupportedModules(): Array<{fileName: string, model?: string}> {
-	const configFolder = getNewConfigDir();
-	const unsupportedModules: Array<{fileName: string, model?: string}> = [];
-
-	if (!fs.existsSync(configFolder)) {
-		return unsupportedModules;
-	}
-
-	const files = fs.readdirSync(configFolder);
-	files.forEach(file => {
-		if (file.endsWith('.json')) {
-			const fileName = file.replace('.json', '');
-			try {
-				const filePath = resolve(configFolder, file);
-				const content = fs.readFileSync(filePath, 'utf8');
-				const data = JSON.parse(content);
-				// Try to extract modelInfo if available
-				const model = data?.gateway?.modelInfo?.value || data?.['0']?.modelInfo?.value || fileName;
-				unsupportedModules.push({ fileName, model });
-			} catch (e) {
-				unsupportedModules.push({ fileName });
-			}
-		}
-	});
-
-	return unsupportedModules;
 }
 
 export {

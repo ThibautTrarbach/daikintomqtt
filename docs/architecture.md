@@ -102,7 +102,7 @@ Instances are cached per `deviceId` in `gatewayCache`.
 
 1. Gateway constructor registers `CharacteristicDefinition[]` via `metadataRegistry.ts`
 2. `convertDaikinDevice()` (`BaseModules.ts`) reads cloud data → populates `_propertyKey` values
-3. `enrichDeviceSupport()` adds `_supportStatus`, `_configCoverage`, `_debugReport`, etc.
+3. `enrichDeviceSupport()` adds diagnostic `_support*` fields only when support/coverage is incomplete
 4. `publishToMQTT()` sends JSON state; `makeDefineFile()` generates Jeedom/HA discovery
 
 ## MQTT layer
@@ -156,7 +156,7 @@ Full topic/payload contract: [workflows/mqtt-contract.md](workflows/mqtt-contrac
 | `decorator.ts` | Reflect decorators (legacy, used by SystemBridge) |
 | `instanceId.ts` | Fixed system bridge UUID |
 | `constants.ts` | `APP_VERSION`, cache TTLs |
-| `paths.ts` | Data path helpers, `newConfig/` dir |
+| `paths.ts` | Data path helpers, legacy `newConfig/` cleanup |
 | `tokenPaths.ts` | Token file path by auth mode |
 | `errorHandler.ts` | Typed errors, HTTP error categorization |
 | `shutdown.ts` | Global shutdown flag |
@@ -179,7 +179,7 @@ Full topic/payload contract: [workflows/mqtt-contract.md](workflows/mqtt-contrac
 | `supportMetadata.ts` | Support status, debug report, redaction |
 | `apiDiscovery.ts` | `discoverApiDatapoints()` — recursive API walk |
 | `apiCoverageAudit.ts` | Compare API vs static mapping coverage |
-| `Anonymise.ts` | Anonymized device dump for new models |
+| `supportMetadata.ts` | Support status, coverage audit, MQTT debug report |
 | `ExtendedMonoZoneClimateGateway.ts` | BRP069A4x, BRP069B4x, BRP069C4x |
 | `MonoZoneClimateGateway.ts` | BRP069C41, BRP069C8x |
 | `DualZoneHeatPumpGateway.ts` | BRP069A61, BRP069A62 |

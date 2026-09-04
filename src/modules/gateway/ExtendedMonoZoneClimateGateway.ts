@@ -27,6 +27,7 @@ interface ExtendedMonoZoneOptions {
 	coolHeatMaster?: boolean;
 	econoMode?: boolean;
 	streamerMode?: boolean;
+	intelligentEyeMode?: boolean;
 	outdoorSilentMode?: boolean;
 	fanHorizontal?: boolean;
 	fanVertical?: boolean;
@@ -67,6 +68,13 @@ function buildExtendedMonoZoneCharacteristics(opts: ExtendedMonoZoneOptions): Ch
 
 	if (opts.streamerMode) {
 		chars.push(stateBool(MP, 'streamerMode', 'Streamer Mode', { settable: true, generic_type: 'ENERGY_STATE' }));
+	}
+
+	if (opts.intelligentEyeMode) {
+		chars.push(stateBool(MP, 'intelligentEyeMode', 'Intelligent Eye', {
+			settable: true,
+			generic_type: 'ENERGY_STATE',
+		}));
 	}
 
 	chars.push(
@@ -152,6 +160,7 @@ const C4X_OPTS: ExtendedMonoZoneOptions = {
 	coolHeatMaster: true,
 	econoMode: true,
 	streamerMode: true,
+	intelligentEyeMode: true,
 	outdoorSilentMode: true,
 	fanHorizontal: true,
 	fanVertical: true,

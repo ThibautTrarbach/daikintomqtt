@@ -146,7 +146,7 @@ Unknown models are supported automatically via **DynamicGateway** when `system.d
 - MQTT keys: `_{embeddedId}_{dataPoint}_{path}` (e.g. `_climateControlMainZone_onOffMode`)
 - Special commands: `_triggerFirmwareUpdate`, `_setPresetAway`, `_{zone}_scheduleEnabled`
 
-If your model is not listed and `dynamicFallback` is `false`, an anonymized dump is saved under `config/newConfig/` to help add static support.
+If your model is not listed and coverage is incomplete, use the MQTT debug report (`_debugReport` / `_unmappedDatapointsDetail`) from Jeedom or the device state to open a GitHub issue.
 
 ## Logs & troubleshooting
 

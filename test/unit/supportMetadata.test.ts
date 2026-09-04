@@ -22,12 +22,13 @@ import * as assert from 'node:assert/strict';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { DaikinCloudDevice } = require('../../src/daikin-cloud/device') as typeof import('../../src/daikin-cloud/device');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { PROPERTY_METADATA_CMD } = require('../../src/modules/decorator') as typeof import('../../src/modules/decorator');
+const { PROPERTY_METADATA_CMD, PROPERTY_METADATA_DAIKIN } = require('../../src/modules/decorator') as typeof import('../../src/modules/decorator');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
 	REDACTED,
 	GITHUB_ISSUE_URL,
 	buildDebugReport,
+	enrichDeviceSupport,
 	isSupportValueEmpty,
 	sanitizeUnitModelsForReport,
 	syncSupportMetadata,
@@ -100,6 +101,21 @@ function run(): void {
 			apiCount: 2,
 			configCoverageDetail: '1/2 datapoints mapped',
 			unmappedDatapoints: ['climateControl/somePoint'],
+			unmappedDatapointDetails: [{
+				managementPoint: 'climateControl',
+				dataPoint: 'somePoint',
+				settable: true,
+				valueType: 'string',
+				values: ['on', 'off'],
+			}],
+			settableMismatches: [],
+			apiDatapointDetails: [{
+				managementPoint: 'climateControl',
+				dataPoint: 'somePoint',
+				settable: true,
+				valueType: 'string',
+				values: ['on', 'off'],
+			}],
 			totalUnmappedCount: 1,
 		},
 		['gateway', 'climateControl'],
@@ -118,6 +134,10 @@ function run(): void {
 	assert.equal(report.includes('supportMessage: Needs support'), true);
 	assert.equal(report.includes(`githubIssueUrl: ${GITHUB_ISSUE_URL}`), true);
 	assert.equal(report.includes('unmappedDatapoints: climateControl/somePoint'), true);
+	assert.equal(report.includes('unmappedDatapointsDetail:'), true);
+	assert.equal(report.includes('"settable":true'), true);
+	assert.equal(report.includes('"valueType":"string"'), true);
+	assert.equal(report.includes('apiDatapointsDetail:'), true);
 
 	const longUnmapped = Array.from({ length: 42 }, (_, index) =>
 		`climateControl/fanControl//operationModes/heating/fanSpeed/modes/fixed/${index}`,
@@ -135,6 +155,18 @@ function run(): void {
 			apiCount: 50,
 			configCoverageDetail: '8/50 datapoints mapped',
 			unmappedDatapoints: longUnmapped,
+			unmappedDatapointDetails: longUnmapped.map((key) => {
+				const [managementPoint, dataPoint, ...pathParts] = key.split('/');
+				return {
+					managementPoint,
+					dataPoint,
+					dataPointPath: pathParts.length ? `/${pathParts.join('/')}` : undefined,
+					settable: false,
+					valueType: 'number' as const,
+				};
+			}),
+			settableMismatches: [],
+			apiDatapointDetails: [],
 			totalUnmappedCount: 55,
 		},
 		['gateway', 'climateControl'],
@@ -156,6 +188,7 @@ function run(): void {
 		_supportMessage: 'Needs support',
 		_debugReport: report,
 		_unmappedDatapoints: 'climateControl/somePoint',
+		_unmappedDatapointsDetail: '[{"key":"climateControl/somePoint","settable":true,"valueType":"string"}]',
 		_unitModels: JSON.stringify(sanitized),
 		_managementPointsList: 'gateway, climateControl',
 		_githubIssueUrl: 'https://example.com/issues',
@@ -207,6 +240,62 @@ function run(): void {
 	assert.equal(changedEmptyModels, true);
 	assert.equal(getActiveSupportKeys(emptyUnitModelsGateway).includes('_unitModels'), false);
 	assert.equal(getActiveSupportKeys(emptyUnitModelsGateway).includes('_supportStatus'), true);
+
+	const healthyGateway = createGatewayStub() as {
+		_device: {
+			id: string;
+			name: string;
+			modelInfo: string;
+			serialNumber: string;
+			firmwareVersion: string;
+			isInErrorState: string;
+			errorCode: string;
+			supportStatus?: string;
+			configCoverage?: string;
+			debugReport?: string;
+			apiDatapointsDetail?: string;
+			unitModels?: string;
+		};
+	};
+	healthyGateway._device = {
+		id: DEVICE_UUID,
+		name: GATEWAY_NAME,
+		modelInfo: 'BRP069C4x',
+		serialNumber: 'SN123456',
+		firmwareVersion: '1.0.0',
+		isInErrorState: 'false',
+		errorCode: '0',
+		debugReport: 'stale report',
+		apiDatapointsDetail: '[]',
+		unitModels: '{"gateway":"BRP069C4x"}',
+	};
+	// Map every leaf discoverable on makeSupportDevice so audit returns complete coverage.
+	Reflect.defineMetadata(PROPERTY_METADATA_DAIKIN, {
+		_modelInfo: { managementPoint: 'gateway', dataPoint: 'modelInfo' },
+		_gatewayName: { managementPoint: 'gateway', dataPoint: 'name' },
+		_firmwareVersion: { managementPoint: 'gateway', dataPoint: 'firmwareVersion' },
+		_serialNumber: { managementPoint: 'gateway', dataPoint: 'serialNumber' },
+		_climateName: { managementPoint: 'climateControl', dataPoint: 'name' },
+	}, healthyGateway);
+	Reflect.defineMetadata(PROPERTY_METADATA_CMD, {}, healthyGateway);
+	syncSupportMetadata(healthyGateway as never, {
+		_supportStatus: 'partial',
+		_configCoverage: 'incomplete',
+		_debugReport: 'stale',
+		_apiDatapointsDetail: '[]',
+	});
+	assert.ok(getActiveSupportKeys(healthyGateway).length > 0);
+	enrichDeviceSupport(device, healthyGateway as never, {
+		supportStatus: 'full',
+		gatewayModelRaw: 'BRP069C4x',
+		gatewayModelResolved: 'BRP069C4x',
+	});
+	assert.deepEqual(getActiveSupportKeys(healthyGateway), []);
+	assert.equal(healthyGateway._device.supportStatus, 'full');
+	assert.equal(healthyGateway._device.configCoverage, 'complete');
+	assert.equal(healthyGateway._device.debugReport, undefined);
+	assert.equal(healthyGateway._device.apiDatapointsDetail, undefined);
+	assert.equal(healthyGateway._device.unitModels, undefined);
 
 	console.log('supportMetadata.test.ts: all tests passed');
 }

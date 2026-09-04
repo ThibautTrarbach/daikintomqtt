@@ -12,7 +12,7 @@ Read `docs/mapping-datapoints.md` for full details. Minimal workflow:
 
 Format: `{managementPoint}/{dataPoint}{/path}` (e.g. `climateControl/demandControl/currentMode`).
 
-Source: debug report `unmappedDatapoints`, GitHub issue, or dump in `config/newConfig/`.
+Source: debug report `unmappedDatapoints` / `unmappedDatapointsDetail`, or GitHub issue.
 
 ## 2. Pick the location
 
@@ -48,4 +48,5 @@ Do not duplicate: factor into `catalog.ts`.
 - Do not change `daikinRCCloud` for a new mapping (auto via MQTT). See `docs/workflows/mqtt-contract.md` for the stable payload contract.
 - Do not partially map `schedule` or `demandControl/modes/scheduled`.
 - `EXTRA_DEVICE_DATAPOINTS` only for audit without MQTT command.
+- `SETTABLE_MISMATCH_EXCEPTIONS` only for API-settable leaves intentionally kept read-only (e.g. device identity `climateControl/name`).
 - Root-level `ref` datapoints are not discovered; verify the real API structure.

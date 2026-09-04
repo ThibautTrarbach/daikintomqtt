@@ -9,7 +9,6 @@ There is **no single `npm test` command**. Tests are run individually or in docu
 | File | Runner | Requires build? | What it tests |
 |------|--------|-----------------|---------------|
 | `modelResolver.test.ts` | `npx ts-node` | No | `resolveGatewayModel()` patterns |
-| `anonymise.test.ts` | `npx ts-node` | No | Anonymized dump export |
 | `supportMetadata.test.ts` | `npx ts-node` | No | Support fields, redaction, sync |
 | `device-ws-update.test.ts` | `npx ts-node` | No | WebSocket merge on nested characteristics |
 | `apiCoverageAudit.test.js` | `node` | **Yes** (`dist/`) | Full API coverage audit per gateway model |
@@ -33,7 +32,6 @@ There is **no single `npm test` command**. Tests are run individually or in docu
 ```bash
 # Unit tests (TypeScript, no build needed)
 npx ts-node test/unit/modelResolver.test.ts
-npx ts-node test/unit/anonymise.test.ts
 npx ts-node test/unit/supportMetadata.test.ts
 npx ts-node test/unit/device-ws-update.test.ts
 
@@ -69,6 +67,7 @@ for every static gateway model under test.
 3. Instantiates gateway mock with characteristic definitions
 4. Runs `auditApiCoverage()` — compares discovered API keys vs mapped keys
 5. Fails if any API datapoint is unmapped (unless in `EXTRA_DEVICE_DATAPOINTS`)
+6. Fails if an API-settable leaf is mapped read-only (unless in `SETTABLE_MISMATCH_EXCEPTIONS`)
 
 ### Extending mocks
 
@@ -89,6 +88,10 @@ assert.deepStrictEqual(result.unmappedDatapoints, []);
 ### EXTRA_DEVICE_DATAPOINTS
 
 In `apiCoverageAudit.ts` — use **only** for datapoints intentionally not mapped to MQTT (e.g. read-only audit-only fields like `timeZone`). Do not use as a shortcut to skip real mappings.
+
+### SETTABLE_MISMATCH_EXCEPTIONS
+
+In `apiCoverageAudit.ts` — allowlist of API-settable keys that are intentionally mapped read-only (e.g. `climateControl/name` as `_device` identity, no MQTT CMD). Use when a settable mismatch is a product decision, not a missing mapping.
 
 ## When to run which tests
 
