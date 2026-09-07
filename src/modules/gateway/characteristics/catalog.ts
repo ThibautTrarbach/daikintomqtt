@@ -126,6 +126,27 @@ function stringField(
 	};
 }
 
+/** Icon ID is always read-only in MQTT (API may mark it settable — use SETTABLE_MISMATCH_EXCEPTIONS). */
+function iconIdField(
+	managementPoint: string,
+	propertyKey: string,
+	label = 'Icon ID',
+): CharacteristicDefinition {
+	return {
+		propertyKey,
+		daikin: {
+			managementPoint,
+			dataPoint: 'iconId',
+			converter: converterEnum.numeric,
+		},
+		description: {
+			name: label,
+			settable: false,
+			type: typeEnum.numeric,
+		},
+	};
+}
+
 function sensoryTemperature(
 	managementPoint: string,
 	dataPointPath: string,
@@ -454,6 +475,8 @@ function gatewayDiagnosticsPack(): CharacteristicDefinition[] {
 		stateBool(MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', { propertyKey: '_gatewayFirmwareUpdateSupported' }),
 		stateBool(MP, 'isInErrorState', 'Gateway Error State', { propertyKey: '_gatewayIsInErrorState' }),
 		stringField(MP, 'errorCode', 'Gateway Error Code', { propertyKey: '_gatewayErrorCode' }),
+		stringField(MP, 'name', 'Gateway Name', { propertyKey: '_gatewayName' }),
+		iconIdField(MP, '_gatewayIconId', 'Gateway Icon ID'),
 	];
 }
 
@@ -524,6 +547,8 @@ function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): Charac
 
 	if (managementPoint === 'outdoorUnit') {
 		chars.push(
+			stringField(managementPoint, 'name', `${labelPrefix} Name`, { propertyKey: '_outdoorUnitName' }),
+			iconIdField(managementPoint, '_outdoorUnitIconId', `${labelPrefix} Icon ID`),
 			stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_outdoorUnitModelInfo' }),
 			stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_outdoorUnitSerialNumber' }),
 			stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
@@ -548,6 +573,47 @@ function auxiliaryUnitInfoPack(managementPoint: string, labelPrefix: string): Ch
 			propertyKey: `_aux${suffix}SoftwareVersion`,
 		}),
 	];
+}
+
+/** Extra identity / diagnostic leaves for Altherma hydro + UI management points (A78). */
+function hydroAndUiInfoPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[] {
+	const suffix = managementPoint.replace(/[^a-zA-Z0-9]/g, '');
+	const chars = [
+		...auxiliaryUnitInfoPack(managementPoint, labelPrefix),
+		stringField(managementPoint, 'name', `${labelPrefix} Name`, { propertyKey: `_aux${suffix}Name` }),
+		iconIdField(managementPoint, `_aux${suffix}IconId`, `${labelPrefix} Icon ID`),
+	];
+
+	if (managementPoint === 'indoorUnitHydro') {
+		chars.push(
+			stringField(managementPoint, 'eepromVersion', `${labelPrefix} EEPROM Version`, {
+				propertyKey: `_aux${suffix}EepromVersion`,
+			}),
+			stringField(managementPoint, 'demandOperationMode', `${labelPrefix} Demand Operation Mode`, {
+				propertyKey: `_aux${suffix}DemandOperationMode`,
+				values: ['noDemand', 'heating', 'cooling', 'dhw', 'heatingDHW', 'coolingDHW'],
+			}),
+			stateBool(managementPoint, 'emergencyMode', `${labelPrefix} Emergency Mode`, {
+				propertyKey: `_aux${suffix}EmergencyMode`,
+			}),
+		);
+	}
+
+	if (managementPoint === 'userInterface') {
+		chars.push(
+			stringField(managementPoint, 'dateTime', `${labelPrefix} Date Time`, {
+				propertyKey: `_aux${suffix}DateTime`,
+			}),
+			stringField(managementPoint, 'firmwareVersion', `${labelPrefix} Firmware Version`, {
+				propertyKey: `_aux${suffix}FirmwareVersion`,
+			}),
+			stringField(managementPoint, 'miconId', `${labelPrefix} Micon ID`, {
+				propertyKey: `_aux${suffix}MiconId`,
+			}),
+		);
+	}
+
+	return chars;
 }
 
 function zoneStatusPack(
@@ -581,6 +647,7 @@ export {
 	consumptionPack,
 	stateBool,
 	stringField,
+	iconIdField,
 	sensoryTemperature,
 	sensoryHumidity,
 	operationModeClimate,
@@ -594,5 +661,6 @@ export {
 	gatewayDiagnosticsPack,
 	auxiliaryUnitPack,
 	auxiliaryUnitInfoPack,
+	hydroAndUiInfoPack,
 	zoneStatusPack,
 };

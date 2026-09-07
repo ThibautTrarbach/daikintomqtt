@@ -17,7 +17,8 @@ const { registerCharacteristics, registerDeviceMetadata } = require('../../dist/
 const {
 	gatewayDiagnosticsPack,
 	auxiliaryUnitPack,
-	auxiliaryUnitInfoPack,
+	hydroAndUiInfoPack,
+	iconIdField,
 	standardGatewayDeviceInfo,
 	multiZoneDeviceInfo,
 	fanClimatePack,
@@ -34,7 +35,6 @@ const {
 	temperatureControlLeavingWater,
 	temperatureControlLeavingWaterOffset,
 } = require('../../dist/modules/gateway/characteristics/catalog');
-const { converterEnum, typeEnum } = require('../../dist/modules/gateway/typeConstants');
 
 function leaf(value, settable = false) {
 	return { value, settable };
@@ -247,12 +247,17 @@ function createA78MockDevice() {
 			timeZone: leaf('Europe/Paris'),
 			ipAddress: leaf('192.168.1.20'),
 			macAddress: leaf('11:22:33:44:55:66'),
-			isFirmwareUpdateSupported: leaf('off'),
+			wifiConnectionSSID: leaf('MyWifi'),
+			wifiConnectionStrength: leaf(-50),
+			isFirmwareUpdateSupported: leaf(false),
 			isInErrorState: leaf('off'),
 			errorCode: leaf(''),
+			name: leaf('Gateway', true),
+			iconId: leaf(1, true),
 		},
 		climateControlMainZone: {
-			name: leaf('Main Zone'),
+			name: leaf('Main Zone', true),
+			iconId: leaf(2, true),
 			controlMode: leaf('heating'),
 			errorCode: leaf(''),
 			isHolidayModeActive: leaf('off'),
@@ -293,7 +298,8 @@ function createA78MockDevice() {
 			},
 		},
 		domesticHotWaterTank: {
-			name: leaf('DHW Tank'),
+			name: leaf('DHW Tank', true),
+			iconId: leaf(3, true),
 			errorCode: leaf(''),
 			heatupMode: leaf('normal'),
 			isHolidayModeActive: leaf('off'),
@@ -326,8 +332,19 @@ function createA78MockDevice() {
 		indoorUnitHydro: {
 			modelInfo: leaf('ELVH12S23EJ6V'),
 			softwareVersion: leaf('1.0.0'),
+			name: leaf('Indoor Hydro', true),
+			iconId: leaf(4, true),
+			eepromVersion: leaf('1.2.3'),
+			demandOperationMode: {
+				value: 'heating',
+				settable: false,
+				values: ['noDemand', 'heating', 'cooling', 'dhw', 'heatingDHW', 'coolingDHW'],
+			},
+			emergencyMode: leaf('off'),
 		},
 		outdoorUnit: {
+			name: leaf('Outdoor', true),
+			iconId: leaf(5, true),
 			modelInfo: leaf('OUTDOOR-MODEL'),
 			serialNumber: leaf('0000000010528854'),
 			softwareVersion: leaf('1.0.0'),
@@ -335,10 +352,16 @@ function createA78MockDevice() {
 			isInErrorState: leaf('off'),
 			isInWarningState: leaf('off'),
 			isInCautionState: leaf('off'),
+			isInDefrostState: leaf('off'),
 		},
 		userInterface: {
 			modelInfo: leaf('ELVH12S23EJ6V'),
 			softwareVersion: leaf('1.0.0'),
+			name: leaf('UI', true),
+			iconId: leaf(6, true),
+			dateTime: leaf('2026-09-07T12:00:00'),
+			firmwareVersion: leaf('4.1.0'),
+			miconId: leaf('MICON-1'),
 		},
 	};
 
@@ -368,19 +391,7 @@ function createC4xGatewayMock() {
 		temperatureControlRoom(MP, 'Temperature Control', '_temperatureControl'),
 		...fanClimatePack(MP, { horizontal: true, vertical: true }),
 		...consumptionPack(MP, ''),
-		{
-			propertyKey: '_iconId',
-			daikin: {
-				managementPoint: MP,
-				dataPoint: 'iconId',
-				converter: converterEnum.numeric,
-			},
-			description: {
-				name: 'Icon ID',
-				settable: true,
-				type: typeEnum.numeric,
-			},
-		},
+		iconIdField(MP, '_iconId'),
 		stateBool(MP, 'isLockFunctionEnabled', 'Lock Function', { settable: true }),
 		...demandControlPack(MP),
 		...gatewayDiagnosticsPack(),
@@ -445,6 +456,7 @@ function createA78GatewayMock(device) {
 		temperatureControlLeavingWater(MAIN_MP, `${mainPrefix} Leaving Water Control`, '_temperatureControlWaterMain'),
 		temperatureControlLeavingWaterOffset(MAIN_MP, `${mainPrefix} Leaving Water Offset Control`, '_temperatureControlWaterOffsetMain'),
 		...consumptionPack(MAIN_MP, `${mainPrefix} `, 'Main'),
+		iconIdField(MAIN_MP, '_iconIdMain', `${mainPrefix} Icon ID`),
 		stringField(TANK_MP, 'name', `${tankPrefix} Name`, { propertyKey: '_nameTank' }),
 		stringField(TANK_MP, 'errorCode', `${tankPrefix} Error Code`, { propertyKey: '_errorCodeTank' }),
 		stringField(TANK_MP, 'heatupMode', 'Main Zone - Heatup Code', { propertyKey: '_heatupModeTank' }),
@@ -460,13 +472,14 @@ function createA78GatewayMock(device) {
 		sensoryTemperature(TANK_MP, '/tankTemperature', `${tankPrefix} Tank Temperature`, '_tankTemperatureTank'),
 		stringField(TANK_MP, 'setpointMode', `${tankPrefix} Setpoint Mode`, { propertyKey: '_setpointModeTank' }),
 		temperatureControlDhw(TANK_MP, `${tankPrefix} Domestic Water Temperature`, '_domesticHotWaterTemperatureTank', { fixedHeatingPath: true }),
+		iconIdField(TANK_MP, '_iconIdTank', `${tankPrefix} Icon ID`),
 		...gatewayDiagnosticsPack(),
 	];
 	if ('indoorUnitHydro' in device.managementPoints) {
-		chars.push(...auxiliaryUnitInfoPack('indoorUnitHydro', 'Indoor Unit Hydro'));
+		chars.push(...hydroAndUiInfoPack('indoorUnitHydro', 'Indoor Unit Hydro'));
 	}
 	if ('userInterface' in device.managementPoints) {
-		chars.push(...auxiliaryUnitInfoPack('userInterface', 'User Interface'));
+		chars.push(...hydroAndUiInfoPack('userInterface', 'User Interface'));
 	}
 	if ('outdoorUnit' in device.managementPoints) {
 		chars.push(...auxiliaryUnitPack('outdoorUnit', 'Outdoor Unit'));

@@ -50,12 +50,23 @@ const EXTRA_DEVICE_DATAPOINTS: Array<[string, string, string | undefined]> = [
 	['indoorUnit', 'softwareVersion', undefined],
 ];
 
-/** API-settable leaves intentionally kept read-only (device/zone/tank identity or gateway timeZone via `_device`, no MQTT CMD). */
+/** API-settable leaves intentionally kept read-only (device/zone/tank identity, iconId, gateway timeZone via `_device`, no MQTT CMD). */
 const SETTABLE_MISMATCH_EXCEPTIONS = new Set([
 	'climateControl/name',
+	'climateControl/iconId',
 	'climateControlMainZone/name',
+	'climateControlMainZone/iconId',
 	'domesticHotWaterTank/name',
+	'domesticHotWaterTank/iconId',
 	'gateway/timeZone',
+	'gateway/name',
+	'gateway/iconId',
+	'indoorUnitHydro/name',
+	'indoorUnitHydro/iconId',
+	'outdoorUnit/name',
+	'outdoorUnit/iconId',
+	'userInterface/name',
+	'userInterface/iconId',
 ]);
 
 function isDeviceMetadataField(value: unknown): value is ModulePropertyMetadata {
