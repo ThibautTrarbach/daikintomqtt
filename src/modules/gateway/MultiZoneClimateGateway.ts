@@ -4,10 +4,11 @@ import { AbstractGateway } from './AbstractGateway';
 import { converterEnum } from './typeConstants';
 import { CharacteristicDefinition } from './metadataRegistry';
 import {
-	auxiliaryUnitInfoPack,
 	auxiliaryUnitPack,
 	consumptionPack,
 	gatewayDiagnosticsPack,
+	hydroAndUiInfoPack,
+	iconIdField,
 	multiZoneDeviceInfo,
 	sensoryTemperature,
 	stateBool,
@@ -67,6 +68,7 @@ function buildMainZoneCharacteristics(): CharacteristicDefinition[] {
 		temperatureControlLeavingWater(MAIN_MP, `${prefix} Leaving Water Control`, '_temperatureControlWaterMain'),
 		temperatureControlLeavingWaterOffset(MAIN_MP, `${prefix} Leaving Water Offset Control`, '_temperatureControlWaterOffsetMain'),
 		...consumptionPack(MAIN_MP, `${prefix} `, 'Main'),
+		iconIdField(MAIN_MP, '_iconIdMain', `${prefix} Icon ID`),
 	];
 }
 
@@ -123,6 +125,7 @@ function buildTankZoneCharacteristics(): CharacteristicDefinition[] {
 		temperatureControlDhw(TANK_MP, `${prefix} Domestic Water Temperature`, '_domesticHotWaterTemperatureTank', {
 			fixedHeatingPath: true,
 		}),
+		iconIdField(TANK_MP, '_iconIdTank', `${prefix} Icon ID`),
 	];
 }
 
@@ -142,7 +145,7 @@ function appendMultiZoneDeviceSpecificCharacteristics(device: DaikinCloudDevice,
 	];
 	for (const [managementPoint, label] of infoOnlyUnits) {
 		if (managementPoint in device.managementPoints) {
-			chars.push(...auxiliaryUnitInfoPack(managementPoint, label));
+			chars.push(...hydroAndUiInfoPack(managementPoint, label));
 		}
 	}
 

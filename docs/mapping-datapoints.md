@@ -104,8 +104,9 @@ stateBool('gateway', 'ledEnabled', 'LED Enabled', {
 
 | Pack | Management points | Usage |
 |------|-------------------|-------|
-| `gatewayDiagnosticsPack()` | `gateway` | Diagnostics, LED, DST, region (IP/MAC/SSID → `_device` only) |
-| `auxiliaryUnitPack('indoorUnit' \| 'outdoorUnit', label)` | units | Model, EEPROM, states (indoor `softwareVersion` → `_device` only) |
+| `gatewayDiagnosticsPack()` | `gateway` | Diagnostics, LED, DST, region, name, iconId (IP/MAC/SSID → `_device` only) |
+| `auxiliaryUnitPack('indoorUnit' \| 'outdoorUnit', label)` | units | Model, EEPROM, states; outdoor also name/iconId |
+| `hydroAndUiInfoPack(mp, label)` | `indoorUnitHydro` / `userInterface` | Altherma A78 hydro/UI identity + diagnostics |
 | `demandControlPack('climateControl')` | climate | Power demand control |
 | `fanClimatePack('climateControl', opts)` | climate | Fan (mode-dependent) |
 | `consumptionPack(mp, prefix)` | climate / zone | kWh consumption |
