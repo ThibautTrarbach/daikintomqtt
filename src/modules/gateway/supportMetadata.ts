@@ -1,9 +1,8 @@
 import 'reflect-metadata';
-import {readFileSync} from 'node:fs';
-import {resolve} from 'node:path';
 import {PROPERTY_METADATA_CMD, PROPERTY_METADATA_DAIKIN} from '../decorator';
 import {DevicesInformation, Gateways, ModulePropertyMetadata, ModulesDescriptionMetadata} from '../../types';
 import {DaikinCloudDevice} from '../../daikin-cloud';
+import {APP_VERSION} from '../constants';
 import {getConfiguredAuthMode} from '../requestBudget';
 import {ApiDatapointRef, makeDatapointKey} from './apiDiscovery';
 import {auditApiCoverage, ConfigCoverage, CoverageAuditResult} from './apiCoverageAudit';
@@ -111,16 +110,6 @@ export function sanitizeUnitModelsForReport(device: DaikinCloudDevice): Record<s
 	return unitModels;
 }
 
-function getDaemonVersion(): string {
-	try {
-		const packagePath = resolve(__dirname, '../../../package.json');
-		const pkg = JSON.parse(readFileSync(packagePath, 'utf8')) as { version?: string };
-		return pkg.version ?? 'unknown';
-	} catch {
-		return 'unknown';
-	}
-}
-
 export function serializeUnmappedDatapointDetail(ref: ApiDatapointRef): Record<string, unknown> {
 	const detail: Record<string, unknown> = {
 		key: makeDatapointKey(ref.managementPoint, ref.dataPoint, ref.dataPointPath),
@@ -178,7 +167,7 @@ export function buildDebugReport(
 		`configCoverageDetail: ${coverage.configCoverageDetail}`,
 		`firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
 		`serialNumber: ${REDACTED}`,
-		`daemonVersion: ${getDaemonVersion()}`,
+		`daemonVersion: ${APP_VERSION}`,
 		`authMode: ${getConfiguredAuthMode()}`,
 		`detectedAt: ${new Date().toISOString()}`,
 	];
