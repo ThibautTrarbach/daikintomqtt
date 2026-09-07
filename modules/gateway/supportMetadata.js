@@ -14,9 +14,8 @@ exports.needsSupportReporting = needsSupportReporting;
 exports.syncSupportMetadata = syncSupportMetadata;
 exports.enrichDeviceSupport = enrichDeviceSupport;
 require("reflect-metadata");
-const node_fs_1 = require("node:fs");
-const node_path_1 = require("node:path");
 const decorator_1 = require("../decorator");
+const constants_1 = require("../constants");
 const requestBudget_1 = require("../requestBudget");
 const apiDiscovery_1 = require("./apiDiscovery");
 const apiCoverageAudit_1 = require("./apiCoverageAudit");
@@ -101,16 +100,6 @@ function sanitizeUnitModelsForReport(device) {
     }
     return unitModels;
 }
-function getDaemonVersion() {
-    try {
-        const packagePath = (0, node_path_1.resolve)(__dirname, '../../../package.json');
-        const pkg = JSON.parse((0, node_fs_1.readFileSync)(packagePath, 'utf8'));
-        return pkg.version ?? 'unknown';
-    }
-    catch {
-        return 'unknown';
-    }
-}
 function serializeUnmappedDatapointDetail(ref) {
     const detail = {
         key: (0, apiDiscovery_1.makeDatapointKey)(ref.managementPoint, ref.dataPoint, ref.dataPointPath),
@@ -158,7 +147,7 @@ function buildDebugReport(device, context, coverage, managementPointsList, suppo
         `configCoverageDetail: ${coverage.configCoverageDetail}`,
         `firmwareVersion: ${readGatewayField(device, 'gateway', 'firmwareVersion')}`,
         `serialNumber: ${exports.REDACTED}`,
-        `daemonVersion: ${getDaemonVersion()}`,
+        `daemonVersion: ${constants_1.APP_VERSION}`,
         `authMode: ${(0, requestBudget_1.getConfiguredAuthMode)()}`,
         `detectedAt: ${new Date().toISOString()}`,
     ];
