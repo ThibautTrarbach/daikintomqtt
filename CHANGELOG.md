@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+---
+
+## [2.1.9] - 2026-09-07
+
 ### Added
 
 - BRP069A78: complete API coverage for hydro/UI/outdoor identity and diagnostics (`demandOperationMode`, `emergencyMode`, `eepromVersion`, `dateTime`, `miconId`, names, iconIds)
