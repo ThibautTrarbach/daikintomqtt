@@ -2,14 +2,30 @@
 import fs from 'fs';
 import path from 'path';
 
+const PACKAGE_NAME = 'daikin2mqtt';
+
+/**
+ * Resolve package.json for both layouts:
+ * - release-* (Jeedom): modules/ → ../package.json
+ * - local dist/: dist/modules/ → ../../package.json
+ * Match on package name to avoid picking up an unrelated parent package.json.
+ */
 function readAppVersion(): string {
-	try {
-		const pkgPath = path.join(__dirname, '../../package.json');
-		const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { version?: string };
-		return pkg.version ?? '0.0.0';
-	} catch {
-		return '0.0.0';
+	const candidates = [
+		path.join(__dirname, '../package.json'),
+		path.join(__dirname, '../../package.json'),
+	];
+	for (const pkgPath of candidates) {
+		try {
+			const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { name?: string; version?: string };
+			if (pkg.name === PACKAGE_NAME && pkg.version) {
+				return pkg.version;
+			}
+		} catch {
+			// try next candidate
+		}
 	}
+	return '0.0.0';
 }
 
 export const APP_VERSION = readAppVersion();
