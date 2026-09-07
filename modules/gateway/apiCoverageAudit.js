@@ -16,6 +16,9 @@ const EXTRA_DEVICE_DATAPOINTS = [
 ];
 const SETTABLE_MISMATCH_EXCEPTIONS = new Set([
     'climateControl/name',
+    'climateControlMainZone/name',
+    'domesticHotWaterTank/name',
+    'gateway/timeZone',
 ]);
 function isDeviceMetadataField(value) {
     return typeof value === 'object' && value !== null && 'managementPoint' in value && 'dataPoint' in value;
