@@ -24,6 +24,8 @@ const { DaikinCloudDevice } = require('../../src/daikin-cloud/device') as typeof
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { PROPERTY_METADATA_CMD, PROPERTY_METADATA_DAIKIN } = require('../../src/modules/decorator') as typeof import('../../src/modules/decorator');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
+const { APP_VERSION } = require('../../src/modules/constants') as typeof import('../../src/modules/constants');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const {
 	REDACTED,
 	GITHUB_ISSUE_URL,
@@ -129,6 +131,8 @@ function run(): void {
 	assert.equal(report.includes(`deviceName: ${REDACTED}`), true);
 	assert.equal(report.includes('SN123456'), false);
 	assert.equal(report.includes(`serialNumber: ${REDACTED}`), true);
+	assert.equal(report.includes(`daemonVersion: ${APP_VERSION}`), true);
+	assert.equal(report.includes('daemonVersion: unknown'), false);
 	assert.equal(report.includes('"gateway":"BRP069C4x"'), true);
 	assert.equal(report.includes(`"climateControl":"${REDACTED}"`), true);
 	assert.equal(report.includes('supportMessage: Needs support'), true);

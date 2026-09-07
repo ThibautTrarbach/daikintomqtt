@@ -8,6 +8,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.1.8] - 2026-09-07
+
+### Fixed
+
+- Debug report: report real `daemonVersion` from `package.json` instead of `unknown` (wrong relative path from `dist/modules/gateway`)
+- Coverage audit: add intentional read-only exceptions for `climateControlMainZone/name`, `domesticHotWaterTank/name`, `gateway/timeZone`
+
+---
+
 ## [2.1.7] - 2026-09-04
 
 ### Changed
