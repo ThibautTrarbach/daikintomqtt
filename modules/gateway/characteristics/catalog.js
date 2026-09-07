@@ -6,6 +6,7 @@ exports.multiZoneDeviceInfo = multiZoneDeviceInfo;
 exports.consumptionPack = consumptionPack;
 exports.stateBool = stateBool;
 exports.stringField = stringField;
+exports.iconIdField = iconIdField;
 exports.sensoryTemperature = sensoryTemperature;
 exports.sensoryHumidity = sensoryHumidity;
 exports.operationModeClimate = operationModeClimate;
@@ -19,6 +20,7 @@ exports.demandControlPack = demandControlPack;
 exports.gatewayDiagnosticsPack = gatewayDiagnosticsPack;
 exports.auxiliaryUnitPack = auxiliaryUnitPack;
 exports.auxiliaryUnitInfoPack = auxiliaryUnitInfoPack;
+exports.hydroAndUiInfoPack = hydroAndUiInfoPack;
 exports.zoneStatusPack = zoneStatusPack;
 const typeConstants_1 = require("../typeConstants");
 function standardGatewayDeviceInfo(managementPoint, nameDataPoint = 'name') {
@@ -109,6 +111,21 @@ function stringField(managementPoint, dataPoint, label, opts = {}) {
             settable: opts.settable ?? false,
             type: typeConstants_1.typeEnum.string,
             ...(opts.values ? { values: opts.values } : {}),
+        },
+    };
+}
+function iconIdField(managementPoint, propertyKey, label = 'Icon ID') {
+    return {
+        propertyKey,
+        daikin: {
+            managementPoint,
+            dataPoint: 'iconId',
+            converter: typeConstants_1.converterEnum.numeric,
+        },
+        description: {
+            name: label,
+            settable: false,
+            type: typeConstants_1.typeEnum.numeric,
         },
     };
 }
@@ -393,6 +410,8 @@ function gatewayDiagnosticsPack() {
         stateBool(MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', { propertyKey: '_gatewayFirmwareUpdateSupported' }),
         stateBool(MP, 'isInErrorState', 'Gateway Error State', { propertyKey: '_gatewayIsInErrorState' }),
         stringField(MP, 'errorCode', 'Gateway Error Code', { propertyKey: '_gatewayErrorCode' }),
+        stringField(MP, 'name', 'Gateway Name', { propertyKey: '_gatewayName' }),
+        iconIdField(MP, '_gatewayIconId', 'Gateway Icon ID'),
     ];
 }
 function demandControlPack(managementPoint) {
@@ -450,7 +469,7 @@ function auxiliaryUnitPack(managementPoint, labelPrefix) {
         }));
     }
     if (managementPoint === 'outdoorUnit') {
-        chars.push(stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_outdoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_outdoorUnitSerialNumber' }), stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
+        chars.push(stringField(managementPoint, 'name', `${labelPrefix} Name`, { propertyKey: '_outdoorUnitName' }), iconIdField(managementPoint, '_outdoorUnitIconId', `${labelPrefix} Icon ID`), stringField(managementPoint, 'modelInfo', `${labelPrefix} Model`, { propertyKey: '_outdoorUnitModelInfo' }), stringField(managementPoint, 'serialNumber', `${labelPrefix} Serial Number`, { propertyKey: '_outdoorUnitSerialNumber' }), stringField(managementPoint, 'softwareVersion', `${labelPrefix} Software Version`, {
             propertyKey: '_outdoorUnitSoftwareVersion',
         }), stringField(managementPoint, 'errorCode', `${labelPrefix} Error Code`, { propertyKey: '_outdoorUnitErrorCode' }), stateBool(managementPoint, 'isInErrorState', `${labelPrefix} Error State`, { propertyKey: '_outdoorUnitIsInErrorState' }), stateBool(managementPoint, 'isInWarningState', `${labelPrefix} Warning State`, { propertyKey: '_outdoorUnitIsInWarningState' }), stateBool(managementPoint, 'isInCautionState', `${labelPrefix} Caution State`, { propertyKey: '_outdoorUnitIsInCautionState' }), stateBool(managementPoint, 'isInDefrostState', `${labelPrefix} Defrost State`, { propertyKey: '_outdoorUnitIsInDefrostState' }));
     }
@@ -464,6 +483,34 @@ function auxiliaryUnitInfoPack(managementPoint, labelPrefix) {
             propertyKey: `_aux${suffix}SoftwareVersion`,
         }),
     ];
+}
+function hydroAndUiInfoPack(managementPoint, labelPrefix) {
+    const suffix = managementPoint.replace(/[^a-zA-Z0-9]/g, '');
+    const chars = [
+        ...auxiliaryUnitInfoPack(managementPoint, labelPrefix),
+        stringField(managementPoint, 'name', `${labelPrefix} Name`, { propertyKey: `_aux${suffix}Name` }),
+        iconIdField(managementPoint, `_aux${suffix}IconId`, `${labelPrefix} Icon ID`),
+    ];
+    if (managementPoint === 'indoorUnitHydro') {
+        chars.push(stringField(managementPoint, 'eepromVersion', `${labelPrefix} EEPROM Version`, {
+            propertyKey: `_aux${suffix}EepromVersion`,
+        }), stringField(managementPoint, 'demandOperationMode', `${labelPrefix} Demand Operation Mode`, {
+            propertyKey: `_aux${suffix}DemandOperationMode`,
+            values: ['noDemand', 'heating', 'cooling', 'dhw', 'heatingDHW', 'coolingDHW'],
+        }), stateBool(managementPoint, 'emergencyMode', `${labelPrefix} Emergency Mode`, {
+            propertyKey: `_aux${suffix}EmergencyMode`,
+        }));
+    }
+    if (managementPoint === 'userInterface') {
+        chars.push(stringField(managementPoint, 'dateTime', `${labelPrefix} Date Time`, {
+            propertyKey: `_aux${suffix}DateTime`,
+        }), stringField(managementPoint, 'firmwareVersion', `${labelPrefix} Firmware Version`, {
+            propertyKey: `_aux${suffix}FirmwareVersion`,
+        }), stringField(managementPoint, 'miconId', `${labelPrefix} Micon ID`, {
+            propertyKey: `_aux${suffix}MiconId`,
+        }));
+    }
+    return chars;
 }
 function zoneStatusPack(managementPoint, labelPrefix, keySuffix) {
     return [
