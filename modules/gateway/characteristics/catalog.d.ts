@@ -15,6 +15,7 @@ declare function stringField(managementPoint: string, dataPoint: string, label: 
     converter?: number;
     values?: string[];
 }): CharacteristicDefinition;
+declare function iconIdField(managementPoint: string, propertyKey: string, label?: string): CharacteristicDefinition;
 declare function sensoryTemperature(managementPoint: string, dataPointPath: string, label: string, propertyKey: string, opts?: {
     minValue?: number;
     maxValue?: number;
@@ -36,5 +37,6 @@ declare function gatewayDiagnosticsPack(): CharacteristicDefinition[];
 declare function demandControlPack(managementPoint: string): CharacteristicDefinition[];
 declare function auxiliaryUnitPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[];
 declare function auxiliaryUnitInfoPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[];
+declare function hydroAndUiInfoPack(managementPoint: string, labelPrefix: string): CharacteristicDefinition[];
 declare function zoneStatusPack(managementPoint: string, labelPrefix: string, keySuffix: string): CharacteristicDefinition[];
-export { standardGatewayDeviceInfo, dualZoneDeviceInfo, multiZoneDeviceInfo, consumptionPack, stateBool, stringField, sensoryTemperature, sensoryHumidity, operationModeClimate, temperatureControlRoom, temperatureControlLeavingWater, temperatureControlLeavingWaterOffset, temperatureControlDhw, fanClimatePack, powerfulModeClimate, demandControlPack, gatewayDiagnosticsPack, auxiliaryUnitPack, auxiliaryUnitInfoPack, zoneStatusPack, };
+export { standardGatewayDeviceInfo, dualZoneDeviceInfo, multiZoneDeviceInfo, consumptionPack, stateBool, stringField, iconIdField, sensoryTemperature, sensoryHumidity, operationModeClimate, temperatureControlRoom, temperatureControlLeavingWater, temperatureControlLeavingWaterOffset, temperatureControlDhw, fanClimatePack, powerfulModeClimate, demandControlPack, gatewayDiagnosticsPack, auxiliaryUnitPack, auxiliaryUnitInfoPack, hydroAndUiInfoPack, zoneStatusPack, };

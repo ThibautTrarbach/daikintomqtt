@@ -53,6 +53,7 @@ function buildMainZoneCharacteristics() {
         (0, catalog_1.temperatureControlLeavingWater)(MAIN_MP, `${prefix} Leaving Water Control`, '_temperatureControlWaterMain'),
         (0, catalog_1.temperatureControlLeavingWaterOffset)(MAIN_MP, `${prefix} Leaving Water Offset Control`, '_temperatureControlWaterOffsetMain'),
         ...(0, catalog_1.consumptionPack)(MAIN_MP, `${prefix} `, 'Main'),
+        (0, catalog_1.iconIdField)(MAIN_MP, '_iconIdMain', `${prefix} Icon ID`),
     ];
 }
 function buildTankZoneCharacteristics() {
@@ -108,6 +109,7 @@ function buildTankZoneCharacteristics() {
         (0, catalog_1.temperatureControlDhw)(TANK_MP, `${prefix} Domestic Water Temperature`, '_domesticHotWaterTemperatureTank', {
             fixedHeatingPath: true,
         }),
+        (0, catalog_1.iconIdField)(TANK_MP, '_iconIdTank', `${prefix} Icon ID`),
     ];
 }
 function buildMultiZoneCharacteristics() {
@@ -124,7 +126,7 @@ function appendMultiZoneDeviceSpecificCharacteristics(device, chars) {
     ];
     for (const [managementPoint, label] of infoOnlyUnits) {
         if (managementPoint in device.managementPoints) {
-            chars.push(...(0, catalog_1.auxiliaryUnitInfoPack)(managementPoint, label));
+            chars.push(...(0, catalog_1.hydroAndUiInfoPack)(managementPoint, label));
         }
     }
     if ('outdoorUnit' in device.managementPoints) {
