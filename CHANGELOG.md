@@ -18,6 +18,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `iconId` mappings are read-only everywhere (including C4x); API-settable identity `name`/`iconId` leaves use `SETTABLE_MISMATCH_EXCEPTIONS`
 
+### Fixed
+
+- `APP_VERSION` / debug `daemonVersion`: resolve `package.json` correctly on release-* layout (was reading a parent file → `1.0.0`)
+
 ---
 
 ## [2.1.8] - 2026-09-07

@@ -18,6 +18,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 - Mappings `iconId` en lecture seule partout (y compris C4x) ; leaves d’identité `name`/`iconId` settables côté API via `SETTABLE_MISMATCH_EXCEPTIONS`
 
+### Corrigé
+
+- `APP_VERSION` / `daemonVersion` du rapport de debug : résolution correcte de `package.json` sur le layout release-* (lisait un fichier parent → `1.0.0`)
+
 ---
 
 ## [2.1.8] - 2026-09-07
