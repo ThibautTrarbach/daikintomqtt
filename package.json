@@ -1,6 +1,6 @@
 {
   "name": "daikin2mqtt",
-  "version": "2.1.9",
+  "version": "2.1.10",
   "description": "",
   "main": "daikinToMQTT.js",
   "scripts": {

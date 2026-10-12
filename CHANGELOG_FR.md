@@ -6,6 +6,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ## [Unreleased]
 
+---
+
+## [2.1.10] - 2026-10-12
+
 ### Modifié
 
 - Mise à jour des dépendances runtime/dev dans les contraintes Node >= 20 (`js-yaml` 5, `uuid` 14, `ts-morph` 28, plus mqtt/zod/winston/cache-manager et correctifs/mineurs associés) ; conservation de `openid-client` 5 et TypeScript 5.9
