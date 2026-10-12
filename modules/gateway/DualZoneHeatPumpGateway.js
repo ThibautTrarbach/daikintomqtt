@@ -9,6 +9,9 @@ function buildHeatPumpZone1Characteristics(extended) {
     const MP = '1';
     const prefix = '1 - ';
     const chars = [
+        (0, catalog_1.stringField)(MP, 'name', `${prefix}Name`, {
+            propertyKey: '_name1',
+        }),
         ...(0, catalog_1.zoneStatusPack)(MP, prefix.trim(), '1'),
     ];
     if (extended) {
@@ -30,7 +33,7 @@ function buildHeatPumpZone1Characteristics(extended) {
         converter: typeConstants_1.converterEnum.string,
     }));
     if (extended) {
-        chars.push((0, catalog_1.sensoryTemperature)(MP, '/roomTemperature', `${prefix}Room Temperature`, '_roomTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/outdoorTemperature', `${prefix}Outdoor Temperature`, '_outdoorTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/leavingWaterTemperature', `${prefix}Leaving Water Temperature`, '_leavingWaterTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/leavingWaterOffset', `${prefix}Leaving Water Offset`, '_leavingWaterOffset1'), (0, catalog_1.temperatureControlRoom)(MP, `${prefix}Temperature Control`, '_temperatureControl1'), {
+        chars.push((0, catalog_1.sensoryTemperature)(MP, '/roomTemperature', `${prefix}Room Temperature`, '_roomTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/outdoorTemperature', `${prefix}Outdoor Temperature`, '_outdoorTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/leavingWaterTemperature', `${prefix}Leaving Water Temperature`, '_leavingWaterTemperature1'), (0, catalog_1.sensoryTemperature)(MP, '/leavingWaterOffset', `${prefix}Leaving Water Offset`, '_leavingWaterOffset1'), (0, catalog_1.temperatureControlRoom)(MP, `${prefix}Temperature Control`, '_temperatureControl1'), (0, catalog_1.temperatureControlLeavingWaterOffset)(MP, `${prefix}Leaving Water Offset Control`, '_temperatureControlWaterOffset1'), {
             propertyKey: '_targetTemperature1',
             daikin: {
                 managementPoint: MP,
@@ -58,6 +61,12 @@ function buildDhwZone2Characteristics() {
     const MP = '2';
     const prefix = '2 - ';
     return [
+        (0, catalog_1.stringField)(MP, 'name', `${prefix}Name`, {
+            propertyKey: '_name2',
+        }),
+        (0, catalog_1.stringField)(MP, 'errorCode', `${prefix}Error Code`, {
+            propertyKey: '_errorCode2',
+        }),
         ...(0, catalog_1.zoneStatusPack)(MP, prefix.trim(), '2'),
         (0, catalog_1.stateBool)(MP, 'onOffMode', `${prefix}State`, {
             settable: true,
@@ -71,6 +80,9 @@ function buildDhwZone2Characteristics() {
             settable: true,
             generic_type: 'ENERGY_STATE',
             propertyKey: '_powerfulMode',
+        }),
+        (0, catalog_1.stateBool)(MP, 'isPowerfulModeActive', `${prefix}Powerful Mode Active`, {
+            propertyKey: '_isPowerfulModeActive2',
         }),
         (0, catalog_1.stringField)(MP, 'heatupMode', ' 2 - Heatup Mode', {
             propertyKey: '_heatupMode2',
@@ -90,15 +102,37 @@ function buildDualZoneCharacteristics(opts) {
         ...buildDhwZone2Characteristics(),
     ];
 }
+function appendDualZoneDeviceSpecificCharacteristics(device, chars) {
+    const GATEWAY_MP = '0';
+    chars.push((0, catalog_1.stateBool)(GATEWAY_MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', {
+        propertyKey: '_gatewayFirmwareUpdateSupported',
+    }), (0, catalog_1.stringField)(GATEWAY_MP, 'errorCode', 'Gateway Error Code', {
+        propertyKey: '_gatewayErrorCode',
+    }));
+    const infoUnits = [
+        ['3', 'Unit 3'],
+        ['4', 'Unit 4'],
+        ['5', 'Unit 5'],
+    ];
+    for (const [managementPoint, label] of infoUnits) {
+        if (managementPoint in device.managementPoints) {
+            chars.push(...(0, catalog_1.auxiliaryUnitInfoPack)(managementPoint, label));
+        }
+    }
+}
 class BRP069A61 extends AbstractGateway_1.AbstractGateway {
     constructor(device) {
-        super(device, buildDualZoneCharacteristics({ zone1Extended: false }), (0, catalog_1.dualZoneDeviceInfo)());
+        const chars = buildDualZoneCharacteristics({ zone1Extended: false });
+        appendDualZoneDeviceSpecificCharacteristics(device, chars);
+        super(device, chars, (0, catalog_1.dualZoneDeviceInfo)());
     }
 }
 exports.BRP069A61 = BRP069A61;
 class BRP069A62 extends AbstractGateway_1.AbstractGateway {
     constructor(device) {
-        super(device, buildDualZoneCharacteristics({ zone1Extended: true }), (0, catalog_1.dualZoneDeviceInfo)());
+        const chars = buildDualZoneCharacteristics({ zone1Extended: true });
+        appendDualZoneDeviceSpecificCharacteristics(device, chars);
+        super(device, chars, (0, catalog_1.dualZoneDeviceInfo)());
     }
 }
 exports.BRP069A62 = BRP069A62;

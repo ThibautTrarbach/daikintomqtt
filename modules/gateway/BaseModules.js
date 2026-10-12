@@ -178,6 +178,19 @@ function createDeviceInfo(device, gatewayClass) {
             catch {
             }
         }
+        for (const field of ['ipAddress', 'macAddress']) {
+            if (gatewayClass[key1][field]) {
+                continue;
+            }
+            try {
+                const extra = device.getData('0', field, undefined);
+                if (extra?.value !== undefined && extra?.value !== null) {
+                    gatewayClass[key1][field] = String(extra.value);
+                }
+            }
+            catch {
+            }
+        }
         try {
             gatewayClass[key1]['isCloudConnectionUp'] = device.isCloudConnectionUp() ? 'true' : 'false';
         }
