@@ -6,6 +6,10 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ## [Unreleased]
 
+### Corrigé
+
+- BRP069A62 / BRP069A61 : couverture API complète pour les management points numériques (diagnostics gateway `0`, identité zone/ballon, setpoint `leavingWaterOffset`, `isPowerfulModeActive`, infos unités auxiliaires MPs `3`–`5`)
+
 ---
 
 ## [2.1.9] - 2026-09-07
