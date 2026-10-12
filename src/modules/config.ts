@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import {Daikin2MQTT} from "../types";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import {validateConfig, ConfigValidationError} from "./configValidator";
 
 
