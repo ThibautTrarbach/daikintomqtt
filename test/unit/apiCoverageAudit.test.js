@@ -17,10 +17,12 @@ const { registerCharacteristics, registerDeviceMetadata } = require('../../dist/
 const {
 	gatewayDiagnosticsPack,
 	auxiliaryUnitPack,
+	auxiliaryUnitInfoPack,
 	hydroAndUiInfoPack,
 	iconIdField,
 	standardGatewayDeviceInfo,
 	multiZoneDeviceInfo,
+	dualZoneDeviceInfo,
 	fanClimatePack,
 	powerfulModeClimate,
 	demandControlPack,
@@ -34,7 +36,9 @@ const {
 	temperatureControlDhw,
 	temperatureControlLeavingWater,
 	temperatureControlLeavingWaterOffset,
+	zoneStatusPack,
 } = require('../../dist/modules/gateway/characteristics/catalog');
+const { converterEnum, typeEnum } = require('../../dist/modules/gateway/typeConstants');
 
 function leaf(value, settable = false) {
 	return { value, settable };
@@ -368,6 +372,95 @@ function createA78MockDevice() {
 	return createDeviceFromManagementPoints(managementPoints);
 }
 
+function createA62MockDevice() {
+	const managementPoints = {
+		'0': {
+			firmwareVersion: leaf(''),
+			isFirmwareUpdateSupported: leaf(false),
+			serialNumber: leaf('0000000000000001'),
+			modelInfo: leaf('BRP069A62'),
+			ipAddress: leaf('192.168.1.30'),
+			macAddress: leaf('AA:BB:CC:DD:EE:01'),
+			errorCode: leaf(''),
+			isInErrorState: leaf(false),
+		},
+		'1': {
+			name: leaf('Zone 1', true),
+			errorCode: leaf(''),
+			isHolidayModeActive: leaf(false),
+			isInErrorState: leaf(false),
+			isInWarningState: leaf(false),
+			isInInstallerState: leaf(false),
+			isInEmergencyState: leaf(false),
+			onOffMode: { value: 'on', settable: true, values: ['on', 'off'] },
+			setpointMode: { value: 'weatherDependent', settable: false, values: ['fixed', 'weatherDependent', 'weatherDependentHeatingFixedCooling'] },
+			controlMode: { value: 'leavingWaterTemperature', settable: false, values: ['roomTemperature', 'leavingWaterTemperature', 'externalRoomTemperature'] },
+			sensoryData: {
+				'': {
+					outdoorTemperature: leaf(8),
+					leavingWaterTemperature: leaf(35),
+				},
+			},
+			temperatureControl: {
+				'': {
+					operationModes: {
+						heating: {
+							setpoints: {
+								leavingWaterOffset: { value: 0, settable: true, minValue: -10, maxValue: 10, stepValue: 1 },
+							},
+						},
+					},
+				},
+			},
+			operationMode: { value: 'heating', settable: true, values: ['heating'] },
+			targetTemperature: { value: 0, settable: true, minValue: -10, maxValue: 10, stepValue: 1 },
+		},
+		'2': {
+			name: leaf('DHW Tank', true),
+			errorCode: leaf(''),
+			isHolidayModeActive: leaf(false),
+			isInErrorState: leaf(false),
+			isInWarningState: leaf(false),
+			isInInstallerState: leaf(false),
+			isInEmergencyState: leaf(false),
+			isPowerfulModeActive: leaf(false),
+			onOffMode: { value: 'on', settable: true, values: ['on', 'off'] },
+			powerfulMode: { value: 'off', settable: true, values: ['off', 'on'] },
+			heatupMode: { value: 'reheatOnly', settable: false, values: ['reheatOnly', 'scheduleOnly', 'reheatSchedule'] },
+			sensoryData: {
+				'': {
+					tankTemperature: leaf(45),
+				},
+			},
+			temperatureControl: {
+				'': {
+					operationModes: {
+						heating: {
+							setpoints: {
+								domesticHotWaterTemperature: { value: 50, settable: false, minValue: 30, maxValue: 65, stepValue: 1 },
+							},
+						},
+					},
+				},
+			},
+			operationMode: { value: 'heating', settable: false, values: ['heating'] },
+			setpointMode: { value: 'fixed', settable: false, values: ['fixed', 'weatherDependent'] },
+		},
+		'3': {
+			modelInfo: leaf('ETVZ16S23DA6V'),
+			softwareVersion: leaf('1.0.0'),
+		},
+		'4': {
+			softwareVersion: leaf('1.0.0'),
+		},
+		'5': {
+			softwareVersion: leaf('1.0.0'),
+		},
+	};
+
+	return createDeviceFromManagementPoints(managementPoints);
+}
+
 function createC4xGatewayMock() {
 	const gateway = {};
 	const MP = 'climateControl';
@@ -489,6 +582,99 @@ function createA78GatewayMock(device) {
 	return gateway;
 }
 
+function createA62GatewayMock(device) {
+	const gateway = {};
+	const MP1 = '1';
+	const MP2 = '2';
+	const prefix1 = '1 - ';
+	const prefix2 = '2 - ';
+	const chars = [
+		stringField(MP1, 'name', `${prefix1}Name`, { propertyKey: '_name1' }),
+		...zoneStatusPack(MP1, prefix1.trim(), '1'),
+		stringField(MP1, 'operationMode', `${prefix1}Operation Mode`, {
+			propertyKey: '_operationMode1',
+			settable: true,
+			values: ['heating'],
+		}),
+		stateBool(MP1, 'onOffMode', `${prefix1}State`, {
+			settable: true,
+			generic_type: 'ENERGY_STATE',
+			propertyKey: '_onOffMode1',
+		}),
+		stringField(MP1, 'setpointMode', `${prefix1}Setpoint Mode`, {
+			propertyKey: '_setpointMode1',
+			converter: converterEnum.string,
+		}),
+		stringField(MP1, 'controlMode', `${prefix1}Control Mode`, {
+			propertyKey: '_controlMode1',
+			converter: converterEnum.string,
+		}),
+		sensoryTemperature(MP1, '/roomTemperature', `${prefix1}Room Temperature`, '_roomTemperature1'),
+		sensoryTemperature(MP1, '/outdoorTemperature', `${prefix1}Outdoor Temperature`, '_outdoorTemperature1'),
+		sensoryTemperature(MP1, '/leavingWaterTemperature', `${prefix1}Leaving Water Temperature`, '_leavingWaterTemperature1'),
+		sensoryTemperature(MP1, '/leavingWaterOffset', `${prefix1}Leaving Water Offset`, '_leavingWaterOffset1'),
+		temperatureControlRoom(MP1, `${prefix1}Temperature Control`, '_temperatureControl1'),
+		temperatureControlLeavingWaterOffset(MP1, `${prefix1}Leaving Water Offset Control`, '_temperatureControlWaterOffset1'),
+		{
+			propertyKey: '_targetTemperature1',
+			daikin: {
+				managementPoint: MP1,
+				dataPoint: 'targetTemperature',
+				converter: converterEnum.numeric,
+			},
+			description: {
+				name: `${prefix1}Target Temperature`,
+				settable: true,
+				type: typeEnum.numeric,
+				unite: '°C',
+				minMaxValue: {
+					managementPoint: MP1,
+					dataPoint: 'targetTemperature',
+				},
+			},
+		},
+		stringField(MP2, 'name', `${prefix2}Name`, { propertyKey: '_name2' }),
+		stringField(MP2, 'errorCode', `${prefix2}Error Code`, { propertyKey: '_errorCode2' }),
+		...zoneStatusPack(MP2, prefix2.trim(), '2'),
+		stateBool(MP2, 'onOffMode', `${prefix2}State`, {
+			settable: true,
+			generic_type: 'ENERGY_STATE',
+			propertyKey: '_onOffMode2',
+		}),
+		stringField(MP2, 'operationMode', `${prefix2}Operation Mode`, { propertyKey: '_operationMode2' }),
+		stateBool(MP2, 'powerfulMode', `${prefix2}Powerful Mode`, {
+			settable: true,
+			generic_type: 'ENERGY_STATE',
+			propertyKey: '_powerfulMode',
+		}),
+		stateBool(MP2, 'isPowerfulModeActive', `${prefix2}Powerful Mode Active`, {
+			propertyKey: '_isPowerfulModeActive2',
+		}),
+		stringField(MP2, 'heatupMode', ' 2 - Heatup Mode', { propertyKey: '_heatupMode2' }),
+		sensoryTemperature(MP2, '/tankTemperature', `${prefix2}Tank Temperature`, '_tankTemperature2'),
+		temperatureControlDhw(MP2, `${prefix2}Temperature Control`, '_temperatureControl'),
+		stringField(MP2, 'setpointMode', `${prefix2}Setpoint Mode`, {
+			propertyKey: '_setpointMode2',
+			converter: converterEnum.string,
+		}),
+		...consumptionPack(MP2, prefix2, '2'),
+		stateBool('0', 'isFirmwareUpdateSupported', 'Firmware Update Supported', {
+			propertyKey: '_gatewayFirmwareUpdateSupported',
+		}),
+		stringField('0', 'errorCode', 'Gateway Error Code', {
+			propertyKey: '_gatewayErrorCode',
+		}),
+	];
+	for (const [managementPoint, label] of [['3', 'Unit 3'], ['4', 'Unit 4'], ['5', 'Unit 5']]) {
+		if (managementPoint in device.managementPoints) {
+			chars.push(...auxiliaryUnitInfoPack(managementPoint, label));
+		}
+	}
+	registerCharacteristics(gateway, chars);
+	registerDeviceMetadata(gateway, '_device', dualZoneDeviceInfo());
+	return gateway;
+}
+
 assert.equal(normalizeDatapointPath('//operationModes/heating'), '/operationModes/heating');
 assert.equal(
 	makeDatapointKey('climateControl', 'fanControl', '//operationModes/heating/fanSpeed/currentMode'),
@@ -524,6 +710,15 @@ assert.equal(
 	a78Coverage.configCoverage,
 	'complete',
 	`BRP069A78 expected complete coverage, unmapped: ${a78Coverage.unmappedDatapoints.join(', ')}; settableMismatches: ${JSON.stringify(a78Coverage.settableMismatches)}`,
+);
+
+const a62Device = createA62MockDevice();
+const a62Gateway = createA62GatewayMock(a62Device);
+const a62Coverage = auditApiCoverage(a62Device, a62Gateway);
+assert.equal(
+	a62Coverage.configCoverage,
+	'complete',
+	`BRP069A62 expected complete coverage, unmapped: ${a62Coverage.unmappedDatapoints.join(', ')}; settableMismatches: ${JSON.stringify(a62Coverage.settableMismatches)}`,
 );
 
 console.log('apiCoverageAudit.test.js: all tests passed');

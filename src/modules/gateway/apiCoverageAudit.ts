@@ -47,6 +47,8 @@ const EXTRA_DEVICE_DATAPOINTS: Array<[string, string, string | undefined]> = [
 	['gateway', 'ssid', undefined],
 	['gateway', 'ipAddress', undefined],
 	['gateway', 'macAddress', undefined],
+	['0', 'ipAddress', undefined],
+	['0', 'macAddress', undefined],
 	['indoorUnit', 'softwareVersion', undefined],
 ];
 
@@ -58,6 +60,8 @@ const SETTABLE_MISMATCH_EXCEPTIONS = new Set([
 	'climateControlMainZone/iconId',
 	'domesticHotWaterTank/name',
 	'domesticHotWaterTank/iconId',
+	'1/name',
+	'2/name',
 	'gateway/timeZone',
 	'gateway/name',
 	'gateway/iconId',

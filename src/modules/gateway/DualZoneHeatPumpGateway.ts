@@ -4,12 +4,14 @@ import { AbstractGateway } from './AbstractGateway';
 import { converterEnum, typeEnum } from './typeConstants';
 import { CharacteristicDefinition } from './metadataRegistry';
 import {
+	auxiliaryUnitInfoPack,
 	consumptionPack,
 	dualZoneDeviceInfo,
 	sensoryTemperature,
 	stateBool,
 	stringField,
 	temperatureControlDhw,
+	temperatureControlLeavingWaterOffset,
 	temperatureControlRoom,
 	zoneStatusPack,
 } from './characteristics/catalog';
@@ -22,6 +24,9 @@ function buildHeatPumpZone1Characteristics(extended: boolean): CharacteristicDef
 	const MP = '1';
 	const prefix = '1 - ';
 	const chars: CharacteristicDefinition[] = [
+		stringField(MP, 'name', `${prefix}Name`, {
+			propertyKey: '_name1',
+		}),
 		...zoneStatusPack(MP, prefix.trim(), '1'),
 	];
 
@@ -58,6 +63,7 @@ function buildHeatPumpZone1Characteristics(extended: boolean): CharacteristicDef
 			sensoryTemperature(MP, '/leavingWaterTemperature', `${prefix}Leaving Water Temperature`, '_leavingWaterTemperature1'),
 			sensoryTemperature(MP, '/leavingWaterOffset', `${prefix}Leaving Water Offset`, '_leavingWaterOffset1'),
 			temperatureControlRoom(MP, `${prefix}Temperature Control`, '_temperatureControl1'),
+			temperatureControlLeavingWaterOffset(MP, `${prefix}Leaving Water Offset Control`, '_temperatureControlWaterOffset1'),
 			{
 				propertyKey: '_targetTemperature1',
 				daikin: {
@@ -90,6 +96,12 @@ function buildDhwZone2Characteristics(): CharacteristicDefinition[] {
 	const MP = '2';
 	const prefix = '2 - ';
 	return [
+		stringField(MP, 'name', `${prefix}Name`, {
+			propertyKey: '_name2',
+		}),
+		stringField(MP, 'errorCode', `${prefix}Error Code`, {
+			propertyKey: '_errorCode2',
+		}),
 		...zoneStatusPack(MP, prefix.trim(), '2'),
 		stateBool(MP, 'onOffMode', `${prefix}State`, {
 			settable: true,
@@ -103,6 +115,9 @@ function buildDhwZone2Characteristics(): CharacteristicDefinition[] {
 			settable: true,
 			generic_type: 'ENERGY_STATE',
 			propertyKey: '_powerfulMode',
+		}),
+		stateBool(MP, 'isPowerfulModeActive', `${prefix}Powerful Mode Active`, {
+			propertyKey: '_isPowerfulModeActive2',
 		}),
 		stringField(MP, 'heatupMode', ' 2 - Heatup Mode', {
 			propertyKey: '_heatupMode2',
@@ -124,15 +139,45 @@ function buildDualZoneCharacteristics(opts: DualZoneOptions): CharacteristicDefi
 	];
 }
 
+function appendDualZoneDeviceSpecificCharacteristics(
+	device: DaikinCloudDevice,
+	chars: CharacteristicDefinition[],
+): void {
+	const GATEWAY_MP = '0';
+	chars.push(
+		stateBool(GATEWAY_MP, 'isFirmwareUpdateSupported', 'Firmware Update Supported', {
+			propertyKey: '_gatewayFirmwareUpdateSupported',
+		}),
+		stringField(GATEWAY_MP, 'errorCode', 'Gateway Error Code', {
+			propertyKey: '_gatewayErrorCode',
+		}),
+	);
+
+	const infoUnits: Array<[string, string]> = [
+		['3', 'Unit 3'],
+		['4', 'Unit 4'],
+		['5', 'Unit 5'],
+	];
+	for (const [managementPoint, label] of infoUnits) {
+		if (managementPoint in device.managementPoints) {
+			chars.push(...auxiliaryUnitInfoPack(managementPoint, label));
+		}
+	}
+}
+
 export class BRP069A61 extends AbstractGateway implements ClassModule {
 	constructor(device: DaikinCloudDevice) {
-		super(device, buildDualZoneCharacteristics({ zone1Extended: false }), dualZoneDeviceInfo());
+		const chars = buildDualZoneCharacteristics({ zone1Extended: false });
+		appendDualZoneDeviceSpecificCharacteristics(device, chars);
+		super(device, chars, dualZoneDeviceInfo());
 	}
 }
 
 export class BRP069A62 extends AbstractGateway implements ClassModule {
 	constructor(device: DaikinCloudDevice) {
-		super(device, buildDualZoneCharacteristics({ zone1Extended: true }), dualZoneDeviceInfo());
+		const chars = buildDualZoneCharacteristics({ zone1Extended: true });
+		appendDualZoneDeviceSpecificCharacteristics(device, chars);
+		super(device, chars, dualZoneDeviceInfo());
 	}
 }
 

@@ -8,6 +8,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [2.1.10] - 2026-10-12
+
+### Changed
+
+- Bump runtime/dev dependencies within Node >= 20 constraints (`js-yaml` 5, `uuid` 14, `ts-morph` 28, plus mqtt/zod/winston/cache-manager and related patch/minor updates); keep `openid-client` 5 and TypeScript 5.9
+
+### Fixed
+
+- BRP069A62 / BRP069A61: complete API coverage for numeric management points (gateway `0` diagnostics, zone/tank identity, `leavingWaterOffset` setpoint, `isPowerfulModeActive`, auxiliary unit info on MPs `3`–`5`)
+
+---
+
 ## [2.1.9] - 2026-09-07
 
 ### Added

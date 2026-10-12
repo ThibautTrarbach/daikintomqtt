@@ -167,6 +167,22 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 				// optional fields
 			}
 		}
+		// Dual-zone gateways (A61/A62) expose IP/MAC on management point "0"
+		for (const field of ['ipAddress', 'macAddress'] as const) {
+			// @ts-ignore
+			if (gatewayClass[key1][field]) {
+				continue;
+			}
+			try {
+				const extra = device.getData('0', field, undefined);
+				if (extra?.value !== undefined && extra?.value !== null) {
+					// @ts-ignore
+					gatewayClass[key1][field] = String(extra.value);
+				}
+			} catch {
+				// optional fields
+			}
+		}
 		try {
 			// @ts-ignore
 			gatewayClass[key1]['isCloudConnectionUp'] = device.isCloudConnectionUp() ? 'true' : 'false';
