@@ -60,7 +60,7 @@ By default Daikin2MQTT expects its configuration in the `config` directory locat
     - `enabled`: if `true`, Home Assistant MQTT discovery will be used
     - `discoveryPrefix`: MQTT discovery prefix (default `homeassistant`)
 - `daikin`
-  - `authMode`: `developer_portal` (default, 200 req/day) or `mobile_app` (recommended, 3000 req/day + WebSocket)
+  - `authMode`: `developer_portal` (default, 200 req/day), `mobile_app` (3000 req/day + WebSocket), or `local` (LAN only, no Onecta — requires `daikin.local.devices`)
   - **Developer Portal**: `clientID`, `clientSecret`, `clientURL`, `clientPort`
   - **Mobile App**: `email`, `password` (Onecta account), `enableWebSocket` (default `true`)
   - `httpTransport`: `node` (default) or `curl` (WAF workaround)

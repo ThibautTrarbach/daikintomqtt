@@ -32,7 +32,7 @@ integration:
     enabled: false # Activate the integration for Home Assistant via MQTT Discovery
     discoveryPrefix: 'homeassistant' # MQTT discovery prefix (default: homeassistant)
 daikin:
-  authMode: developer_portal # developer_portal | mobile_app (recommended for higher quota + WebSocket)
+  authMode: developer_portal # developer_portal | mobile_app (higher quota + WebSocket) | local (LAN only, no Onecta)
   # Developer Portal (OIDC)
   clientID: null # Client ID allowing connection to the Daikin Onecta Cloud
   clientSecret: null # Client Secret allowing connection to the Daikin Onecta cloud

@@ -13,10 +13,20 @@ Prefer the classic Daikin Online Controller HTTP API on the LAN when the gateway
 
 Protocol: plain HTTP port 80 (`/common/basic_info`, `/aircon/get_control_info`, `/aircon/set_control_info`, …) — same as the Jeedom plugin **DaikinOnlineCtrl**.
 
+## Modes
+
+| `daikin.authMode` | Cloud Onecta | LAN |
+|-------------------|--------------|-----|
+| `developer_portal` / `mobile_app` | yes | optional via `daikin.local` (hybrid) |
+| `local` | **no** — client not started | **required** — `daikin.local.devices` must list IPs |
+
+In `local` mode the daemon skips OAuth/mobile auth entirely and only talks HTTP to Online Controller modules.
+
 ## Config (`daikin.local`)
 
 ```yaml
 daikin:
+  authMode: local   # or developer_portal / mobile_app with local.enabled
   local:
     enabled: true
     timeoutMs: 5000
@@ -24,15 +34,15 @@ daikin:
     devices:
       - ip: "192.168.1.50"   # local-only (not on Onecta)
     overrides:
-      "<cloud-uuid>": "192.168.1.51"  # force LAN IP for a cloud device
+      "<cloud-uuid>": "192.168.1.51"  # force LAN IP for a cloud device (hybrid only)
 ```
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `enabled` | `false` | Master switch |
+| `enabled` | `false` | Master switch (forced `true` when `authMode: local`) |
 | `timeoutMs` | `5000` | HTTP timeout |
 | `probeIntervalMinutes` | `5` | Re-probe after hybrid LAN failure |
-| `devices` | `[]` | Local-only modules (manual IP) |
+| `devices` | `[]` | Local-only modules (manual IP); **required** if `authMode: local` |
 | `overrides` | `{}` | Cloud UUID → LAN IP |
 
 ## Behaviour

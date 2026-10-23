@@ -458,6 +458,33 @@ daikin:
 
 ---
 
+#### `daikin.authMode: authMode must be developer_portal, mobile_app, or local`
+
+**Cause**: Unsupported authentication mode.
+
+**Solution**:
+```yaml
+daikin:
+  authMode: local  # LAN only — no Onecta credentials
+```
+
+---
+
+#### `daikin.local.devices: At least one local device IP is required when authMode is local`
+
+**Cause**: `authMode: local` was set without any LAN module IP.
+
+**Solution**:
+```yaml
+daikin:
+  authMode: local
+  local:
+    devices:
+      - ip: "192.168.1.50"
+```
+
+---
+
 #### `daikin.local.enabled: Must be a boolean`
 
 **Cause**: `daikin.local.enabled` is not a boolean.

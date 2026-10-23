@@ -308,10 +308,10 @@ function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 	const errors: ValidationError[] = [];
 	const authMode = daikin.authMode ?? 'developer_portal';
 
-	if (authMode !== 'developer_portal' && authMode !== 'mobile_app') {
+	if (authMode !== 'developer_portal' && authMode !== 'mobile_app' && authMode !== 'local') {
 		errors.push({
 			field: 'daikin.authMode',
-			message: 'authMode must be developer_portal or mobile_app',
+			message: 'authMode must be developer_portal, mobile_app, or local',
 			value: authMode,
 		});
 		return errors;
@@ -351,6 +351,19 @@ function validateDaikinConfig(daikin: ConfigDaikin): ValidationError[] {
 
 	if (daikin.local !== undefined) {
 		errors.push(...validateDaikinLocalConfig(daikin.local));
+	}
+
+	if (authMode === 'local') {
+		const localDevices = daikin.local?.devices;
+		const hasDevices = Array.isArray(localDevices) && localDevices.length > 0;
+		if (!hasDevices) {
+			errors.push({
+				field: 'daikin.local.devices',
+				message: 'At least one local device IP is required when authMode is local',
+				value: localDevices,
+			});
+		}
+		return errors;
 	}
 
 	if (authMode === 'mobile_app') {

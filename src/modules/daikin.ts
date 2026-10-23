@@ -33,7 +33,9 @@ import {
 	attachLocalToCloudDevices,
 	getLocalDeviceRegistry,
 	initLocalDeviceRegistry,
+	isLocalOnlyAuthMode,
 	loadLocalOnlyDevices,
+	resolveLocalConfig,
 } from "./local";
 
 function isAuthFailure(error: unknown): boolean {
@@ -142,6 +144,12 @@ async function queueDeviceCommand(device: DaikinCloudDevice, eventData: Record<s
 async function loadDaikinAPI() {
 	const authMode = config.daikin.authMode ?? 'developer_portal';
 
+	if (isLocalOnlyAuthMode(authMode)) {
+		logger.info('[daikin.ts] => Local-only mode: Onecta cloud client disabled');
+		global.daikinClient = null as unknown as DaikinCloudController;
+		return;
+	}
+
 	if (authMode === AUTH_MODE_MOBILE_APP) {
 		if (!config.daikin.email || !config.daikin.password) {
 			logger.error('[daikin.ts] => Please set daikin.email and daikin.password for mobile_app auth mode');
@@ -154,7 +162,7 @@ async function loadDaikinAPI() {
 
 	/** Start Daikin Client **/
 	const daikinClient = new DaikinCloudController({
-		authMode,
+		authMode: authMode as 'developer_portal' | 'mobile_app',
 		oidcClientId: config.daikin.clientID,
 		oidcClientSecret: config.daikin.clientSecret,
 		oidcCallbackServerBindAddr: '0.0.0.0',
@@ -337,15 +345,49 @@ async function startDaikinAPI() {
 		logger.info("[daikin.ts] => Initializing system bridge");
 		await initializeSystemBridge([]);
 
-		initLocalDeviceRegistry(config.daikin?.local);
-		if (config.daikin?.local?.enabled) {
+		const localConfig = resolveLocalConfig(config.daikin);
+		initLocalDeviceRegistry(localConfig);
+		if (localConfig.enabled) {
 			logger.info("[daikin.ts] => Local LAN control enabled");
+		}
+
+		const authMode = config.daikin.authMode ?? 'developer_portal';
+
+		if (isLocalOnlyAuthMode(authMode)) {
+			logger.info("[daikin.ts] => Starting in local-only mode (no Onecta authentication)");
+			try {
+				devices = await getDevices(false, "startup_local_only");
+				if (!devices || devices.length === 0) {
+					logger.warn("[daikin.ts] => No local devices found — check daikin.local.devices IPs");
+					await updateSystemBridge(null, []);
+					return;
+				}
+				logger.info(`[daikin.ts] => Found ${devices.length} local device(s)`);
+				await subscribeDevices(devices);
+				await generateConfig(devices);
+				await sendDevice(devices, false, "startup_initial_send");
+				await updateSystemBridge(null, devices);
+				logger.info("[daikin.ts] => Local-only Daikin API started successfully");
+				setMqttRepublishHandler(async () => {
+					const cachedDevices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
+					const locals = (await cache.get('localOnlyDevices')) as DaikinCloudDevice[] | undefined;
+					const list = [...(cachedDevices ?? []), ...(locals ?? [])];
+					const byId = new Map(list.map((d) => [d.getId(), d]));
+					if (byId.size) {
+						await sendDevice(Array.from(byId.values()), false, 'mqtt_reconnect_republish');
+					}
+					await updateSystemBridge();
+				});
+			} catch (localError) {
+				logger.error(`[daikin.ts] => Local-only startup error: ${localError instanceof Error ? localError.message : String(localError)}`);
+				await updateSystemBridge(null, devices || []);
+			}
+			return;
 		}
 		
 		// Check if token exists / authenticate mobile app
 		const tokenPath = getTokenFilePath();
 		const tokenExists = fs.existsSync(tokenPath);
-		const authMode = config.daikin.authMode ?? 'developer_portal';
 
 		if (authMode === AUTH_MODE_MOBILE_APP) {
 			if (!daikinClient.isAuthenticated()) {
@@ -881,7 +923,7 @@ async function generateConfig(devices: DaikinCloudDevice[]) {
  * Attach LAN transport to compatible cloud devices and merge local-only modules.
  */
 async function mergeLocalDevices(devices: DaikinCloudDevice[]): Promise<DaikinCloudDevice[]> {
-	const registry = getLocalDeviceRegistry() ?? initLocalDeviceRegistry(config.daikin?.local);
+	const registry = getLocalDeviceRegistry() ?? initLocalDeviceRegistry(resolveLocalConfig(config.daikin));
 	if (!registry.enabled) {
 		return devices;
 	}
@@ -918,6 +960,13 @@ async function mergeLocalDevices(devices: DaikinCloudDevice[]): Promise<DaikinCl
  */
 async function getDevices(force: boolean = false, reason: string = "unspecified"): Promise<DaikinCloudDevice[]> {
 	try {
+		if (isLocalOnlyAuthMode(config.daikin?.authMode)) {
+			logger.debug(`[daikin.ts] => getDevices (reason: ${reason}) — local-only mode, skipping cloud`);
+			const locals = await mergeLocalDevices([]);
+			await cache.set('devices', locals, DEVICE_CACHE_TTL_MS);
+			return locals;
+		}
+
 		const devices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
 		
 		if (devices === undefined || force) {

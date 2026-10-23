@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - Local LAN control for Online Controller modules (`BRP069A42` / `A43` / `B41`): prefer HTTP LAN when reachable, fall back to Onecta cloud
+- `authMode: local` — run without Onecta (MQTT + LAN devices only; no cloud client)
 - Config `daikin.local` (`enabled`, `timeoutMs`, `probeIntervalMinutes`, `devices`, `overrides`)
 - MQTT `_device.accessMode` (`cloud` | `local` | `hybrid`) and `_device.controlPath` (`local` | `cloud` | `degraded_cloud`)
 - Guide `docs/workflows/local-control.md`

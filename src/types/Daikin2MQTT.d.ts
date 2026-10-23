@@ -91,7 +91,7 @@ export interface ConfigDaikinLocal {
 }
 
 export interface ConfigDaikin {
-	authMode?: 'developer_portal' | 'mobile_app'
+	authMode?: 'developer_portal' | 'mobile_app' | 'local'
 	clientSecret?: string
 	clientID?: string
 	clientURL?: string
