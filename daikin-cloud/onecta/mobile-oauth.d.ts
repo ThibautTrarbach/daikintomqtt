@@ -1,0 +1,34 @@
+import type { MobileClientConfig, OAuthProvider, TokenSet } from '../types';
+export declare class DaikinMobileOAuth implements OAuthProvider {
+    private readonly config;
+    private readonly onTokenUpdate?;
+    private readonly onError?;
+    private readonly onLog?;
+    private tokenSet;
+    private refreshPromise;
+    private cookies;
+    private pendingOAuthState;
+    constructor(config: MobileClientConfig, onTokenUpdate?: ((tokenSet: TokenSet) => void) | undefined, onError?: ((error: Error) => void) | undefined, onLog?: ((message: string) => void) | undefined);
+    authenticate(): Promise<TokenSet>;
+    refreshToken(): Promise<TokenSet>;
+    getAccessToken(): Promise<string>;
+    isAuthenticated(): boolean;
+    getTokenSet(): TokenSet | null;
+    clearTokens(): void;
+    private performRefresh;
+    private setTokenSet;
+    private generatePKCE;
+    private get gigyaPostHeaders();
+    private get gigyaSdkParams();
+    private extractLoginToken;
+    private getOidcContext;
+    private initGigyaSdk;
+    private generateRiskContext;
+    private gigyaLogin;
+    private completePendingRegistration;
+    private authorizeWithToken;
+    private exchangeCodeForTokens;
+    private parseJsonResponse;
+    private sleep;
+    private httpsRequest;
+}
