@@ -458,6 +458,75 @@ daikin:
 
 ---
 
+#### `daikin.local.enabled: Must be a boolean`
+
+**Cause**: `daikin.local.enabled` is not a boolean.
+
+**Incorrect**:
+```yaml
+daikin:
+  local:
+    enabled: "yes"
+```
+
+**Solution**:
+```yaml
+daikin:
+  local:
+    enabled: true
+```
+
+---
+
+#### `daikin.local.timeoutMs: Must be between 500 and 30000 milliseconds`
+
+**Cause**: LAN HTTP timeout is out of range.
+
+**Solution**:
+```yaml
+daikin:
+  local:
+    timeoutMs: 5000
+```
+
+---
+
+#### `daikin.local.devices[n].ip: Must be a valid IPv4 address`
+
+**Cause**: A local-only device entry has an invalid IP.
+
+**Incorrect**:
+```yaml
+daikin:
+  local:
+    devices:
+      - ip: "printer.local"
+```
+
+**Solution**:
+```yaml
+daikin:
+  local:
+    devices:
+      - ip: "192.168.1.50"
+```
+
+---
+
+#### `daikin.local.overrides.<uuid>: Must be a valid IPv4 address`
+
+**Cause**: An IP override for a cloud device UUID is invalid.
+
+**Solution**:
+```yaml
+daikin:
+  local:
+    overrides:
+      "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx": "192.168.1.51"
+```
+
+---
+
 ### 5. `mqtt` Section
 
 #### `mqtt: The mqtt section is required`

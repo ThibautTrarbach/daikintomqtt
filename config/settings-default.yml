@@ -46,6 +46,14 @@ daikin:
   httpTransport: node # node | curl (curl if Node TLS is blocked by WAF)
   useMock: false # Use Daikin Mock API instead of production
   mockId: null # Mock device ID, e.g. air-to-air-dx23
+  # Local LAN control (Online Controller HTTP API — BRP069A42/A43/B41)
+  # Prefer local when model is whitelisted and IP is reachable; fall back to Onecta cloud on failure.
+  local:
+    enabled: false # Enable LAN control / local-only devices
+    timeoutMs: 5000 # HTTP timeout for LAN requests
+    probeIntervalMinutes: 5 # Re-probe LAN when previously unreachable (hybrid)
+    devices: [] # Local-only modules: [{ ip: "192.168.1.50" }]
+    overrides: {} # Optional IP override per cloud UUID: { "<uuid>": "192.168.1.51" }
 mqtt:
   host: "127.0.0.1" # MQTT broker IP address
   port: 1883 # MQTT broker port

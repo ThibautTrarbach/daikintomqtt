@@ -64,6 +64,13 @@ By default Daikin2MQTT expects its configuration in the `config` directory locat
   - **Developer Portal**: `clientID`, `clientSecret`, `clientURL`, `clientPort`
   - **Mobile App**: `email`, `password` (Onecta account), `enableWebSocket` (default `true`)
   - `httpTransport`: `node` (default) or `curl` (WAF workaround)
+  - `local` (optional LAN control for Online Controller modules BRP069A42/A43/B41):
+    - `enabled` (default `false`): prefer LAN when reachable, else Onecta cloud
+    - `timeoutMs` (default `5000`): LAN HTTP timeout
+    - `probeIntervalMinutes` (default `5`): re-probe after LAN failure (hybrid)
+    - `devices`: local-only modules `[{ ip: "192.168.1.50" }]`
+    - `overrides`: map cloud UUID → LAN IP
+    - See `docs/workflows/local-control.md`
 - `mqtt`
   - `host` and `port`: address of your MQTT broker
   - `auth`, `username`, `password`: MQTT authentication if required

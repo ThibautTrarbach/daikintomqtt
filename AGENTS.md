@@ -35,6 +35,7 @@ There is **no global `npm test` script**. See [docs/workflows/testing.md](docs/w
 | MQTT payload / Jeedom contract | `mqtt.ts`, `converter/jeedom.ts`, `CharacteristicWriter.ts` | [docs/workflows/mqtt-contract.md](docs/workflows/mqtt-contract.md) |
 | New config option | `config/settings-default.yml`, `configValidator.ts`, `types/Daikin2MQTT.d.ts` | [docs/workflows/add-config-option.md](docs/workflows/add-config-option.md) |
 | API quota / polling | `rateLimiter.ts`, `requestBudget.ts`, `cron.ts`, `actionRefresh.ts`, `writeQueue.ts` | [docs/workflows/api-quota.md](docs/workflows/api-quota.md) |
+| Local LAN control | `src/modules/local/*`, `daikin.ts` merge | [docs/workflows/local-control.md](docs/workflows/local-control.md) |
 | Release | `package.json`, `CHANGELOG.md`, `CHANGELOG_FR.md` | [docs/workflows/release.md](docs/workflows/release.md) |
 | Architecture overview | — | [docs/architecture.md](docs/architecture.md) |
 

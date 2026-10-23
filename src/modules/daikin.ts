@@ -29,6 +29,12 @@ import { DEVICE_CACHE_TTL_MS } from "./constants";
 import { setMqttRepublishHandler } from "./mqtt";
 import { AuthenticationError } from "./errorHandler";
 import { beginShutdown, isShuttingDown } from "./shutdown";
+import {
+	attachLocalToCloudDevices,
+	getLocalDeviceRegistry,
+	initLocalDeviceRegistry,
+	loadLocalOnlyDevices,
+} from "./local";
 
 function isAuthFailure(error: unknown): boolean {
 	if (error instanceof AuthenticationError) {
@@ -330,6 +336,11 @@ async function startDaikinAPI() {
 		// Always initialize system bridge first, even if API is not connected
 		logger.info("[daikin.ts] => Initializing system bridge");
 		await initializeSystemBridge([]);
+
+		initLocalDeviceRegistry(config.daikin?.local);
+		if (config.daikin?.local?.enabled) {
+			logger.info("[daikin.ts] => Local LAN control enabled");
+		}
 		
 		// Check if token exists / authenticate mobile app
 		const tokenPath = getTokenFilePath();
@@ -867,6 +878,40 @@ async function generateConfig(devices: DaikinCloudDevice[]) {
 }
 
 /**
+ * Attach LAN transport to compatible cloud devices and merge local-only modules.
+ */
+async function mergeLocalDevices(devices: DaikinCloudDevice[]): Promise<DaikinCloudDevice[]> {
+	const registry = getLocalDeviceRegistry() ?? initLocalDeviceRegistry(config.daikin?.local);
+	if (!registry.enabled) {
+		return devices;
+	}
+
+	await attachLocalToCloudDevices(devices, registry);
+
+	let localOnly = (await cache.get('localOnlyDevices')) as DaikinCloudDevice[] | undefined;
+	const pending = registry.getPendingLocalIps();
+	if (pending.length > 0) {
+		const newly = await loadLocalOnlyDevices(registry);
+		const byId = new Map<string, DaikinCloudDevice>();
+		for (const d of localOnly ?? []) {
+			byId.set(d.getId(), d);
+		}
+		for (const d of newly) {
+			byId.set(d.getId(), d);
+		}
+		localOnly = Array.from(byId.values());
+		await cache.set('localOnlyDevices', localOnly, DEVICE_CACHE_TTL_MS);
+	}
+
+	const cloudIds = new Set(devices.map((d) => d.getId()));
+	const extras = (localOnly ?? []).filter((d) => !cloudIds.has(d.getId()));
+	if (extras.length > 0) {
+		logger.info(`[daikin.ts] => Merged ${extras.length} local-only device(s)`);
+	}
+	return [...devices, ...extras];
+}
+
+/**
  * Returns the list of Daikin cloud devices, using the cache when possible.
  * When force=true or the cache is missing, it calls the Daikin cloud API
  * and updates the cache, with rate-limit aware retry logic.
@@ -879,7 +924,7 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 			if (force && !(await canRefresh(reason))) {
 				if (devices && devices.length > 0) {
 					logger.warn(`[daikin.ts] => Refresh blocked by API budget (${reason}), using cache (${devices.length} device(s))`);
-					return devices;
+					return mergeLocalDevices(devices);
 				}
 				throw new Error(`API refresh blocked by budget (${reason})`);
 			}
@@ -971,7 +1016,7 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 					}
 				}
 				
-				return freshDevices;
+				return mergeLocalDevices(freshDevices);
 			} catch (cloudError) {
 				const errorMessage = cloudError instanceof Error ? cloudError.message : String(cloudError);
 				const errorString = String(cloudError);
@@ -1023,7 +1068,13 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 				// If we have cached devices and it's not a forced refresh, return cache
 				if (devices && devices.length > 0 && !force) {
 					logger.warn(`[daikin.ts] => Using cached devices due to cloud error`);
-					return devices;
+					return mergeLocalDevices(devices);
+				}
+				// Cloud failed: still try local-only devices
+				const localFallback = await mergeLocalDevices([]);
+				if (localFallback.length > 0) {
+					logger.warn(`[daikin.ts] => Cloud unavailable — continuing with ${localFallback.length} local device(s)`);
+					return localFallback;
 				}
 				throw cloudError;
 			}
@@ -1031,7 +1082,7 @@ async function getDevices(force: boolean = false, reason: string = "unspecified"
 			logger.debug(`[daikin.ts] => Using cache (${devices.length} device(s))`);
 		}
 		
-		return devices || [];
+		return mergeLocalDevices(devices || []);
 	} catch (error) {
 		logger.error(`[daikin.ts] => Critical error retrieving devices: ${error instanceof Error ? error.message : String(error)}`);
 		if (error instanceof Error && error.stack) {

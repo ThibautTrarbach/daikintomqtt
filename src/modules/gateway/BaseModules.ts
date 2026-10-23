@@ -189,6 +189,30 @@ function createDeviceInfo(device: any, gatewayClass: Gateways) {
 		} catch {
 			// optional
 		}
+		try {
+			const localMeta = (device as any).__daikinLocalMeta as
+				| { accessMode?: string; controlPath?: string }
+				| undefined;
+			if (localMeta?.accessMode) {
+				// @ts-ignore
+				gatewayClass[key1]['accessMode'] = localMeta.accessMode;
+			} else {
+				// @ts-ignore
+				gatewayClass[key1]['accessMode'] = 'cloud';
+			}
+			if (localMeta?.controlPath) {
+				// @ts-ignore
+				gatewayClass[key1]['controlPath'] = localMeta.controlPath;
+			} else {
+				// @ts-ignore
+				gatewayClass[key1]['controlPath'] = 'cloud';
+			}
+		} catch {
+			// @ts-ignore
+			gatewayClass[key1]['accessMode'] = 'cloud';
+			// @ts-ignore
+			gatewayClass[key1]['controlPath'] = 'cloud';
+		}
 	})
 }
 

@@ -6,6 +6,13 @@ Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/)
 
 ## [Unreleased]
 
+### Ajouté
+
+- Contrôle LAN local pour modules Online Controller (`BRP069A42` / `A43` / `B41`) : priorité HTTP local si joignable, sinon cloud Onecta
+- Config `daikin.local` (`enabled`, `timeoutMs`, `probeIntervalMinutes`, `devices`, `overrides`)
+- MQTT `_device.accessMode` (`cloud` | `local` | `hybrid`) et `_device.controlPath` (`local` | `cloud` | `degraded_cloud`)
+- Guide `docs/workflows/local-control.md`
+
 ---
 
 ## [2.1.10] - 2026-10-12

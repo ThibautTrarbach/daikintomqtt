@@ -74,6 +74,22 @@ export interface ConfigHomeAssistant {
 	discoveryPrefix?: string
 }
 
+export type DeviceAccessMode = 'cloud' | 'local' | 'hybrid'
+export type DeviceControlPath = 'local' | 'cloud' | 'degraded_cloud'
+
+export interface ConfigDaikinLocalDevice {
+	ip: string
+}
+
+export interface ConfigDaikinLocal {
+	enabled?: boolean
+	timeoutMs?: number
+	probeIntervalMinutes?: number
+	devices?: ConfigDaikinLocalDevice[]
+	/** Map cloud device UUID → LAN IP override */
+	overrides?: Record<string, string>
+}
+
 export interface ConfigDaikin {
 	authMode?: 'developer_portal' | 'mobile_app'
 	clientSecret?: string
@@ -87,6 +103,7 @@ export interface ConfigDaikin {
 	httpTransport?: 'node' | 'curl'
 	useMock?: boolean
 	mockId?: string | null
+	local?: ConfigDaikinLocal
 }
 
 export interface ConfigMQTT {
@@ -171,6 +188,10 @@ export interface DevicesInformation {
 	supportMessage?: string
 	debugReport?: string
 	githubIssueUrl?: string
+	/** Capability: cloud-only, local-only, or both (Jeedom badge) */
+	accessMode?: DeviceAccessMode
+	/** Active control path used by the daemon */
+	controlPath?: DeviceControlPath
 }
 
 export interface ClassModule {

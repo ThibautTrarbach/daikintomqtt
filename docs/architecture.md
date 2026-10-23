@@ -23,6 +23,10 @@ flowchart TB
     J --> K[OnectaClient / MobileOAuth / WebSocket]
     J --> L[DaikinCloudDevice]
   end
+  subgraph lan [Local LAN optional]
+    L --> LT[localTransport prefer LAN]
+    LT --> LH[LocalHttpClient Online Controller]
+  end
   subgraph gw [Gateway layer]
     H --> M[getModels / instantiateGateway]
     M --> N[Static BRP069* / DynamicGateway]
@@ -31,9 +35,11 @@ flowchart TB
   end
   subgraph cmd [Incoming MQTT]
     Q["{topic}/{deviceId}/set"] --> R[applyGatewayEvents]
-    R --> S[CharacteristicWriter / cloud PATCH]
+    R --> S[CharacteristicWriter / LAN or cloud PATCH]
   end
 ```
+
+Local LAN details: [workflows/local-control.md](workflows/local-control.md).
 
 ## Startup sequence (`src/main.ts`)
 
