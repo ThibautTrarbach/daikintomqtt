@@ -1,14 +1,21 @@
 import cron, { ScheduledTask } from "node-cron";
-import {sendDevice} from "./daikin";
+import {refreshLocalDevices, sendDevice} from "./daikin";
 import {timeUpdateFallback, initActionRefreshOnBoot} from "./actionRefresh";
 import {canRefresh, getPollingIntervalMultiplier, incrementSkippedRefreshCount} from "./requestBudget";
+import {isLocalOnlyAuthMode, resolveLocalConfig} from "./local";
 
 let nextPollingAt = 0;
 let pausedNextPollingAt = 0;
 let pollingTimer: NodeJS.Timeout | null = null;
+let localPollingTimer: NodeJS.Timeout | null = null;
 let pollingPaused = false;
 let pollingPausedAt = 0;
 const scheduledCronTasks: ScheduledTask[] = [];
+
+function getLocalPollIntervalMs(): number {
+	const seconds = config.daikin?.local?.pollIntervalSeconds ?? 60;
+	return Math.max(5, Math.min(300, seconds)) * 1000;
+}
 
 /**
  * Determines if we are currently in night period
@@ -192,8 +199,47 @@ async function runEnergyStatsRefresh(): Promise<void> {
 	}
 }
 
+async function scheduleLocalPolling(): Promise<void> {
+	if (localPollingTimer) {
+		clearTimeout(localPollingTimer);
+	}
+
+	const intervalMs = getLocalPollIntervalMs();
+	localPollingTimer = setTimeout(async () => {
+		logger.info(`[cron.ts] => CRON - Local LAN Polling = START (interval ${intervalMs / 1000}s)`);
+		try {
+			await refreshLocalDevices('local_polling');
+			logger.info('[cron.ts] => CRON - Local LAN Polling = SUCCESS');
+		} catch (error) {
+			logger.error(
+				`[cron.ts] => CRON - Error during local LAN polling: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		} finally {
+			await scheduleLocalPolling();
+		}
+	}, intervalMs);
+}
+
 async function loadCron() {
 	try {
+		const localOnly = isLocalOnlyAuthMode(config.daikin?.authMode);
+		const localCfg = resolveLocalConfig(config.daikin);
+		const localPollEnabled = localCfg.enabled === true;
+
+		await initActionRefreshOnBoot();
+
+		if (localPollEnabled) {
+			const intervalSec = getLocalPollIntervalMs() / 1000;
+			logger.info(`[cron.ts] => Local LAN polling enabled (interval: ${intervalSec}s, no API quota)`);
+			await scheduleLocalPolling();
+		}
+
+		if (localOnly) {
+			logger.info('[cron.ts] => Local-only auth mode: cloud polling and energy-stats cron disabled');
+			logger.info('[cron.ts] => CRON system initialized successfully (LAN only)');
+			return;
+		}
+
 		if (!config.system.polling) {
 			config.system.polling = {
 				dayInterval: 15,
@@ -210,7 +256,7 @@ async function loadCron() {
 		const now = new Date();
 		const currentTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 		
-		logger.info("[cron.ts] => Dynamic polling configuration:");
+		logger.info("[cron.ts] => Dynamic cloud polling configuration:");
 		logger.info(`[cron.ts] =>   - Day interval: ${pollingConfig.dayInterval} minutes`);
 		logger.info(`[cron.ts] =>   - Night interval: ${pollingConfig.nightInterval} minutes`);
 		logger.info(`[cron.ts] =>   - Night period: ${pollingConfig.nightStart}h - ${pollingConfig.nightEnd}h`);
@@ -227,9 +273,8 @@ async function loadCron() {
 		logger.info(`[cron.ts] =>   - Command coalesce: ${config.system?.commandCoalesceMs ?? 400}ms`);
 		logger.info(`[cron.ts] =>   - Energy stats refresh: ${config.system?.energyStatsRefreshTime ?? '23:58'}`);
 		
-		await initActionRefreshOnBoot();
 		await scheduleNextPolling();
-		logger.info("[cron.ts] => Dynamic polling system started");
+		logger.info("[cron.ts] => Dynamic cloud polling system started");
 		
 		const energyTime = parseEnergyStatsCronTime();
 		const energyCron = `${energyTime.minute} ${energyTime.hour} * * *`;
@@ -264,6 +309,10 @@ function stopCronTasks(): void {
 	if (pollingTimer) {
 		clearTimeout(pollingTimer);
 		pollingTimer = null;
+	}
+	if (localPollingTimer) {
+		clearTimeout(localPollingTimer);
+		localPollingTimer = null;
 	}
 	for (const task of scheduledCronTasks) {
 		task.stop();

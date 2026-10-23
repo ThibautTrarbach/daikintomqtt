@@ -52,6 +52,7 @@ daikin:
     enabled: false # Enable LAN control / local-only devices
     timeoutMs: 5000 # HTTP timeout for LAN requests
     probeIntervalMinutes: 5 # Re-probe LAN when previously unreachable (hybrid)
+    pollIntervalSeconds: 60 # LAN state refresh interval (independent of cloud quota / 15–30 min polling)
     devices: [] # Local-only modules: [{ ip: "192.168.1.50" }]
     overrides: {} # Optional IP override per cloud UUID: { "<uuid>": "192.168.1.51" }
 mqtt:

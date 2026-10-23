@@ -539,6 +539,22 @@ function validateDaikinLocalConfig(local: ConfigDaikinLocal): ValidationError[] 
 		}
 	}
 
+	if (local.pollIntervalSeconds !== undefined) {
+		if (typeof local.pollIntervalSeconds !== 'number' || !Number.isInteger(local.pollIntervalSeconds)) {
+			errors.push({
+				field: 'daikin.local.pollIntervalSeconds',
+				message: 'Must be an integer (seconds)',
+				value: local.pollIntervalSeconds,
+			});
+		} else if (local.pollIntervalSeconds < 5 || local.pollIntervalSeconds > 300) {
+			errors.push({
+				field: 'daikin.local.pollIntervalSeconds',
+				message: 'Must be between 5 and 300 seconds',
+				value: local.pollIntervalSeconds,
+			});
+		}
+	}
+
 	if (local.devices !== undefined) {
 		if (!Array.isArray(local.devices)) {
 			errors.push({

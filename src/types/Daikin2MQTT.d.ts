@@ -85,6 +85,8 @@ export interface ConfigDaikinLocal {
 	enabled?: boolean
 	timeoutMs?: number
 	probeIntervalMinutes?: number
+	/** LAN refresh interval in seconds (default 60, range 5–300); independent of cloud polling/quota */
+	pollIntervalSeconds?: number
 	devices?: ConfigDaikinLocalDevice[]
 	/** Map cloud device UUID → LAN IP override (empty YAML [] from PHP is normalized to {}) */
 	overrides?: Record<string, string> | unknown[]

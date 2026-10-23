@@ -68,6 +68,7 @@ By default Daikin2MQTT expects its configuration in the `config` directory locat
     - `enabled` (default `false`): prefer LAN when reachable, else Onecta cloud
     - `timeoutMs` (default `5000`): LAN HTTP timeout
     - `probeIntervalMinutes` (default `5`): re-probe after LAN failure (hybrid)
+    - `pollIntervalSeconds` (default `60`, range 5–300): LAN state refresh; independent of cloud polling/quota
     - `devices`: local-only modules `[{ ip: "192.168.1.50" }]`
     - `overrides`: map cloud UUID → LAN IP
     - See `docs/workflows/local-control.md`

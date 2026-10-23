@@ -31,6 +31,7 @@ daikin:
     enabled: true
     timeoutMs: 5000
     probeIntervalMinutes: 5
+    pollIntervalSeconds: 60   # LAN refresh; independent of cloud quota
     devices:
       - ip: "192.168.1.50"   # local-only (not on Onecta)
     overrides:
@@ -42,8 +43,23 @@ daikin:
 | `enabled` | `false` | Master switch (forced `true` when `authMode: local`) |
 | `timeoutMs` | `5000` | HTTP timeout |
 | `probeIntervalMinutes` | `5` | Re-probe after hybrid LAN failure |
+| `pollIntervalSeconds` | `60` | LAN state refresh interval (5–300); **no** Onecta quota |
 | `devices` | `[]` | Local-only modules (manual IP); **required** if `authMode: local` |
 | `overrides` | `{}` | Cloud UUID → LAN IP |
+
+## Polling: LAN vs cloud / quota
+
+Two independent timers:
+
+| Poller | Interval | Quota | What it does |
+|--------|----------|-------|--------------|
+| **Cloud** (`cron.ts`) | day/night 15–30 min | `canRefresh()` / Onecta headers | `getDevices(force)` + MQTT |
+| **LAN** (`scheduleLocalPolling`) | `pollIntervalSeconds` (default 60 s) | **none** | `device.updateData()` on `local`/`hybrid` with known IP, then MQTT |
+
+- Targets: devices whose meta `accessMode` is `local` or `hybrid` and that have an IP (`getDeviceLocalMeta`).
+- `authMode: local`: only the LAN poller runs (no cloud cron, no energy-stats cloud cron).
+- Hybrid with cloud quota exhausted: cloud poller skips; **LAN poller keeps running**.
+- Post-action / single-device refresh: LAN-capable devices skip `canRefresh` so writes are not blocked by API budget.
 
 ## Behaviour
 

@@ -31,6 +31,7 @@ import { AuthenticationError } from "./errorHandler";
 import { beginShutdown, isShuttingDown } from "./shutdown";
 import {
 	attachLocalToCloudDevices,
+	getDeviceLocalMeta,
 	getLocalDeviceRegistry,
 	initLocalDeviceRegistry,
 	isLocalOnlyAuthMode,
@@ -602,33 +603,99 @@ async function subscribeDevices(devices: DaikinCloudDevice[]) {
 	})
 }
 
+function isLanRefreshTarget(device: DaikinCloudDevice): boolean {
+	const meta = getDeviceLocalMeta(device);
+	if (!meta?.ip) {
+		return false;
+	}
+	return meta.accessMode === 'local' || meta.accessMode === 'hybrid';
+}
+
 /**
- * Refreshes a single device from cloud (GET /v1/gateway-devices/{id}) and publishes MQTT state.
+ * Refresh LAN-capable devices (local / hybrid with IP) via updateData + MQTT publish.
+ * Does not use Onecta canRefresh / API quota.
+ */
+async function refreshLocalDevices(reason: string = 'local_polling'): Promise<void> {
+	try {
+		const cloudOrMerged = (await cache.get('devices')) as DaikinCloudDevice[] | undefined;
+		const localOnly = (await cache.get('localOnlyDevices')) as DaikinCloudDevice[] | undefined;
+		const byId = new Map<string, DaikinCloudDevice>();
+		for (const d of cloudOrMerged ?? []) {
+			byId.set(d.getId(), d);
+		}
+		for (const d of localOnly ?? []) {
+			byId.set(d.getId(), d);
+		}
+
+		const targets = Array.from(byId.values()).filter(isLanRefreshTarget);
+		if (targets.length === 0) {
+			logger.debug(`[daikin.ts] => refreshLocalDevices (${reason}): no LAN targets`);
+			return;
+		}
+
+		logger.info(`[daikin.ts] => refreshLocalDevices (${reason}): ${targets.length} device(s)`);
+		for (const device of targets) {
+			const deviceId = device.getId();
+			try {
+				await device.updateData();
+				await cache.set(`device_${deviceId}`, device, DEVICE_CACHE_TTL_MS);
+				const gateway = getModels(device);
+				await publishToMQTT(deviceId, JSON.stringify(gateway));
+			} catch (deviceError) {
+				logger.warn(
+					`[daikin.ts] => LAN refresh failed for ${deviceId}: ${deviceError instanceof Error ? deviceError.message : String(deviceError)}`,
+				);
+			}
+		}
+
+		const allDevices = Array.from(byId.values());
+		await cache.set('devices', allDevices, DEVICE_CACHE_TTL_MS);
+		try {
+			await updateSystemBridge(null, allDevices);
+		} catch (bridgeError) {
+			logger.debug(
+				`[daikin.ts] => System bridge update after LAN refresh failed: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`,
+			);
+		}
+	} catch (error) {
+		logger.error(
+			`[daikin.ts] => refreshLocalDevices failed (${reason}): ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+}
+
+/**
+ * Refreshes a single device and publishes MQTT state.
+ * LAN-capable devices skip canRefresh; cloud-only still respects API budget.
  */
 async function refreshSingleDevice(deviceId: string, reason: string): Promise<boolean> {
 	try {
 		const devices = await cache.get('devices') as DaikinCloudDevice[] | undefined;
-		if (!devices?.length) {
-			return false;
-		}
-
-		const device = devices.find((dev) => dev.getId() === deviceId);
+		const localOnly = (await cache.get('localOnlyDevices')) as DaikinCloudDevice[] | undefined;
+		const device =
+			devices?.find((dev) => dev.getId() === deviceId) ??
+			localOnly?.find((dev) => dev.getId() === deviceId);
 		if (!device) {
 			return false;
 		}
 
-		if (!(await canRefresh(reason))) {
+		const lanTarget = isLanRefreshTarget(device);
+		if (!lanTarget && !(await canRefresh(reason))) {
 			return false;
 		}
 
-		logger.info(`[daikin.ts] => Partial refresh for device ${deviceId} (reason: ${reason})`);
+		logger.info(`[daikin.ts] => Partial refresh for device ${deviceId} (reason: ${reason}${lanTarget ? ', LAN' : ''})`);
 		await device.updateData();
-		await cache.set('devices', devices, DEVICE_CACHE_TTL_MS);
+		if (devices?.length) {
+			await cache.set('devices', devices, DEVICE_CACHE_TTL_MS);
+		}
 		await cache.set(`device_${deviceId}`, device, 10800000);
 
 		const gateway = getModels(device);
 		await publishToMQTT(deviceId, JSON.stringify(gateway));
-		await updateSystemBridge(null, devices);
+		if (devices?.length) {
+			await updateSystemBridge(null, devices);
+		}
 		return true;
 	} catch (error) {
 		logger.warn(`[daikin.ts] => Partial refresh failed for ${deviceId}, falling back to full refresh: ${error instanceof Error ? error.message : String(error)}`);
@@ -1320,6 +1387,7 @@ export {
 	subscribeDevices,
 	generateConfig,
 	sendDevice,
+	refreshLocalDevices,
 	startDaikinAPI,
 	getDevices,
 	updateSystemBridge,

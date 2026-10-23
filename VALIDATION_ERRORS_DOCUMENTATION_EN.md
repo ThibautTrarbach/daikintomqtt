@@ -518,6 +518,19 @@ daikin:
 
 ---
 
+#### `daikin.local.pollIntervalSeconds: Must be between 5 and 300 seconds`
+
+**Cause**: LAN polling interval is out of range.
+
+**Solution**:
+```yaml
+daikin:
+  local:
+    pollIntervalSeconds: 60
+```
+
+---
+
 #### `daikin.local.devices[n].ip: Must be a valid IPv4 address`
 
 **Cause**: A local-only device entry has an invalid IP.

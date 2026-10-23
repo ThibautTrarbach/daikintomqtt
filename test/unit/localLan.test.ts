@@ -1,5 +1,5 @@
 /**
- * Unit tests for LAN HTTP parse / compatibility / mapper.
+ * Unit tests for LAN HTTP parse / compatibility / mapper / poll config.
  * Run: npx ts-node test/unit/localLan.test.ts
  */
 
@@ -17,6 +17,8 @@ import {
 	docFanToCloud,
 	cloudFanToDoc,
 } from '../../src/modules/local/LanMapper';
+import { validateDaikinConfig } from '../../src/modules/configValidator';
+import { resolveLocalConfig } from '../../src/modules/local/localMode';
 
 let failed = 0;
 
@@ -98,6 +100,58 @@ function assertEqual(actual: unknown, expected: unknown, msg: string): void {
 		value: 'on',
 	});
 	assert(unmapped === null, 'powerfulMode not on LAN → null (cloud fallback)');
+}
+
+// --- pollIntervalSeconds default / bounds ---
+{
+	const resolved = resolveLocalConfig({
+		authMode: 'developer_portal',
+		local: { enabled: true },
+	});
+	assertEqual(resolved.pollIntervalSeconds, undefined, 'omit → undefined (runtime default 60)');
+	assertEqual(resolved.enabled, true, 'local.enabled respected in hybrid');
+}
+
+{
+	const baseLocal = {
+		authMode: 'local' as const,
+		local: {
+			enabled: true,
+			devices: [{ ip: '192.168.1.50' }],
+			pollIntervalSeconds: 60,
+		},
+	};
+	const ok = validateDaikinConfig(baseLocal);
+	assert(ok.length === 0, 'pollIntervalSeconds 60 accepted (default)');
+
+	const low = validateDaikinConfig({
+		...baseLocal,
+		local: { ...baseLocal.local, pollIntervalSeconds: 4 },
+	});
+	assert(
+		low.some((e) => e.field === 'daikin.local.pollIntervalSeconds' && e.message.includes('5 and 300')),
+		'pollIntervalSeconds < 5 rejected',
+	);
+
+	const high = validateDaikinConfig({
+		...baseLocal,
+		local: { ...baseLocal.local, pollIntervalSeconds: 301 },
+	});
+	assert(
+		high.some((e) => e.field === 'daikin.local.pollIntervalSeconds' && e.message.includes('5 and 300')),
+		'pollIntervalSeconds > 300 rejected',
+	);
+
+	const edges = validateDaikinConfig({
+		...baseLocal,
+		local: { ...baseLocal.local, pollIntervalSeconds: 5 },
+	});
+	assert(edges.length === 0, 'pollIntervalSeconds 5 accepted');
+	const edgeHigh = validateDaikinConfig({
+		...baseLocal,
+		local: { ...baseLocal.local, pollIntervalSeconds: 300 },
+	});
+	assert(edgeHigh.length === 0, 'pollIntervalSeconds 300 accepted');
 }
 
 if (failed > 0) {
