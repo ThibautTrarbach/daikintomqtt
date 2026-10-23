@@ -86,8 +86,8 @@ export interface ConfigDaikinLocal {
 	timeoutMs?: number
 	probeIntervalMinutes?: number
 	devices?: ConfigDaikinLocalDevice[]
-	/** Map cloud device UUID → LAN IP override */
-	overrides?: Record<string, string>
+	/** Map cloud device UUID → LAN IP override (empty YAML [] from PHP is normalized to {}) */
+	overrides?: Record<string, string> | unknown[]
 }
 
 export interface ConfigDaikin {

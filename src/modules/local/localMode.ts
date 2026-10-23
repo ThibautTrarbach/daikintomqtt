@@ -9,20 +9,19 @@ export function isLocalOnlyAuthMode(authMode?: string | null): boolean {
 /**
  * Effective local config: force enabled when authMode is local.
  */
-export function resolveLocalConfig(daikinConfig: {
-	authMode?: string | null;
-	local?: {
-		enabled?: boolean;
-		timeoutMs?: number;
-		probeIntervalMinutes?: number;
-		devices?: Array<{ ip: string }>;
-		overrides?: Record<string, string>;
-	};
-} | undefined) {
+import type { ConfigDaikin, ConfigDaikinLocal } from '../../types';
+
+export function resolveLocalConfig(daikinConfig: ConfigDaikin | undefined): ConfigDaikinLocal {
 	const local = daikinConfig?.local ?? {};
 	const localOnly = isLocalOnlyAuthMode(daikinConfig?.authMode);
+	const overridesRaw = local.overrides;
+	const overrides: Record<string, string> =
+		overridesRaw && !Array.isArray(overridesRaw) && typeof overridesRaw === 'object'
+			? (overridesRaw as Record<string, string>)
+			: {};
 	return {
 		...local,
 		enabled: localOnly ? true : local.enabled === true,
+		overrides,
 	};
 }

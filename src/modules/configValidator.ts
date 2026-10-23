@@ -568,7 +568,16 @@ function validateDaikinLocalConfig(local: ConfigDaikinLocal): ValidationError[] 
 	}
 
 	if (local.overrides !== undefined) {
-		if (typeof local.overrides !== 'object' || local.overrides === null || Array.isArray(local.overrides)) {
+		// Empty PHP array is emitted as [] by yaml_emit — treat as empty map
+		if (Array.isArray(local.overrides)) {
+			if (local.overrides.length > 0) {
+				errors.push({
+					field: 'daikin.local.overrides',
+					message: 'Must be an object mapping cloud UUID to IPv4 address (empty array is allowed)',
+					value: local.overrides,
+				});
+			}
+		} else if (typeof local.overrides !== 'object' || local.overrides === null) {
 			errors.push({
 				field: 'daikin.local.overrides',
 				message: 'Must be an object mapping cloud UUID to IPv4 address',

@@ -49,8 +49,13 @@ export class LocalDeviceRegistry {
 			}
 		}
 
-		for (const [uuid, ip] of Object.entries(localConfig.overrides ?? {})) {
-			if (uuid && ip) {
+		const overridesRaw = localConfig.overrides;
+		const overrides =
+			overridesRaw && !Array.isArray(overridesRaw) && typeof overridesRaw === 'object'
+				? overridesRaw
+				: {};
+		for (const [uuid, ip] of Object.entries(overrides)) {
+			if (uuid && typeof ip === 'string' && ip.trim()) {
 				this.hybrid.set(uuid, {
 					ip: ip.trim(),
 					deviceId: uuid,
