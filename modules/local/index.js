@@ -19,4 +19,5 @@ __exportStar(require("./LanCompatibility"), exports);
 __exportStar(require("./LanMapper"), exports);
 __exportStar(require("./LocalDeviceRegistry"), exports);
 __exportStar(require("./localTransport"), exports);
+__exportStar(require("./localMode"), exports);
 //# sourceMappingURL=index.js.map

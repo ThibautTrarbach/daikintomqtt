@@ -140,6 +140,11 @@ async function queueDeviceCommand(device, eventData) {
 }
 async function loadDaikinAPI() {
     const authMode = config.daikin.authMode ?? 'developer_portal';
+    if ((0, local_1.isLocalOnlyAuthMode)(authMode)) {
+        logger.info('[daikin.ts] => Local-only mode: Onecta cloud client disabled');
+        global.daikinClient = null;
+        return;
+    }
     if (authMode === constants_1.AUTH_MODE_MOBILE_APP) {
         if (!config.daikin.email || !config.daikin.password) {
             logger.error('[daikin.ts] => Please set daikin.email and daikin.password for mobile_app auth mode');
@@ -151,7 +156,7 @@ async function loadDaikinAPI() {
         process.exit(0);
     }
     const daikinClient = new daikin_cloud_1.DaikinCloudController({
-        authMode,
+        authMode: authMode,
         oidcClientId: config.daikin.clientID,
         oidcClientSecret: config.daikin.clientSecret,
         oidcCallbackServerBindAddr: '0.0.0.0',
@@ -299,13 +304,46 @@ async function startDaikinAPI() {
         await rateLimiter.loadRateLimitFromCache();
         logger.info("[daikin.ts] => Initializing system bridge");
         await initializeSystemBridge([]);
-        (0, local_1.initLocalDeviceRegistry)(config.daikin?.local);
-        if (config.daikin?.local?.enabled) {
+        const localConfig = (0, local_1.resolveLocalConfig)(config.daikin);
+        (0, local_1.initLocalDeviceRegistry)(localConfig);
+        if (localConfig.enabled) {
             logger.info("[daikin.ts] => Local LAN control enabled");
+        }
+        const authMode = config.daikin.authMode ?? 'developer_portal';
+        if ((0, local_1.isLocalOnlyAuthMode)(authMode)) {
+            logger.info("[daikin.ts] => Starting in local-only mode (no Onecta authentication)");
+            try {
+                devices = await getDevices(false, "startup_local_only");
+                if (!devices || devices.length === 0) {
+                    logger.warn("[daikin.ts] => No local devices found — check daikin.local.devices IPs");
+                    await updateSystemBridge(null, []);
+                    return;
+                }
+                logger.info(`[daikin.ts] => Found ${devices.length} local device(s)`);
+                await subscribeDevices(devices);
+                await generateConfig(devices);
+                await sendDevice(devices, false, "startup_initial_send");
+                await updateSystemBridge(null, devices);
+                logger.info("[daikin.ts] => Local-only Daikin API started successfully");
+                (0, mqtt_2.setMqttRepublishHandler)(async () => {
+                    const cachedDevices = await cache.get('devices');
+                    const locals = (await cache.get('localOnlyDevices'));
+                    const list = [...(cachedDevices ?? []), ...(locals ?? [])];
+                    const byId = new Map(list.map((d) => [d.getId(), d]));
+                    if (byId.size) {
+                        await sendDevice(Array.from(byId.values()), false, 'mqtt_reconnect_republish');
+                    }
+                    await updateSystemBridge();
+                });
+            }
+            catch (localError) {
+                logger.error(`[daikin.ts] => Local-only startup error: ${localError instanceof Error ? localError.message : String(localError)}`);
+                await updateSystemBridge(null, devices || []);
+            }
+            return;
         }
         const tokenPath = (0, tokenPaths_1.getTokenFilePath)();
         const tokenExists = fs_1.default.existsSync(tokenPath);
-        const authMode = config.daikin.authMode ?? 'developer_portal';
         if (authMode === constants_1.AUTH_MODE_MOBILE_APP) {
             if (!daikinClient.isAuthenticated()) {
                 logger.info('[daikin.ts] => Mobile App auth: authenticating with Onecta credentials...');
@@ -757,7 +795,7 @@ async function generateConfig(devices) {
     }
 }
 async function mergeLocalDevices(devices) {
-    const registry = (0, local_1.getLocalDeviceRegistry)() ?? (0, local_1.initLocalDeviceRegistry)(config.daikin?.local);
+    const registry = (0, local_1.getLocalDeviceRegistry)() ?? (0, local_1.initLocalDeviceRegistry)((0, local_1.resolveLocalConfig)(config.daikin));
     if (!registry.enabled) {
         return devices;
     }
@@ -785,6 +823,12 @@ async function mergeLocalDevices(devices) {
 }
 async function getDevices(force = false, reason = "unspecified") {
     try {
+        if ((0, local_1.isLocalOnlyAuthMode)(config.daikin?.authMode)) {
+            logger.debug(`[daikin.ts] => getDevices (reason: ${reason}) — local-only mode, skipping cloud`);
+            const locals = await mergeLocalDevices([]);
+            await cache.set('devices', locals, constants_2.DEVICE_CACHE_TTL_MS);
+            return locals;
+        }
         const devices = await cache.get('devices');
         if (devices === undefined || force) {
             if (force && !(await (0, requestBudget_1.canRefresh)(reason))) {
