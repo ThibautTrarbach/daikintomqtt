@@ -311,6 +311,9 @@ function validateDaikinConfig(daikin) {
             value: daikin.mockId,
         });
     }
+    if (daikin.local !== undefined) {
+        errors.push(...validateDaikinLocalConfig(daikin.local));
+    }
     if (authMode === 'mobile_app') {
         if (!daikin.email || typeof daikin.email !== 'string' || daikin.email.trim().length === 0) {
             errors.push({
@@ -410,6 +413,112 @@ function validateDaikinConfig(daikin) {
             message: 'Client port must be between 1 and 65535',
             value: daikin.clientPort
         });
+    }
+    return errors;
+}
+const IPV4_REGEX = /^(\d{1,3}\.){3}\d{1,3}$/;
+function isValidLanIp(ip) {
+    if (!IPV4_REGEX.test(ip)) {
+        return false;
+    }
+    const parts = ip.split('.').map((p) => Number(p));
+    return parts.every((n) => Number.isInteger(n) && n >= 0 && n <= 255);
+}
+function validateDaikinLocalConfig(local) {
+    const errors = [];
+    if (local.enabled !== undefined && typeof local.enabled !== 'boolean') {
+        errors.push({
+            field: 'daikin.local.enabled',
+            message: 'Must be a boolean',
+            value: local.enabled,
+        });
+    }
+    if (local.timeoutMs !== undefined) {
+        if (typeof local.timeoutMs !== 'number' || !Number.isInteger(local.timeoutMs)) {
+            errors.push({
+                field: 'daikin.local.timeoutMs',
+                message: 'Must be an integer (milliseconds)',
+                value: local.timeoutMs,
+            });
+        }
+        else if (local.timeoutMs < 500 || local.timeoutMs > 30000) {
+            errors.push({
+                field: 'daikin.local.timeoutMs',
+                message: 'Must be between 500 and 30000 milliseconds',
+                value: local.timeoutMs,
+            });
+        }
+    }
+    if (local.probeIntervalMinutes !== undefined) {
+        if (typeof local.probeIntervalMinutes !== 'number' || !Number.isInteger(local.probeIntervalMinutes)) {
+            errors.push({
+                field: 'daikin.local.probeIntervalMinutes',
+                message: 'Must be an integer (minutes)',
+                value: local.probeIntervalMinutes,
+            });
+        }
+        else if (local.probeIntervalMinutes < 1 || local.probeIntervalMinutes > 60) {
+            errors.push({
+                field: 'daikin.local.probeIntervalMinutes',
+                message: 'Must be between 1 and 60 minutes',
+                value: local.probeIntervalMinutes,
+            });
+        }
+    }
+    if (local.devices !== undefined) {
+        if (!Array.isArray(local.devices)) {
+            errors.push({
+                field: 'daikin.local.devices',
+                message: 'Must be an array of { ip: string }',
+                value: local.devices,
+            });
+        }
+        else {
+            local.devices.forEach((entry, index) => {
+                if (!entry || typeof entry !== 'object') {
+                    errors.push({
+                        field: `daikin.local.devices[${index}]`,
+                        message: 'Must be an object with ip',
+                        value: entry,
+                    });
+                    return;
+                }
+                if (typeof entry.ip !== 'string' || !isValidLanIp(entry.ip.trim())) {
+                    errors.push({
+                        field: `daikin.local.devices[${index}].ip`,
+                        message: 'Must be a valid IPv4 address',
+                        value: entry.ip,
+                    });
+                }
+            });
+        }
+    }
+    if (local.overrides !== undefined) {
+        if (typeof local.overrides !== 'object' || local.overrides === null || Array.isArray(local.overrides)) {
+            errors.push({
+                field: 'daikin.local.overrides',
+                message: 'Must be an object mapping cloud UUID to IPv4 address',
+                value: local.overrides,
+            });
+        }
+        else {
+            for (const [uuid, ip] of Object.entries(local.overrides)) {
+                if (typeof uuid !== 'string' || uuid.trim().length === 0) {
+                    errors.push({
+                        field: 'daikin.local.overrides',
+                        message: 'Keys must be non-empty cloud device UUIDs',
+                        value: uuid,
+                    });
+                }
+                if (typeof ip !== 'string' || !isValidLanIp(ip.trim())) {
+                    errors.push({
+                        field: `daikin.local.overrides.${uuid}`,
+                        message: 'Must be a valid IPv4 address',
+                        value: ip,
+                    });
+                }
+            }
+        }
     }
     return errors;
 }

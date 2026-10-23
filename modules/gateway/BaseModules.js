@@ -196,6 +196,25 @@ function createDeviceInfo(device, gatewayClass) {
         }
         catch {
         }
+        try {
+            const localMeta = device.__daikinLocalMeta;
+            if (localMeta?.accessMode) {
+                gatewayClass[key1]['accessMode'] = localMeta.accessMode;
+            }
+            else {
+                gatewayClass[key1]['accessMode'] = 'cloud';
+            }
+            if (localMeta?.controlPath) {
+                gatewayClass[key1]['controlPath'] = localMeta.controlPath;
+            }
+            else {
+                gatewayClass[key1]['controlPath'] = 'cloud';
+            }
+        }
+        catch {
+            gatewayClass[key1]['accessMode'] = 'cloud';
+            gatewayClass[key1]['controlPath'] = 'cloud';
+        }
     });
 }
 function resolveMetadataKeysFromEvents(gatewayClass, events) {
