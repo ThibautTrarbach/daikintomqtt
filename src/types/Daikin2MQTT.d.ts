@@ -1,22 +1,92 @@
-import {BRP069A4x, BRP069A61, BRP069A62, BRP069A78, BRP069B4x, BRP069C41, BRP069C4x} from "../modules/gateway";
+import type {BRP069A4x, BRP069A61, BRP069A62, BRP069A78, BRP069B4x, BRP069C41, BRP069C4x, BRP069C8x, DynamicGateway, UnsupportedGateway} from "../modules/gateway";
+
+export type SupportStatus = 'full' | 'partial' | 'unsupported';
+export type ConfigCoverage = 'complete' | 'incomplete';
 
 export interface Daikin2MQTT {
 	system: ConfigSystem
 	daikin: ConfigDaikin
 	mqtt: ConfigMQTT
+	integration?: ConfigIntegration
 }
 
 export interface ConfigSystem {
 	logLevel: string
-	jeedom: boolean
+	polling?: ConfigPolling
+	/**
+	 * Post-action refresh mode:
+	 * 1 = full refresh delayed by actionRefreshDelaySeconds after the action
+	 * 2 = optimistic update (cache + MQTT) without cloud refresh after the action
+	 * 3 = hybrid (optimistic update + full refresh actionRefreshDelaySeconds after the last action)
+	 */
+	actionRefreshMode?: number
+	/**
+	 * Delay in seconds before full refresh in modes 1 and 3
+	 */
+	actionRefreshDelaySeconds?: number
+	/**
+	 * Post-action cloud refresh strategy:
+	 * - timer: dedicated GET after actionRefreshDelaySeconds
+	 * - merge_with_poll: skip dedicated GET if a poll is due within mergeWithPollWindowMinutes
+	 * - disabled: no cloud GET after action (optimistic only)
+	 */
+	actionRefreshStrategy?: 'timer' | 'merge_with_poll' | 'disabled'
+	/**
+	 * Window in minutes to merge post-action refresh with upcoming poll (merge_with_poll strategy)
+	 */
+	mergeWithPollWindowMinutes?: number
+	/**
+	 * Debounce window in ms to coalesce rapid MQTT commands per device
+	 */
+	commandCoalesceMs?: number
+	/**
+	 * Daily energy stats refresh time (HH:MM, 24h)
+	 */
+	energyStatsRefreshTime?: string
+	/**
+	 * Use DynamicGateway for unknown device models (auto-map API characteristics)
+	 */
+	dynamicFallback?: boolean
+	/**
+	 * Publish read-only characteristics in DynamicGateway mode
+	 */
+	exposeReadOnly?: boolean
+	/**
+	 * Publish MQTT only when device state hash changed
+	 */
+	publishOnDelta?: boolean
+}
+
+export interface ConfigPolling {
+	dayInterval: number // Polling interval in minutes during the day
+	nightInterval: number // Polling interval in minutes during the night
+	nightStart: number // Night period start hour (0-23)
+	nightEnd: number // Night period end hour (0-23)
+}
+
+export interface ConfigIntegration {
+	jeedom?: boolean
+	homeassistant?: ConfigHomeAssistant
+}
+
+export interface ConfigHomeAssistant {
+	enabled: boolean
+	discoveryPrefix?: string
 }
 
 export interface ConfigDaikin {
-	modeProxy: boolean
-	clientSecret: string
-	clientID: string
-	clientURL: string
-	clientPort: number
+	authMode?: 'developer_portal' | 'mobile_app'
+	clientSecret?: string
+	clientID?: string
+	clientURL?: string
+	clientPort?: number
+	authorizationTimeoutSeconds?: number
+	email?: string | null
+	password?: string | null
+	enableWebSocket?: boolean
+	httpTransport?: 'node' | 'curl'
+	useMock?: boolean
+	mockId?: string | null
 }
 
 export interface ConfigMQTT {
@@ -40,6 +110,7 @@ export interface ModulesDescriptionMetadata {
 	unite?: string
 	type: number
 	values?: object
+	visible?: boolean
 }
 
 export interface ModulesDescriptionMetadataMinMax {
@@ -78,13 +149,35 @@ export interface DevicesInformation {
 	firmwareVersion: string,
 	isInErrorState: string,
 	errorCode: string
+	timeZone?: string
+	wifiConnectionSSID?: string
+	wifiConnectionStrength?: string
+	ipAddress?: string
+	macAddress?: string
+	indoorUnitSoftwareVersion?: string
+	isCloudConnectionUp?: string
+	supportStatus?: SupportStatus
+	configCoverage?: ConfigCoverage
+	configCoverageDetail?: string
+	gatewayModelRaw?: string
+	gatewayModelResolved?: string
+	unitModels?: string
+	managementPointsList?: string
+	unmappedDatapoints?: string
+	unmappedDatapointsDetail?: string
+	settableMismatches?: string
+	settableMismatchesDetail?: string
+	apiDatapointsDetail?: string
+	supportMessage?: string
+	debugReport?: string
+	githubIssueUrl?: string
 }
 
 export interface ClassModule {
 	device: DevicesInformation;
 }
 
-type Gateways =
+export type Gateways =
 	BRP069C4x |
 	BRP069A62 |
 	BRP069A78 |
@@ -92,6 +185,9 @@ type Gateways =
 	BRP069A4x |
 	BRP069C41 |
 	BRP069A61 |
-	BRP069C8x
+	BRP069C8x |
+	DynamicGateway |
+	UnsupportedGateway
+
 
 

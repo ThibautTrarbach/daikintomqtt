@@ -1,0 +1,30 @@
+---
+description: MQTT topic and payload contract (Jeedom / HA integration)
+globs: src/modules/mqtt.ts,src/modules/mqttLifecycle.ts,src/modules/converter/**/*.ts
+alwaysApply: false
+---
+
+# MQTT contract
+
+Read `docs/workflows/mqtt-contract.md` for full details.
+
+## Fixed contract (do not break)
+
+- Base topic: `config.mqtt.topic` (default `daikinToMQTT`)
+- `INSTANCE_ID`: `960adb71-4632-4f53-bf47-8ffa5abd7581`
+- State keys: `_propertyKey` prefix on device JSON (`{deviceId}`)
+- Jeedom CMD suffixes: `_ON` / `_OFF` (binary), `_Slider` (numeric), `_Select` (string)
+- Commands in: `{deviceId}/set` as `{ "_key": value }`
+- Jeedom discovery: `jeedom/{deviceId}` array from `generateCMD()`
+
+## Safe changes
+
+Adding new `_propertyKey` fields and new Jeedom CMD entries (auto-discovered).
+
+## Breaking changes (need daikinRCCloud update)
+
+Renaming/removing logicalIDs, changing suffix patterns, changing `_device` shape, changing `/set` format.
+
+## Special commands (CharacteristicWriter.ts)
+
+`_triggerFirmwareUpdate`, `_setPresetAway`, `_{zone}_scheduleEnabled` — document new ones in mqtt-contract.md.

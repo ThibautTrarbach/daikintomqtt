@@ -1,0 +1,49 @@
+---
+description: daikintomqtt project overview for AI agents
+alwaysApply: true
+---
+
+# daikintomqtt — project brief
+
+Bridge between Daikin Onecta Cloud API and MQTT (Jeedom / Home Assistant).
+
+**Read first:** [AGENTS.md](../../AGENTS.md) and [docs/architecture.md](../../docs/architecture.md).
+
+## Stack
+
+Node >= 20, TypeScript strict, CommonJS, `src/` → `dist/`. Entry: `daikinToMQTT.js` → `dist/main.js`.
+
+## Commands
+
+```bash
+npm run build          # Required before apiCoverageAudit test
+npm start              # Production
+npm run run            # Dev (ts-node)
+node test/unit/apiCoverageAudit.test.js   # After build
+```
+
+## Conventions
+
+- Tabs, global `logger` with `[file.ts] => msg` format
+- Property keys prefixed `_` (e.g. `_onOffMode`)
+- Enums: `typeEnum`, `converterEnum` from `typeConstants.ts`
+- Commits: Conventional Commits; changelog EN + FR
+
+## Don'ts
+
+- Do not modify `daikinRCCloud` for new mappings (auto via MQTT)
+- Do not edit `src/daikin-cloud/**` unless fixing cloud client
+- Do not bypass `enqueueWriteForDevice` or add ad-hoc API polling
+- Do not commit `config/settings.yml` or tokens
+
+## Workflow guides
+
+| Task | Guide |
+|------|-------|
+| Datapoint mapping | `docs/mapping-datapoints.md` |
+| New device model | `docs/workflows/add-device-model.md` |
+| MQTT contract | `docs/workflows/mqtt-contract.md` |
+| Config option | `docs/workflows/add-config-option.md` |
+| Testing | `docs/workflows/testing.md` |
+| Release | `docs/workflows/release.md` |
+| API quota | `docs/workflows/api-quota.md` |

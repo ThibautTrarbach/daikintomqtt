@@ -1,0 +1,31 @@
+---
+description: API quota and rate-limit guardrails
+globs: src/modules/rateLimiter.ts,src/modules/requestBudget.ts,src/modules/cron.ts,src/modules/actionRefresh.ts,src/modules/writeQueue.ts
+alwaysApply: false
+---
+
+# API quota guardrails
+
+Read `docs/workflows/api-quota.md` for full details.
+
+## Quotas
+
+- `developer_portal`: 200 req/day
+- `mobile_app`: 3000 req/day + WebSocket
+
+## Mandatory paths
+
+- **Writes**: `enqueueWriteForDevice(deviceId, fn)` — never direct `setData()` from gateway code
+- **Reads**: check `canRefresh()` before bulk/post-action GETs
+- **Retries**: use `rateLimiter.executeWithRetry` for cloud calls
+
+## Do NOT
+
+- Add polling loops in gateways
+- Bypass write queue or request budget
+- Add synchronous cloud calls in MQTT publish path
+- Skip rate limiter for 502/503/504 errors
+
+## Post-action refresh
+
+Respect `actionRefreshMode` (1/2/3) and `actionRefreshStrategy` (`merge_with_poll` default). WS push can skip redundant GETs.

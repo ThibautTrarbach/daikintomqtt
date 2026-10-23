@@ -1,0 +1,29 @@
+---
+description: Add or change a settings.yml configuration option
+globs: config/settings-default.yml,src/modules/configValidator.ts,src/modules/config.ts,src/types/*.ts
+alwaysApply: false
+---
+
+# Config option
+
+Read `docs/workflows/add-config-option.md` for full details.
+
+## Update all 6 locations
+
+1. `config/settings-default.yml` — key + comment + default
+2. `src/types/Daikin2MQTT.d.ts` — interface field
+3. `src/modules/configValidator.ts` — validation in `validate*Config()`
+4. `VALIDATION_ERRORS_DOCUMENTATION_EN.md` — error docs
+5. `VALIDATION_ERRORS_DOCUMENTATION_FR.md` — French error docs
+6. `README.md` — Configuration section
+
+Plus: set runtime default where consumed (`config.system?.key ?? default`).
+
+## Error format
+
+```
+Configuration validation errors:
+  - system.myKey: Message (value: "bad")
+```
+
+Match this format in validator — do not throw generic errors.
