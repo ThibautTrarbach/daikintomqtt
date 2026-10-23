@@ -40,6 +40,7 @@ exports.loadDaikinAPI = loadDaikinAPI;
 exports.subscribeDevices = subscribeDevices;
 exports.generateConfig = generateConfig;
 exports.sendDevice = sendDevice;
+exports.refreshLocalDevices = refreshLocalDevices;
 exports.startDaikinAPI = startDaikinAPI;
 exports.getDevices = getDevices;
 exports.updateSystemBridge = updateSystemBridge;
@@ -526,26 +527,79 @@ async function subscribeDevices(devices) {
         }
     });
 }
+function isLanRefreshTarget(device) {
+    const meta = (0, local_1.getDeviceLocalMeta)(device);
+    if (!meta?.ip) {
+        return false;
+    }
+    return meta.accessMode === 'local' || meta.accessMode === 'hybrid';
+}
+async function refreshLocalDevices(reason = 'local_polling') {
+    try {
+        const cloudOrMerged = (await cache.get('devices'));
+        const localOnly = (await cache.get('localOnlyDevices'));
+        const byId = new Map();
+        for (const d of cloudOrMerged ?? []) {
+            byId.set(d.getId(), d);
+        }
+        for (const d of localOnly ?? []) {
+            byId.set(d.getId(), d);
+        }
+        const targets = Array.from(byId.values()).filter(isLanRefreshTarget);
+        if (targets.length === 0) {
+            logger.debug(`[daikin.ts] => refreshLocalDevices (${reason}): no LAN targets`);
+            return;
+        }
+        logger.info(`[daikin.ts] => refreshLocalDevices (${reason}): ${targets.length} device(s)`);
+        for (const device of targets) {
+            const deviceId = device.getId();
+            try {
+                await device.updateData();
+                await cache.set(`device_${deviceId}`, device, constants_2.DEVICE_CACHE_TTL_MS);
+                const gateway = getModels(device);
+                await (0, mqtt_1.publishToMQTT)(deviceId, JSON.stringify(gateway));
+            }
+            catch (deviceError) {
+                logger.warn(`[daikin.ts] => LAN refresh failed for ${deviceId}: ${deviceError instanceof Error ? deviceError.message : String(deviceError)}`);
+            }
+        }
+        const allDevices = Array.from(byId.values());
+        await cache.set('devices', allDevices, constants_2.DEVICE_CACHE_TTL_MS);
+        try {
+            await updateSystemBridge(null, allDevices);
+        }
+        catch (bridgeError) {
+            logger.debug(`[daikin.ts] => System bridge update after LAN refresh failed: ${bridgeError instanceof Error ? bridgeError.message : String(bridgeError)}`);
+        }
+    }
+    catch (error) {
+        logger.error(`[daikin.ts] => refreshLocalDevices failed (${reason}): ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
 async function refreshSingleDevice(deviceId, reason) {
     try {
         const devices = await cache.get('devices');
-        if (!devices?.length) {
-            return false;
-        }
-        const device = devices.find((dev) => dev.getId() === deviceId);
+        const localOnly = (await cache.get('localOnlyDevices'));
+        const device = devices?.find((dev) => dev.getId() === deviceId) ??
+            localOnly?.find((dev) => dev.getId() === deviceId);
         if (!device) {
             return false;
         }
-        if (!(await (0, requestBudget_1.canRefresh)(reason))) {
+        const lanTarget = isLanRefreshTarget(device);
+        if (!lanTarget && !(await (0, requestBudget_1.canRefresh)(reason))) {
             return false;
         }
-        logger.info(`[daikin.ts] => Partial refresh for device ${deviceId} (reason: ${reason})`);
+        logger.info(`[daikin.ts] => Partial refresh for device ${deviceId} (reason: ${reason}${lanTarget ? ', LAN' : ''})`);
         await device.updateData();
-        await cache.set('devices', devices, constants_2.DEVICE_CACHE_TTL_MS);
+        if (devices?.length) {
+            await cache.set('devices', devices, constants_2.DEVICE_CACHE_TTL_MS);
+        }
         await cache.set(`device_${deviceId}`, device, 10800000);
         const gateway = getModels(device);
         await (0, mqtt_1.publishToMQTT)(deviceId, JSON.stringify(gateway));
-        await updateSystemBridge(null, devices);
+        if (devices?.length) {
+            await updateSystemBridge(null, devices);
+        }
         return true;
     }
     catch (error) {
